@@ -12,29 +12,24 @@
        34.90, 34.86, 34.78, 34.69, 34.60,
        34.58, 34.62, 34.68, 34.72, 34.73,
        34.74, 34.73, 34.73, 34.72, 34.72,
-#viscAz=1.E-3,
  viscAp=9.619760940944400e+04,
  viscAh=5.E5,
+ no_slip_sides=.FALSE.,
+ no_slip_bottom=.TRUE.,
  diffKhT=1.E3,
-#diffKzT=3.E-5,
  diffKpT=2.885928282283320e+03,
  diffKhS=1.E3,
-#diffKzS=3.E-5,
  diffKpS=2.885928282283320e+03,
  beta=1.E-11,
  f0=1.e-4,
  tAlpha=2.E-4,
  sBeta =7.4E-4,
-#tAlpha=0.,
-#sBeta =0.,
  gravity=9.81,
- gBaro=9.81,
  rigidLid=.FALSE.,
  implicitFreeSurface=.TRUE.,
  eosType='LINEAR',
  GMkBackground=0000.d0,
- momAdvection=.TRUE.
- momViscosity=.TRUE.
+ readBinaryPrec=32,
  &
 
 # Elliptic solver parameters
@@ -48,7 +43,6 @@
  startTime=0,
 #endTime=3110400000,
  endTime=2808000.,
-#endTime=216000.,
  deltaTmom=2400.0,
  tauCD=321428.,
  deltaTtracer=108000.0,
@@ -57,7 +51,6 @@
  pChkptFreq=0.0,
  chkptFreq=0.0,
  dumpFreq=2592000.0,
-#dumpFreq=108000.,
  tauThetaClimRelax=2592000.0,
  tauSaltClimRelax=2592000.0,
  &
@@ -93,7 +86,7 @@
 
 # Input datasets
  &PARM05
- bathyFile='topog',
+ bathyFile='topog-p',
  hydrogThetaFile='thetaLevCli',
  hydrogSaltFile='saltLevCli',
  zonalWindFile='windx',
