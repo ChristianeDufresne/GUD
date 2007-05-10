@@ -19,7 +19,7 @@ C       >>> Checkpointing as handled by TAMC
 #define ALLOW_TAMC_CHECKPOINTING
 C
 C       >>> Extract adjoint state
-#define ALLOW_AUTODIFF_MONITOR
+#undef ALLOW_AUTODIFF_MONITOR
 C
 C       >>> DO 2-level checkpointing instead of 3-level
 #undef AUTODIFF_2_LEVEL_CHECKPOINT
@@ -42,10 +42,9 @@ C ********************************************************************
 C 
 C       >>> Cost function contributions
 #define ALLOW_COST
-#undef ALLOW_COST_TEST
+#define ALLOW_COST_TEST
 #undef ALLOW_COST_TRACER
-#define ALLOW_COST_ATLANTIC_HEAT
-#undef ALLOW_COST_ATLANTIC_HEAT_DOMASS 
+#undef ALLOW_COST_ATLANTIC_HEAT
 
 C ********************************************************************
 C ***               Control vector Package                         ***
@@ -55,6 +54,9 @@ C
 C       >>> Initial values.
 #define ALLOW_THETA0_CONTROL
 #define ALLOW_SALT0_CONTROL
+#define ALLOW_UVEL0_CONTROL
+#define ALLOW_VVEL0_CONTROL
+#define ALLOW_ETAN0_CONTROL
 #undef ALLOW_TR10_CONTROL
 #undef ALLOW_TAUU0_CONTROL
 #undef ALLOW_TAUV0_CONTROL
@@ -62,10 +64,6 @@ C       >>> Initial values.
 #undef ALLOW_HFLUX0_CONTROL
 #undef ALLOW_SSS0_CONTROL
 #undef ALLOW_SST0_CONTROL
-#define ALLOW_DIFFKR_CONTROL
+#undef ALLOW_DIFFKR_CONTROL
 #undef ALLOW_KAPGM_CONTROL
-
-C
-C o Enable some temporary constructs for OpenAD
-#undef ALLOW_OPENAD
 

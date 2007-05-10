@@ -10,6 +10,9 @@ C will be compiled.
 
 #include "PACKAGES_CONFIG.h"
 
+C o Run as shallow water model
+#define SINGLE_LAYER_MODE
+
 #ifdef ALLOW_KPP
 #define  SHORTWAVE_HEATING
 #endif
@@ -18,10 +21,10 @@ C o Include/exclude phi_hyd calculation code
 #define INCLUDE_PHIHYD_CALCULATION_CODE
 
 C o Include/exclude call to S/R CONVECT
-#define INCLUDE_CONVECT_CALL
+#undef INCLUDE_CONVECT_CALL
 
 C o Include/exclude call to S/R CALC_DIFFUSIVITY
-#define INCLUDE_CALC_DIFFUSIVITY_CALL
+#undef INCLUDE_CALC_DIFFUSIVITY_CALL
 
 C o Allow nonHydrostatic code
 #undef  ALLOW_NONHYDROSTATIC
