@@ -14,7 +14,7 @@ C !DESCRIPTION:
 C     *==========================================================*
 C     | SUBROUTINE CPL_REGISTER
 C     | o Routine controlling registration with MIT coupler.
-C     | - Oceanic version -
+C     | - Atmospheric version -
 C     *==========================================================*
 C     | This version talks to the MIT Coupler. It uses the MIT
 C     | Coupler "checkpoint1" library calls.
@@ -25,7 +25,7 @@ C !USES:
 C     == Global variables ==
 #include "SIZE.h"
 #include "EEPARAMS.h"
-#include "OCNIDS.h"
+#include "ATMIDS.h"
 #ifdef ALLOW_EXCH2
 # include "W2_EXCH2_SIZE.h"
 # include "W2_EXCH2_TOPOLOGY.h"
@@ -58,8 +58,8 @@ C--   Register with the MIT coupler
       DO bj=1,nSy
        DO bi=1,nSx
         j = j+1
-        iG0 = myXGlobalLo+(bi-1)*sNx
         jG0 = myYGlobalLo+(bj-1)*sNy
+        iG0 = myXGlobalLo+(bi-1)*sNx
 #ifdef ALLOW_EXCH2
         IF ( W2_useE2ioLayOut ) THEN
           tN = W2_myTileList(bi,bj)
