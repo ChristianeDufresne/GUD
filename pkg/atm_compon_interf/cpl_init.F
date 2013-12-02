@@ -13,7 +13,7 @@ C !DESCRIPTION:
 C     *==========================================================*
 C     | SUBROUTINE CPL_INIT
 C     | o Routine controlling coupler layer initialisation.
-C     | - Oceanic version -
+C     | - Atmospheric version -
 C     *==========================================================*
 C     | This version talks to the MIT Coupler. It uses the MIT
 C     | Coupler "checkpoint1" library calls.
@@ -25,10 +25,10 @@ C     == Global variables ==
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
-#include "OCNIDS.h"
+#include "ATMIDS.h"
 
 C !INPUT/OUTPUT PARAMETERS:
-C     myThid   :: Thread number for this instance of the routine
+C     myThid :: Thread number for this instance of the routine
 c     INTEGER myThid
 CEOP
 
@@ -39,7 +39,7 @@ C     msgUnit  :: log-file I/O unit
 
 C--   Initialise connection with coupler
       CALL MITCOMPONENT_INIT(
-     I                  ocnCompName,
+     I                  atmCompName,
      O                  MPI_COMM_MODEL, msgUnit )
 #endif
 
