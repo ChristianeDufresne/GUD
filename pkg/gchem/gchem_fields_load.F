@@ -14,6 +14,7 @@ C !DESCRIPTION:
 C  calls routines which read in fields needed for any tracer experiment
 C !USES: ===============================================================
       IMPLICIT NONE
+#include "SIZE.h"
 #include "EEPARAMS.h"
 #include "GCHEM.h"
 
@@ -47,7 +48,13 @@ cccccccccccccccccccccccccc
 
 #ifdef ALLOW_DARWIN
       IF ( useDARWIN ) THEN
-       CALl DARWIN_FIELDS_LOAD(myIter,myTime,myThid)
+       CALL DARWIN_FIELDS_LOAD(myIter,myTime,myThid)
+      ENDIF
+#endif
+
+#ifdef ALLOW_GUD
+      IF ( useGUD ) THEN
+       call GUD_FIELDS_LOAD(myTime,myIter,myThid)
       ENDIF
 #endif
 

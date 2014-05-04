@@ -5,6 +5,9 @@ C $Name$
 #ifdef ALLOW_DARWIN
 #include "DARWIN_OPTIONS.h"
 #endif
+#ifdef ALLOW_GUD
+#include "GUD_OPTIONS.h"
+#endif
 
 C !INTERFACE: ==========================================================
       SUBROUTINE GCHEM_INIT_VARI(myThid )
@@ -57,6 +60,12 @@ ccccccccccccccccccccccccccc
          CALL DIC_SURFFORCING_INIT(myThid)
          CALL DIC_DIAGS_INIT(myThid)
 #endif
+      ENDIF
+#endif
+
+#ifdef ALLOW_GUD
+      IF ( useGUD ) THEN
+         call GUD_INIT_VARIA(myThid )
       ENDIF
 #endif
 #endif /* ALLOW_GCHEM */

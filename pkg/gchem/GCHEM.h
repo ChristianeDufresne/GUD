@@ -15,6 +15,7 @@ C--   COMMON /GCHEM_PARM_L/ Logical valued parameters used by GCHEM pkg.
 C     useDIC    :: flag to turn on/off DIC pkg
 C     useCFC    :: flag to turn on/off CFC pkg
 C     useDARWIN :: flag to turn on/off darwin pkg
+C     useGUD    :: flag to turn on/off gud pkg
 C
 C--   COMMON /GCHEM_PARAMS/
 C  nsubtime    :: number of chemistry timesteps per deltaTtracer
@@ -30,9 +31,10 @@ CEOP
       COMMON /GCHEM_PARM_L/
      &              useDIC,
      &              useCFC,
-     &              useDARWIN
+     &              useDARWIN,
+     &              useGUD
 
-      LOGICAL useDIC, useCFC, useDARWIN
+      LOGICAL useDIC, useCFC, useDARWIN, useGUD
 
       COMMON /GCHEM_PARAMS/
      &                   Filename1,
@@ -45,7 +47,8 @@ CEOP
      &           gchem_int4, gchem_int5,
      &           gchem_rl1, gchem_rl2, gchem_rl3,
      &           gchem_rl4, gchem_rl5,
-     &           gchem_ForcingPeriod, gchem_ForcingCycle
+     &           gchem_ForcingPeriod, gchem_ForcingCycle,
+     &           gchem_dTsub
 
       INTEGER nsubtime
       CHARACTER*(MAX_LEN_FNAM) Filename1
@@ -65,5 +68,6 @@ CEOP
       _RL     gchem_rl5
       _RL     gchem_ForcingPeriod
       _RL     gchem_ForcingCycle
+      _RL     gchem_dTsub(Nr)
 
 #endif /* ALLOW_GCHEM */

@@ -8,6 +8,9 @@ C $Name$
 #ifdef ALLOW_DARWIN
 #include "DARWIN_OPTIONS.h"
 #endif
+#ifdef ALLOW_GUD
+#include "GUD_OPTIONS.h"
+#endif
 
 
 CBOP
@@ -40,6 +43,14 @@ C !USES: ===============================================================
 #include "DARWIN_FLUX.h"
 #include "DARWIN_SIZE.h"
 #endif
+#ifdef ALLOW_GUD
+#include "GUD_SIZE.h"
+#include "GUD_INDICES.h"
+#include "GUD_GENPARAMS.h"
+#ifdef ALLOW_CARBON
+#include "GUD_FIELDS.h"
+#endif
+#endif
 
 C !INPUT PARAMETERS: ===================================================
 C  myThid               :: thread number
@@ -51,11 +62,11 @@ CEOP
 #ifdef GCHEM_SEPARATE_FORCING
 
 C!LOCAL VARIABLES: ====================================================
-C  i,j                  :: loop indices
 C  bi,bj                :: tile indices
 C  k                    :: vertical level
-      INTEGER bi,bj,iMin,iMax,jMin,jMax
-c     INTEGER i,j
+      INTEGER bi,bj,iMin,iMax,jMin,jMax,isub,iTracer
+      INTEGER k
+      _RL midTime
 #ifdef ALLOW_DIAGNOSTICS
       INTEGER iTr
       CHARACTER*8 diagName
@@ -118,6 +129,9 @@ ccccccccccccccccccccccccccccccccccccccccccc
 ccccccccccccccccccccccccc
 c chemical forcing      c
 ccccccccccccccccccccccccc
+
+#if defined(ALLOW_DIC) || defined(ALLOW_DARWIN)
+
 C$taf loop = parallel
        DO bj=myByLo(myThid),myByHi(myThid)
 C$taf loop = parallel
@@ -142,7 +156,7 @@ ccccccccccccccccccccccccccc DIC cccccccccccccccccccccccccccccccc
      &                          myIter,myTime,myThid)
 #else
 #ifdef ALLOW_O2
-          CALL DIC_BIOTIC_fORCING( pTracer(1-OLx,1-OLy,1,bi,bj,1),
+          CALL DIC_BIOTIC_FORCING( pTracer(1-OLx,1-OLy,1,bi,bj,1),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,2),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,3),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,4),
@@ -161,6 +175,8 @@ ccccccccccccccccccccccccccc DIC cccccccccccccccccccccccccccccccc
 
 #endif
 cccccccccccccccccccccccccc END DIC cccccccccccccccccccccccccccccccccc
+
+cccccccccccccccccccccccccc DARWIN ccccccccccccccccccccccccccccccccccc
 #ifdef ALLOW_DARWIN
          IF ( useDARWIN ) THEN
 #ifdef NUT_SUPPLY
@@ -186,9 +202,13 @@ C array because of last (iPtr) index
      &                          myIter,myTime,myThid)
          ENDIF
 #endif /* ALLOW_DARWIN */
+cccccccccccccccccccccccccc END DARWIN ccccccccccccccccccccccccccccccc
 
+C--   end bi,bj loops.
         ENDDO
        ENDDO
+
+#endif /* DIC or DARWIN */
 
 #ifdef ALLOW_DARWIN
        IF ( useDARWIN ) THEN
@@ -204,9 +224,78 @@ C array because of last (iPtr) index
        CALL DIC_STORE_FLUXCO2( myTime, myIter, myThid )
 #endif
 
+#ifdef ALLOW_DIC
 #ifdef ALLOW_COST
        CALL DIC_COST( myTime, myIter, myThid )
 #endif
+#endif
+
+ccccccccccccccccccccccccccc GUD ccccccccccccccccccccccccccccc
+#ifdef ALLOW_GUD
+       IF ( useGUD ) THEN
+
+         IF ( GUD_linFSConserve ) THEN
+           CALL GUD_CONSERVE_SURFACE( myTime, myIter, myThid )
+         ENDIF
+
+         CALL GUD_CONS( myTime, myIter, myThid )
+
+#ifdef ALLOW_CARBON
+#ifdef ALLOW_OLD_VIRTUALFLUX
+c find global surface averages
+         CALL GCHEM_SURFMEAN(salt, gsm_s, myThid)
+         CALL GCHEM_SURFMEAN(
+     &             pTracer(1-OLx,1-OLy,1,1,1,iDIC), gsm_dic, myThid )
+         CALL GCHEM_SURFMEAN(
+     &             pTracer(1-OLx,1-OLy,1,1,1,iALK), gsm_alk, myThid )
+#endif /* ALLOW_OLD_VIRTUALFLUX */
+#endif /* ALLOW_CARBON */
+
+C$taf loop = parallel
+         DO bj=myByLo(myThid),myByHi(myThid)
+C$taf loop = parallel
+          DO bi=myBxLo(myThid),myBxHi(myThid)
+
+           jMin=1
+           jMax=sNy
+           iMin=1
+           iMax=sNx
+
+#ifdef NUT_SUPPLY
+c articficial supply of nutrients
+           CALL GUD_NUT_SUPPLY( pTracer(1-OLx,1-OLy,1,bi,bj,iPO4),
+     &                          bi,bj,iMin,iMax,jMin,jMax,
+     &                          myIter,myTime,myThid)
+           CALL GUD_NUT_SUPPLY( pTracer(1-OLx,1-OLy,1,bi,bj,iNO3),
+     &                          bi,bj,iMin,iMax,jMin,jMax,
+     &                          myIter,myTime,myThid)
+           CALL GUD_NUT_SUPPLY( pTracer(1-OLx,1-OLy,1,bi,bj,iFeT),
+     &                          bi,bj,iMin,iMax,jMin,jMax,
+     &                          myIter,myTime,myThid)
+           CALL GUD_NUT_SUPPLY( pTracer(1-OLx,1-OLy,1,bi,bj,iSiO2),
+     &                          bi,bj,iMin,iMax,jMin,jMax,
+     &                          myIter,myTime,myThid)
+#endif
+
+           CALL TIMER_START('GUD_FORCING [GCHEM_FORCING_SEP]',myThid)
+C          time at middle of sub-timestep
+           midTime = myTime - deltaTclock + .5*deltaTclock/nsubtime
+           DO isub=1,nsubtime
+            CALL GUD_FORCING( gchem_dTsub,iMin,iMax,jMin,jMax,bi,bj,
+     &                        midTime,myTime,myIter,myThid)
+            midTime = midTime + deltaTclock/nsubtime
+           ENDDO
+           CALL TIMER_STOP ('GUD_FORCING [GCHEM_FORCING_SEP]',myThid)
+         
+C--   end bi,bj loops.
+          ENDDO
+         ENDDO
+
+         CALL GUD_CONS( myTime, myIter, myThid )
+
+       ENDIF
+#endif /* ALLOW_GUD */
+cccccccccccccccccccccccccc END GUD ccccccccccccccccccccccccccccccc
 
 #endif /* GCHEM_SEPARATE_FORCING */
 #endif /* ALLOW_GCHEM */

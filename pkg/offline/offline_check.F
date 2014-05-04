@@ -8,6 +8,9 @@ C $Name$
 #ifdef ALLOW_DARWIN
 #include "DARWIN_OPTIONS.h"
 #endif
+#ifdef ALLOW_GUD
+#include "GUD_OPTIONS.h"
+#endif
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 CBOP 0

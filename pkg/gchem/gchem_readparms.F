@@ -46,6 +46,7 @@ C  to test the flag before any corresponding pkg S/R call
      &                   useDIC,
      &                   useCFC,
      &                   useDARWIN,
+     &                   useGUD,
      &                   Filename1,
      &                   Filename2,
      &                   Filename3,
@@ -66,6 +67,7 @@ C Set defaults values for parameters in GCHEM.h
        useDIC = .FALSE.
        useCFC = .FALSE.
        useDARWIN = .FALSE.
+       useGUD = .FALSE.
        tIter0 = UNSET_I
        nsubtime=1
        Filename1=' '
@@ -137,6 +139,12 @@ C Everyone else must wait for the parameters to be loaded
 #ifdef ALLOW_DARWIN
       IF ( useDARWIN ) THEN
         CALL DARWIN_READPARMS(myThid)
+      ENDIF
+#endif
+
+#ifdef ALLOW_GUD
+      IF ( useGUD ) THEN
+        CALL GUD_READPARMS(myThid)
       ENDIF
 #endif
 

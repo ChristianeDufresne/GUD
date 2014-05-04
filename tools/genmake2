@@ -2162,7 +2162,7 @@ if test -r $ROOTDIR"/eesupp/src/Makefile" ; then
 fi
 
 #same for pkg/exch2 and pkg/regrid
-for pdir in exch2 regrid ; do
+for pdir in exch2 regrid gud; do
     if test -r $ROOTDIR"/pkg/${pdir}/Makefile" ; then
 	echo "  Making source files in pkg/${pdir} from templates"
 	( cd $ROOTDIR"/pkg/"${pdir} && $MAKE clean_old && $MAKE \

@@ -44,4 +44,4 @@ ctrl		+mdsio
 ecco		+mdsio
 grdchk		+autodiff	+cost		+ctrl
 showflops	+runclock
-
+gud             +exf            +gchem

@@ -8,6 +8,9 @@ C $Name$
 #ifdef ALLOW_DARWIN
 #include "DARWIN_OPTIONS.h"
 #endif
+#ifdef ALLOW_GUD
+#include "GUD_OPTIONS.h"
+#endif
 
 CBOP
 C     !ROUTINE: OFFLINE_GET_SURFFORCING
@@ -45,7 +48,7 @@ C     myThid  :: Thread no. that called this routine.
 CEOP
 
 #ifdef ALLOW_OLD_VIRTUALFLUX
-#if ( (defined ALLOW_DIC) || (defined ALLOW_DARWIN) )
+#if ( (defined ALLOW_DIC) || (defined ALLOW_DARWIN) || (defined ALLOW_GUD) )
 C     !LOCAL VARIABLES:
       INTEGER bi,bj,i,j
       _RL aWght, bWght
@@ -75,7 +78,7 @@ C--   end bi,bj loops
        ENDDO
       ENDDO
 
-#endif /* ALLOW_DIC or ALLOW_DARWIN */
+#endif /* ALLOW_DIC or ALLOW_DARWIN or ALLOW_GUD */
 #endif /* ALLOW_OLD_VIRTUALFLUX */
 
       RETURN

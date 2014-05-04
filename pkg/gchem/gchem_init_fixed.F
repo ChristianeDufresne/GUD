@@ -15,6 +15,8 @@ C !USES: ===============================================================
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "PARAMS.h"
+#include "PTRACERS_SIZE.h"
+#include "PTRACERS_PARAMS.h"
 #include "GCHEM.h"
 
 C !INPUT PARAMETERS: ===================================================
@@ -25,11 +27,20 @@ CEOP
 #ifdef ALLOW_GCHEM
 
 C     !LOCAL VARIABLES:
+      INTEGER k
+
+      _BEGIN_MASTER( mythid )
+
+      DO k=1,Nr
+       gchem_dTsub(k) = PTRACERS_dTLev(k)/nsubtime
+      ENDDO
+
+      _END_MASTER( mythid )
 
 C jmc: simpler to put MASTER thread directive within individual S/R :
 C      that leave the choice, for each S/R, to do either single (master)
 C      thread tasks or Multi-threaded tasks.
-c        _BEGIN_MASTER( mythid )
+
 ccccccccccccccccccccccccccc
 c initialize parameters   c
 ccccccccccccccccccccccccccc
@@ -47,11 +58,16 @@ ccccccccccccccccccccccccccc
           CALL CFC_ATMOS( myThid )
       ENDIF
 #endif /* ALLOW_CFC */
-c         _END_MASTER( mythid )
 
 #ifdef ALLOW_DARWIN
       IF ( useDARWIN ) THEN
          call DARWIN_INIT_FIXED(myThid)
+      ENDIF
+#endif
+
+#ifdef ALLOW_GUD
+      IF ( useGUD ) THEN
+         call GUD_INIT_FIXED(myThid)
       ENDIF
 #endif
 

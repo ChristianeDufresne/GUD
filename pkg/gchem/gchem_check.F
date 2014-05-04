@@ -26,6 +26,7 @@ C     myThid   ::  Number of this instance
 C     === Local variables ===
 C     msgBuf   :: Informational/error message buffer
       CHARACTER*(MAX_LEN_MBUF) msgBuf
+      INTEGER numPkg
 
       _BEGIN_MASTER(myThid)
 
@@ -48,23 +49,15 @@ C     GCHEM needs passive tracer package
          STOP 'ABNORMAL END: S/R GCHEM_CHECK'
       ENDIF
 
-C     GCHEM cannot (yet!) run cfc and dic together
-      IF ( useDIC .AND. useCFC ) THEN
-         WRITE(msgBuf,'(A)') 'useDIC and useCFC cannot both be .TRUE.'
-         CALL PRINT_ERROR( msgBuf , myThid )
-         STOP 'ABNORMAL END: S/R GCHEM_CHECK'
-      ENDIF
-
-C     GCHEM cannot run darwin and dic together
-      IF ( useDARWIN .AND. useDIC ) THEN
-        WRITE(msgBuf,'(A)') 'useDARWIN and useDIC cannot both be .TRUE.'
-        CALL PRINT_ERROR( msgBuf , myThid )
-        STOP 'ABNORMAL END: S/R GCHEM_CHECK'
-      ENDIF
-
-C     GCHEM cannot run darwin and cfc together
-      IF ( useDARWIN .AND. useCFC ) THEN
-        WRITE(msgBuf,'(A)') 'useDARWIN and useCFC cannot both be .TRUE.'
+C check that we are not running multiple incompatible packages
+      numPkg = 0
+      IF ( useDIC ) numPkg = numPkg + 1
+      IF ( useCFC ) numPkg = numPkg + 1
+      IF ( useDARWIN ) numPkg = numPkg + 1
+      IF ( useGUD ) numPkg = numPkg + 1
+      IF ( numPkg .GT. 1 ) THEN
+        WRITE(msgBuf,'(2A)') 'only one of useDIC, useCFC,',
+     &    ' useDARWIN and useGUD can be .TRUE. at a time'
         CALL PRINT_ERROR( msgBuf , myThid )
         STOP 'ABNORMAL END: S/R GCHEM_CHECK'
       ENDIF
@@ -80,6 +73,13 @@ C     run checks specific to CFC
 C     run checks specific to darwin
       IF ( useDARWIN ) THEN
         CALL DARWIN_CHECK( myThid )
+      ENDIF
+#endif
+
+#ifdef ALLOW_GUD
+C     run checks specific to gud
+      IF ( useGUD ) THEN
+        CALL GUD_CHECK( myThid )
       ENDIF
 #endif
 
