@@ -59,6 +59,13 @@ C     !LOCAL VARIABLES:
       ENDIF
 #endif /* ALLOW_DARWIN */
 
+#ifdef ALLOW_GUD
+      IF ( useGUD ) THEN
+        CALL GUD_WRITE_PICKUP( permPickup, suff,
+     I                         myTime, myIter, myThid )
+      ENDIF
+#endif /* ALLOW_GUD */
+
 #endif /* ALLOW_GCHEM */
       RETURN
       END
