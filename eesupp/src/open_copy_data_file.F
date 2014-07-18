@@ -51,7 +51,7 @@ C     msgBuf    :: Informational/error message buffer
       CHARACTER*(MAX_LEN_FNAM) scratchFile1
       CHARACTER*(MAX_LEN_FNAM) scratchFile2
 #endif
-      INTEGER  errIO,IL
+      INTEGER  errIO,IL,lineno
       LOGICAL  exst
 #ifdef SINGLE_DISK_IO
 C     mpiRC  :: Error code reporting variable used with MPI.
@@ -112,6 +112,18 @@ C     Make scratch copies of eedata with and without comments
        STOP 'ABNORMAL END: S/R OPEN_COPY_DATA_FILE'
       ENDIF
 
+      WRITE(msgBuf,'(A)')
+     &'// ======================================================='
+      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                    SQUEEZE_RIGHT, myThid )
+      WRITE(msgBuf,'(A,A,A)')'// Removing comments from "',data_file,'"'
+      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                    SQUEEZE_RIGHT, myThid )
+      WRITE(msgBuf,'(A)')
+     &'// ======================================================='
+      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                    SQUEEZE_RIGHT, myThid )
+      lineno = 1
       DO WHILE ( .TRUE. )
        READ(modelDataUnit,FMT='(A)',END=1001) RECORD
        IL = MAX(ILNBLNK(RECORD),1)
@@ -119,6 +131,10 @@ C     Make scratch copies of eedata with and without comments
 c        CALL NML_SET_TERMINATOR( RECORD )
          CALL NML_CHANGE_SYNTAX( RECORD, data_file, myThid )
          WRITE(UNIT=scrUnit1,FMT='(A)') RECORD(:IL)
+         WRITE(msgBuf,'(I4,X,A)') lineno, record(:IL)
+         CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                     SQUEEZE_RIGHT, myThid )
+         lineno = lineno + 1
        ENDIF
        WRITE(UNIT=scrUnit2,FMT='(A)') RECORD(:IL)
       ENDDO
