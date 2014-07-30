@@ -74,6 +74,7 @@ C  k                    :: vertical level
 
 #ifdef ALLOW_DIAGNOSTICS
       IF ( useDiagnostics ) THEN
+       CALL TIMER_START('GCHEM_DIAGNOSTICS [GCHEM_FORCING_SEP]',myThid)
 C--   fill-in tracer diagnostics before any GChem udate
        DO iTr = 1,PTRACERS_numInUse
         diagName = '        '
@@ -81,6 +82,7 @@ C--   fill-in tracer diagnostics before any GChem udate
         CALL DIAGNOSTICS_FILL( pTracer(1-OLx,1-OLy,1,1,1,iTr), diagName,
      &                         0, Nr, 0, 1, 1, myThid )
        ENDDO
+       CALL TIMER_STOP ('GCHEM_DIAGNOSTICS [GCHEM_FORCING_SEP]',myThid)
       ENDIF
 #endif /* ALLOW_DIAGNOSTICS */
 
@@ -115,7 +117,9 @@ c find global surface averages
 ccccccccccccccccccccccccccccccccccccccccccc
 #ifdef ALLOW_OFFLINE
        IF ( useOffLine ) THEN
+         CALL TIMER_START('GCHEM_OFFLINE [GCHEM_FORCING_SEP]',myThid)
          CALL OFFLINE_GET_SURFFORCING( myTime, myIter, myThid )
+         CALL TIMER_STOP ('GCHEM_OFFLINE [GCHEM_FORCING_SEP]',myThid)
        ENDIF
 #endif /* ALLOW_OFFLINE */
 #endif /* ALLOW_OLD_VIRTUALFLUX */
@@ -235,19 +239,25 @@ ccccccccccccccccccccccccccc GUD ccccccccccccccccccccccccccccc
        IF ( useGUD ) THEN
 
          IF ( GUD_linFSConserve ) THEN
+           CALL TIMER_START('GUD_CONS_SURF [GCHEM_FORCING_SEP]',myThid)
            CALL GUD_CONSERVE_SURFACE( myTime, myIter, myThid )
+           CALL TIMER_STOP ('GUD_CONS_SURF [GCHEM_FORCING_SEP]',myThid)
          ENDIF
 
+         CALL TIMER_START('GUD_CONS [GCHEM_FORCING_SEP]',myThid)
          CALL GUD_CONS( myTime, myIter, myThid )
+         CALL TIMER_STOP ('GUD_CONS [GCHEM_FORCING_SEP]',myThid)
 
 #ifdef ALLOW_CARBON
 #ifdef ALLOW_OLD_VIRTUALFLUX
 c find global surface averages
+         CALL TIMER_START('GCHEM_SURFMEAN [GCHEM_FORCING_SEP]',myThid)
          CALL GCHEM_SURFMEAN(salt, gsm_s, myThid)
          CALL GCHEM_SURFMEAN(
      &             pTracer(1-OLx,1-OLy,1,1,1,iDIC), gsm_dic, myThid )
          CALL GCHEM_SURFMEAN(
      &             pTracer(1-OLx,1-OLy,1,1,1,iALK), gsm_alk, myThid )
+         CALL TIMER_STOP ('GCHEM_SURFMEAN [GCHEM_FORCING_SEP]',myThid)
 #endif /* ALLOW_OLD_VIRTUALFLUX */
 #endif /* ALLOW_CARBON */
 
@@ -293,7 +303,9 @@ C--   end bi,bj loops.
           ENDDO
          ENDDO
 
+         CALL TIMER_START('GUD_CONS [GCHEM_FORCING_SEP]',myThid)
          CALL GUD_CONS( myTime, myIter, myThid )
+         CALL TIMER_STOP ('GUD_CONS [GCHEM_FORCING_SEP]',myThid)
 
        ENDIF
 #endif /* ALLOW_GUD */
