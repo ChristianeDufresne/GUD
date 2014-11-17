@@ -142,7 +142,6 @@ C in salinity. Thus, also increase in other surface tracers
 C (i.e. positive virtual flux into surface layer)
          gALK(i,j) =
      &     recip_drF(ks) * gsm_ALK * surfaceForcingS(i,j,bi,bj) / gsm_S
-         gPtr(i,j,ks,bi,bj,iALK) = gPtr(i,j,ks,bi,bj,iALK) + gALK(i,j)
         ENDIF
        ENDDO
       ENDDO
@@ -201,7 +200,6 @@ C Determine flux, inc. correction for local atmos surface pressure
 
          gO2(i,j) =
      &      recip_drF(ks)*recip_hFacC(i,j,ks,bi,bj)*FluxO2(i,j,bi,bj)
-         gPtr(i,j,ks,bi,bj,iO2) = gPtr(i,j,ks,bi,bj,iO2) + gO2(i,j)
         ENDIF
        ENDDO
       ENDDO
@@ -325,7 +323,6 @@ C update tendency
      &              + VirtualFlux(i,j)
 #endif
      &              )
-         gPtr(i,j,ks,bi,bj,iDIC) = gPtr(i,j,ks,bi,bj,iDIC) + gDIC(i,j)
         ENDIF
        ENDDO
       ENDDO

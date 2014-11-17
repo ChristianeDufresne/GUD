@@ -48,6 +48,7 @@ C  i,j                  :: loop indices
 C  k                    :: vertical level
       INTEGER i,j,k,kdn,iTr
       CHARACTER*8 diagname
+      _RL gPtr(1-OLx:sNx+OLx, 1-OLy:sNy+OLy, Nr, nGud)
       _RL PAR(sNx,sNy,Nr,nlam)
       _RL diags(sNx,sNy,Nr,gud_nDiag)
       _RL gDIC(1-OLx:sNx+OLx, 1-OLy:sNy+OLy)
@@ -74,7 +75,7 @@ C === reset tendencies =================================================
       DO k=1,Nr
       DO j=1,sNy
       DO i=1,sNx
-        gPtr(i,j,k,bi,bj,iTr) = 0.0 _d 0
+        gPtr(i,j,k,iTr) = 0.0 _d 0
       ENDDO
       ENDDO
       ENDDO
@@ -99,12 +100,19 @@ c      ENDIF
 C === dic ==============================================================
 #ifdef ALLOW_CARBON
 C carbon air-sea interaction
-       CALL TIMER_START('GUD_SURFFORCING [GUD_FORCING]',myThid)
-       CALL GUD_SURFFORCING(
+      CALL TIMER_START('GUD_SURFFORCING [GUD_FORCING]',myThid)
+      CALL GUD_SURFFORCING(
      O                    gDIC, gALK, gO2,
      I                    bi,bj,imin,imax,jmin,jmax,
      I                    myIter,myTime,myThid)
-       CALL TIMER_STOP ('GUD_SURFFORCING [GUD_FORCING]',myThid)
+      CALL TIMER_STOP ('GUD_SURFFORCING [GUD_FORCING]',myThid)
+      DO j=1,sNy
+      DO i=1,sNx
+        gPtr(i,j,1,iDIC) = gPtr(i,j,1,iDIC) + gDIC(i,j)
+        gPtr(i,j,1,iALK) = gPtr(i,j,1,iALK) + gALK(i,j)
+        gPtr(i,j,1,iO2)  = gPtr(i,j,1,iO2)  + gO2(i,j)
+      ENDDO
+      ENDDO
 #endif
 
 C === iron =============================================================
@@ -120,8 +128,8 @@ C     iron dust input
       DO j=1,sNy
       DO i=1,sNx
       IF (hFacC(i,j,1,bi,bj) .NE. 0.) THEN
-        gPtr(i,j,1,bi,bj,iFeT) =
-     &  gPtr(i,j,1,bi,bj,iFeT) + alpfe * inputFe(i,j,bi,bj) /
+        gPtr(i,j,1,iFeT) =
+     &  gPtr(i,j,1,iFeT) + alpfe * inputFe(i,j,bi,bj) /
      &                           drF(1) / hFacC(i,j,1,bi,bj)
       ENDIF
       ENDDO
@@ -139,7 +147,7 @@ C     scavenging
 #else
         scv = scav
 #endif
-        gPtr(i,j,k,bi,bj,iFeT) = gPtr(i,j,k,bi,bj,iFeT) -
+        gPtr(i,j,k,iFeT) = gPtr(i,j,k,iFeT) -
      &                           scv*freefe(i,j,k)
       ENDDO
       ENDDO
@@ -160,7 +168,7 @@ C     iron sediment source (in bottom grid cell above kMaxFeSed)
 #else
           flx = fesedflux
 #endif
-          gPtr(i,j,k,bi,bj,iFeT) = gPtr(i,j,k,bi,bj,iFeT) +
+          gPtr(i,j,k,iFeT) = gPtr(i,j,k,iFeT) +
      &                             flx/(drF(k)*hFacC(i,j,k,bi,bj))
          ENDIF
         ENDDO
@@ -180,7 +188,7 @@ C === plankton =========================================================
      &         uptakeTempFunc, myThid)
         ptr(:) = Ptracer(i, j, k, bi, bj, 1:nGud)
         PARl(:) = PAR(i, j, k, :)
-        gtr(:) = gPtr(i, j, k, bi, bj, 1:nGud)
+        gtr(:) = gPtr(i, j, k, 1:nGud)
         CALL GUD_MODEL(ptr,
      U                    gtr,
      O                    chlout, diagsl,
@@ -205,7 +213,7 @@ C === plankton =========================================================
 #endif
 #endif
 #ifdef GUD_TIME_GRAZING
-        gPtr(i, j, k, bi, bj, 1:nGud) = gtr(:)
+        gPtr(i, j, k, 1:nGud) = gtr(:)
       endif
       enddo
       enddo
@@ -217,7 +225,7 @@ C === plankton =========================================================
       do i=1,sNx
       if (hFacC(i,j,k,bi,bj) .GT. 0.) then
         ptr(:) = Ptracer(i, j, k, bi, bj, 1:nGud)
-        gtr(:) = gPtr(i, j, k, bi, bj, 1:nGud)
+        gtr(:) = gPtr(i, j, k, 1:nGud)
         CALL GUD_TEMPFUNC(Theta(i,j,k,bi,bj),
      &         photoTempFunc, grazTempFunc, reminTempFunc,
      &         mortTempFunc, mort2TempFunc,
@@ -228,7 +236,7 @@ C === plankton =========================================================
      I                    grazTempFunc, reminTempFunc,
      I                    mortTempFunc, mort2TempFunc,
      I                    myTime, myIter, myThid )
-        gPtr(i, j, k, bi, bj, 1:nGud) = gtr(:)
+        gPtr(i, j, k, 1:nGud) = gtr(:)
       endif
       enddo
       enddo
@@ -251,7 +259,7 @@ C === apply tendencies to tracers ======================================
       DO j=1,sNy
       DO i=1,sNx
         pTracer(i,j,k,bi,bj,iTr)=pTracer(i,j,k,bi,bj,iTr)
-     &                          +dTsub(k)*gPtr(i,j,k,bi,bj,iTr)
+     &                          +dTsub(k)*gPtr(i,j,k,iTr)
       ENDDO
       ENDDO
       ENDDO
