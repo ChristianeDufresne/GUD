@@ -41,6 +41,8 @@ C     msgBuf      - Informational/error meesage buffer
       CHARACTER*(MAX_LEN_MBUF) msgBuf
       INTEGER j,jz,iPtr
 
+      _BEGIN_MASTER(myThid)
+
       WRITE(msgBuf,'(A)') 'GUD_CHECK: #define ALLOW_GUD'
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
@@ -95,8 +97,10 @@ C log tracer names together with what they should be
      &                     SQUEEZE_RIGHT,myThid)
       ENDDO
 {{cond2}}{% end %}
+      _END_MASTER(myThid)
+
 #endif /* ALLOW_GUD */
-       
+
       RETURN
       END
 
