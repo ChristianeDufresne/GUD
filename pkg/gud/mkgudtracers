@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+'''
+Call this in the build directory (or in any directory with current GUD_SIZE.h
+and GUD_INDICES.h), and it will print a part of data.ptracers with tracer
+names appropriate for this setup.
+
+Options:
+
+  -r    include "PTRACERS_ref" lines
+  -f    include "PTRACERS_initialFile" lines
+
+Example:
+
+  mkgudtracers -r >> data.ptracers
+'''
+import sys
+from math import log10
+from fortran import OrderedDict
+from subprocess import Popen, PIPE
+from fortran import readparameters
+
+args = sys.argv[1:]
+printref = '-r' in args
+printfile = '-f' in args
+template = None
+for arg in args:
+    if arg not in ['-r', '-f']:
+        if template is None:
+            template = arg
+        else:
+            sys.exit(__doc__)
+
+pipe = Popen(['cat', 'GUD_SIZE.h', 'GUD_INDICES.h'], stdout=PIPE)
+p = readparameters(pipe.stdout)
+ret = pipe.wait()
+if ret:
+    sys.exit(__doc__)
+
+digits = int(log10(int(p['nplank']))) + 1
+
+ends = OrderedDict((k[1:], v) for k,v in p.items() if k.startswith('e'))
+starts = OrderedDict((k[1:], v) for k,v in p.items() if k.startswith('i') and k[1:4] not in ['Min', 'Max'])
+cellnames = ends.keys()
+for k in starts:
+    if k not in ends:
+        ends[k] = starts[k]
+
+nptr = max(ends.values())
+
+print " &PTRACERS_PARM01"
+print " PTRACERS_numInUse= {0},".format(nptr)
+
+valdict = {}
+if template is not None:
+    with open(template) as f:
+        for line in f:
+            try:
+                name,val = line.rstrip().split('=')
+            except ValueError:
+                raise ValueError('#{0}#'.format(line.rstrip()))
+            name = name.strip()
+            val = val.strip()
+            if name.startswith('PTRACERS'):
+                print ' ' + line.rstrip().replace('N', str(nptr)) + ','
+            else:
+                valdict[name] = val
+
+for k,s in sorted(starts.items(), key=lambda x:x[1]):
+    e = ends[k]
+    for i in range(s,e+1):
+        if k in cellnames:
+            name = '{0}{1:0{d}d}'.format(k, i-s+1, d=digits)
+        else:
+            name = k
+        print "       PTRACERS_names({0})= '{1}',".format(i, name)
+        if name in valdict:
+            val = valdict[name]
+            if val[0] == "'":
+                print " PTRACERS_initialFile({0})=       {1},".format(i, val)
+            else:
+                print "       PTRACERS_ref(:,{0})=       {1},".format(i, val)
+        else:
+            if printref:
+                print "       PTRACERS_ref(:,{0})= ".format(i)
+            if printfile:
+                print " PTRACERS_initialFile({0})= '',".format(i)
+
+print " &"

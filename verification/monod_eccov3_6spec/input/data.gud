@@ -1,0 +1,103 @@
+########################
+ &GUD_FORCING_PARAMS
+ gud_chlInitBalanced= T,
+ /
+########################
+ &GUD_EXF_PARAMS
+ ironFile='/home/stephdut/Input/input_ecco/mahowald2009_solubile_current_smooth_oce_mth-2d.bin',
+ ironPeriod= -12.,
+ gud_inscal_iron= 1000.,
+ PARFile='/home/stephdut/Input/input_ecco/ecco_oasim_total_below_oneband_einm2d.bin',
+ PARPeriod= -12.,
+ gud_inscal_PAR= 11.574074074074,
+ windFile='../../../data/eccov3/tren_speed_mth-2d.bin',
+ windPeriod= -12.,
+ icefile = '../../../data/eccov3/SIarea',
+ icestartdate1 = 19990101,
+ icestartdate2 = 120000,
+ iceperiod     = 86400.0,
+ /
+########################
+ &GUD_PARAMS
+ gud_allometric= F,
+ gud_seed= 56,
+ gud_read_phos= T,
+ tempCoeffArr= 0.8,
+ PARmin= 0.1,
+ alpfe= 1.0,
+ freefemax = .1E-3,
+ depthfesed= 7000.,
+ scav_rat= 1.73611111111111111111E-7,
+ kdoc=  3.8580246913580247E-7,  ! 1/30day
+ kdop=  3.8580246913580247E-7,  ! 1/30day
+ kdon=  3.8580246913580247E-7,  ! 1/30day
+ kdofe= 3.8580246913580247E-7,  ! 1/30day
+ kPOC=  3.8580246913580247E-7,  ! 1/30day
+ kPOP=  3.8580246913580247E-7,  ! 1/30day
+ kPON=  3.8580246913580247E-7,  ! 1/30day
+ kPOFe= 3.8580246913580247E-7,  ! 1/30day
+ kPOSi= 7.7160493827160493E-8,  ! 1/150day
+ phygrazmin= 120E-10,
+ gud_atmos_pCO2= 278E-6,
+ /
+########################
+ &GUD_RADTRANS_PARAMS
+ /
+########################
+ &GUD_TRAIT_PARAMS
+#
+ diaz_growfac=  4.0,
+ cocco_growfac=  1.2,
+ diatom_growfac=  0.95,
+ smallmort=  7.0,
+ bigmort=  7.0,
+ zoomortsmall= 2.3148148148148148e-07,  ! 1/50days
+ zoomortbig=   2.3148148148148148e-07,  ! 1/50days
+ zoomortsmall2= 9.259259259259258e-07,  ! 16*.6/120/day
+ zoomortbig2=   9.259259259259258e-07,  ! 16*.6/120/day
+ smallexport= 0.1,
+ bigexport= 0.4,
+ tempcoeff2_small= 0.0003,
+ tempcoeff2_big= 0.0003,
+#
+ val_R_FeC_diaz=   3.3333333333333333E-5,
+ val_R_NC_diaz=    0.33333333333333333,
+ val_R_SiC_diatom= 0.13333333333333333,
+ val_R_PICPOC= 0.8,
+#
+ smallpsat= 0.012,
+ bigpsat=   0.035,
+ procpsat=  0.011,
+ unidzpsat= 0.012,
+ coccopsat= 0.028,
+ smallpsatrange=  0.,
+ bigpsatrange=  0.,
+ procpsatrange=  0.,
+ unidzpsatrange=  0.,
+ coccopsatrange= 0.,
+#
+ smallmqyield=  5E-5,
+ smallmqyieldrange=  0.,
+ bigmqyield=  3.E-5,
+ bigmqyieldrange=  0.,
+ smallchl2cmax= 0.2,
+ smallchl2cmaxrange= 0.,
+ bigchl2cmax= 0.5,
+ bigchl2cmaxrange= 0.,
+#
+ val_acclimtimescl=  5.7870370370370370E-6,
+#
+ zooexfacsmall= 0.2,
+ zooexfacbig= 0.6,
+#
+ grazeefflow= 0.4,
+ grazeeffmod= 0.8,
+ grazeeffhi= 0.9,
+ diatomgraz= 0.86,
+ coccograz= 0.8,
+ olargegraz=  0.9,
+#
+ kgrazesat_val=  6.,
+ /
+ &GUD_ALLOMETRIC_PARAMS
+ /

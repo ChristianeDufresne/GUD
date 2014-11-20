@@ -1,0 +1,46 @@
+ &GUD_FORCING_PARAMS
+ /
+ &GUD_EXF_PARAMS
+ ironFile='../input/input/loc1_FeFlux_monsurf.bin',
+ PARFile='../input/input/loc1_PAR_monsurf.bin',
+ ironPeriod= -12.,
+ PARPeriod= -12.,
+ gud_inscal_iron= 1000.,
+ gud_inscal_PAR= 11.574074074074,
+#gud_PO4_fluxFile= '../input/input/ann_nphos_flux.bin',
+#gud_NO3_fluxFile= '../input/input/ann_nnitr_flux.bin',
+#gud_Si_fluxFile= '../input/input/ann_nsil_flux.bin',
+ /
+ &GUD_PARAMS
+ gud_seed= 11231,
+ gud_allometric= .TRUE.,
+ KDOC=  2.3148148148148148e-07,  ! .02/day
+ KDON=  2.3148148148148148e-07,
+ KDOP=  2.3148148148148148e-07,
+ KDOFe= 2.3148148148148148e-07,
+ KPOC=  4.6296296296296297e-07,  ! .04/day
+ KPON=  4.6296296296296297e-07,
+ KPOP=  4.6296296296296297e-07,
+ KPOFe= 4.6296296296296297e-07,
+ KPOSi= 3.819444444444444e-08,   ! .0033/day,
+ alpfe= .05D0,
+ scav= 5.092592592592593e-08  ! 4.4D-3/day,
+ freefemax= .1D-3
+ katten_chl= .03D0,
+ PARmin= 0.1D0,
+ PAR_oxi = 0.0,
+ phygrazmin= 0.,
+#knita=0.,
+ synthcost= 2.33D0,
+ phymin= 0.,
+ /
+ &GUD_RADTRANS_PARAMS
+ /
+ &GUD_TRAIT_PARAMS
+ tempmax = 20.0,
+ temprange = 22.0,
+ val_R_PC=0.,
+ val_R_PC_ZOO=0.,
+ /
+ &GUD_ALLOMETRIC_PARAMS
+ /

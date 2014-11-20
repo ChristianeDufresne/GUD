@@ -1,0 +1,7 @@
+ &GUD_TRAITS
+ chl2cmin(:)= 15*0.0,
+ chl2cmax(:)= 15*1e10,
+# no P or Si limitations
+ ksatPO4(:)= 15*0.0,
+ ksatSiO2(:)= 15*0.0,
+ /

@@ -1,0 +1,12 @@
+ &GUD_TRAITS
+#          Diat L  S  P az coc Z1 Z2
+ PHYSIZE=    1, 1, 0, 0, 1, 1, 0, 1,
+ DIACOC=     1, 0, 0, 0, 0, 2,
+ DIAZOTROPH= 0, 0, 0, 0, 1, 0,
+ NSOURCE=    3, 3, 3, 1, 0, 3,
+ wsink(5)= 0.0,
+ palat(5,7)= 0.1350,
+ palat(5,8)= 0.675,
+ morttempfuncmin= 8*0.0,
+ mort2tempfuncmin= 8*0.0,
+ /

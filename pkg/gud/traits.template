@@ -1,0 +1,169 @@
+GUD_TRAITS.h
+gud_init_traits.F
+gud_readtraits.F
+
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "PARAMS.h"
+#include "GUD_SIZE.h"
+#include "GUD_GENPARAMS.h"
+#include "GUD_TRAITPARAMS.h"
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+&parameters
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+UNINIT_I  = -999999999
+UNINIT_RL = -999999999D0
+
+SMALL = 0
+LARGE = 1
+
+NODIACOC = 0
+DIATOM   = 1
+COCCO    = 2
+
+USENH4NO2    = 1
+USENH4ONLY   = 2
+USENH4NO2NO3 = 3
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+&locals
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+&GUD_TRAITS
+! per-plankton traits (generated, maybe overwritten by data.traits)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+DIMENSION(nplank)
+
+physize(:)          = UNINIT_I
+diacoc(:)           = UNINIT_I
+diazotroph(:)       = UNINIT_I
+nsource(:)          = UNINIT_I
+useNH4(:)           = UNINIT_I
+useNO2(:)           = UNINIT_I
+useNO3(:)           = UNINIT_I
+combNO(:)           = UNINIT_I
+ap_type(:)          = UNINIT_I
+
+Xmin(:)             = UNSET_RL
+amminhib(:)         = UNSET_RL
+acclimtimescl(:)    = UNSET_RL
+
+PCmax(:)            = UNINIT_RL
+mort(:)             = UNINIT_RL
+mort2(:)            = 0.0D0
+mortTempFuncMin(:)  = UNINIT_RL
+mort2TempFuncMin(:) = UNINIT_RL
+ExportFrac(:)       = UNINIT_RL
+
+phytoTempCoeff(:)   = UNINIT_RL
+phytoTempExp1(:)    = UNINIT_RL
+phytoTempExp2(:)    = UNINIT_RL
+phytoTempOptimum(:) = UNINIT_RL
+phytoDecayPower(:)  = UNINIT_RL
+
+R_NC(:)             = UNINIT_RL
+R_PC(:)             = UNINIT_RL
+R_SiC(:)            = UNINIT_RL
+R_FeC(:)            = UNINIT_RL
+R_ChlC(:)           = 0.0D0
+R_PICPOC(:)         = UNINIT_RL
+
+wsink(:)            = UNINIT_RL
+wswim(:)            = UNINIT_RL
+
+ksatNH4(:)          = UNINIT_RL
+ksatNO2(:)          = UNINIT_RL
+ksatNO3(:)          = UNINIT_RL
+ksatPO4(:)          = UNINIT_RL
+ksatSiO2(:)         = UNINIT_RL
+ksatFeT(:)          = UNINIT_RL
+
+ksatPAR(:)          = UNINIT_RL
+kinhPAR(:)          = UNINIT_RL
+inhibcoef_geid(:)   = UNINIT_RL
+mQyield(:)          = UNINIT_RL
+chl2cmax(:)         = UNINIT_RL
+chl2cmin(:)         = UNINIT_RL
+alpha_mean(:)       = UNINIT_RL
+
+
+DIMENSION(nplank,nlam)
+
+alphachl(:,:) = UNINIT_RL
+
+
+DIMENSION(nplank)
+
+grazemax(:)       = UNINIT_RL
+ExportFracGraz(:) = UNINIT_RL
+kgrazesat(:)      = UNINIT_RL
+
+
+DIMENSION(nplank,nplank)
+
+palat(:,:)  = UNINIT_RL
+asseff(:,:) = UNINIT_RL
+
+
+DIMENSION(nplank)
+                                    ! quota-specific
+respiration(:)         = UNINIT_RL
+Qnmax(:)               = UNINIT_RL
+Qnmin(:)               = UNINIT_RL
+Qpmax(:)               = UNINIT_RL
+Qpmin(:)               = UNINIT_RL
+Qsimax(:)              = UNINIT_RL
+Qsimin(:)              = UNINIT_RL
+Qfemax(:)              = UNINIT_RL
+Qfemin(:)              = UNINIT_RL
+Vmax_NH4(:)            = UNINIT_RL
+Vmax_NO2(:)            = UNINIT_RL
+Vmax_NO3(:)            = UNINIT_RL
+Vmax_PO4(:)            = UNINIT_RL
+Vmax_SiO2(:)           = UNINIT_RL
+Vmax_FeT(:)            = UNINIT_RL
+
+kexcC(:)               = UNINIT_RL
+kexcN(:)               = UNINIT_RL
+kexcP(:)               = UNINIT_RL
+kexcSi(:)              = UNINIT_RL
+kexcFe(:)              = UNINIT_RL
+
+/
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+&GUD_RADTRANS_TRAITS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#ifdef ALLOW_RADTRANS
+
+DIMENSION(nPhoto,nlam)
+
+aphy_chl(:,:)          = UNINIT_RL
+aphy_chl_ps(:,:)       = UNINIT_RL
+bphy_chl(:,:)          = UNINIT_RL
+bbphy_chl(:,:)         = UNINIT_RL
+
+/
+ 
+#endif
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+&DEPENDENT
+! dependent and constant (not read-in) parameters
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+DIMENSION(nplank)
+
+CODE: WHERE(ksatPAR*kinhPAR .GT. 0.0)
+normI(:)=1.0/(ksatPAR(:)/(ksatPAR(:)+kinhPAR(:))*EXP(kinhPAR(:)/ksatPAR(:)*LOG(kinhPAR(:)/(ksatPAR(:)+kinhPAR(:)))))
+CODE: ELSEWHERE
+CODE: normI(:) = 1.0
+CODE: ENDWHERE
+
+

@@ -1,0 +1,30 @@
+PP              mmolP/m^3/s     Primary Production
+Nfix            mmolN/m^3/s     N fixation
+Denit           mmolN/m^3/s     Denitrification
+atten           1               attenuation in layer
+exfPAR          uEin/m^2/s      PAR at surface
+surfPAR         uEin/m^2/s      PAR at surface
+PARF            uEin/m^2/s      PAR at top of layer
+PAR{nlam}	uEin/m^2/s	PAR waveband {0}
+limn{nplank}    1               nitrogen limitation factor
+limp{nplank}    1               phosphorus limitation factor
+limsi{nplank}   1               silica limitation factor
+limfe{nplank}   1               iron limitation factor
+limI{nplank}    1               light limitation factor
+limT{nplank}    1               temperature limitation factor
+DIC_c{nplank}	mmolC/m^3/s	DIC uptake by plankton {0}
+c{nplank}_DOC	mmolC/m^3/s	loss to DOC by plankton {0}
+c{nplank}_POC	mmolC/m^3/s	loss to POC by plankton {0}
+c{nplank}_c  	mmolC/m^3/s	loss of plankton {0} by grazing
+c_c{nplank}  	mmolC/m^3/s	gain of plankton {0} by grazing
+c_DOC           mmolC/m^3/s	gain of DOC from plankton
+c_POC           mmolC/m^3/s	gain of POC from plankton
+c_PIC           mmolC/m^3/s	gain of PIC from plankton
+n_DON           mmolN/m^3/s	gain of DON from plankton
+n_PON           mmolN/m^3/s	gain of PON from plankton
+p_DOP           mmolP/m^3/s	gain of DOP from plankton
+p_POP           mmolP/m^3/s	gain of POP from plankton
+si_POSi         mmolSi/m^3/s	gain of POSi from plankton
+fe_DOFe         mmolFe/m^3/s	gain of DOFe from plankton
+fe_POFe         mmolFe/m^3/s	gain of POFe from plankton
+

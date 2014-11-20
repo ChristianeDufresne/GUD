@@ -1,0 +1,59 @@
+ &GUD_FORCING_PARAMS
+ /
+ &GUD_EXF_PARAMS
+ iceFile='../input/input/nasa_icefraction_mth-2d.bin',
+ ironFile='../input/input/mahowald2009_solubile_current_smooth_oce_mth-2d.bin',
+ PARFile='../input/input/par_ecco.bin_mth-2d.bin',
+# NO3_RelaxFile='/home/stephd/Input/input_ecco/lev01_nitrate_mth-3d.bin',
+# gud_relaxScale=31104000.,
+ icePeriod= -12.,
+ ironPeriod= -12.,
+ PARPeriod= -12.,
+ gud_inscal_iron= 1000.,
+ gud_inscal_PAR= 11.574074074074,
+#gud_PO4_fluxFile= '../input/input/ann_nphos_flux.bin',
+#gud_NO3_fluxFile= '../input/input/ann_nnitr_flux.bin',
+#gud_Si_fluxFile= '../input/input/ann_nsil_flux.bin',
+ /
+ &GUD_PARAMS
+ gud_seed= 56,
+ gud_linFSConserve= .TRUE.,
+ gud_allometric= .TRUE.,
+ KDOC=  2.3148148148148148e-07,  ! .02/day
+ KDON=  2.3148148148148148e-07,
+ KDOP=  2.3148148148148148e-07,
+ KDOFe= 2.3148148148148148e-07,
+ KPOC=  4.6296296296296297e-07,  ! .04/day
+ KPON=  4.6296296296296297e-07,
+ KPOP=  4.6296296296296297e-07,
+ KPOFe= 4.6296296296296297e-07,
+ KPOSi= 3.819444444444444e-08,   ! .0033/day,
+# alpfe= 0.05D0,  ! 1D model
+ alpfe= 1.0D0,   ! 3D model
+ scav= 5.092592592592593e-08  ! 4.4D-3/day,
+ freefemax= .1D-3
+ depthfesed= 1000D0,
+ katten_chl= .03D0,
+ PARmin= 0.1D0,
+ PAR_oxi = 0.0,
+ phygrazmin= 0.,
+#knita=0.,
+ synthcost= 2.33D0,
+ phymin= 0.,
+ /
+ &GUD_RADTRANS_PARAMS
+ /
+ &GUD_TRAIT_PARAMS
+ tempmax = 20.0,
+ temprange = 22.0,
+ val_R_PC=0.,
+ val_R_PC_ZOO=0.,
+ /
+ &GUD_ALLOMETRIC_PARAMS
+ nPro=2,
+ nSyn=3,
+ nEuk=5,
+ nDiatom=15,
+ ngrazer=30,
+ pp_sig_val=0.5,
+ /

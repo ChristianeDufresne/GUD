@@ -1,0 +1,9 @@
+# Packages
+ &PACKAGES
+ usePTRACERS=.TRUE.
+ useGCHEM=.TRUE.,
+ useDiagnostics=.TRUE.,
+ useKPP=.TRUE.,
+ useMNC=.TRUE.,
+ useEXF=.TRUE.,
+ /
