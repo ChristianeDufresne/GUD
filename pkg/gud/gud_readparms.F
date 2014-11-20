@@ -45,7 +45,6 @@ C !LOCAL VARIABLES: ====================================================
 C  iUnit   :: unit number for I/O
 C  msgBuf  :: message buffer
       _RL inp_lon0, inp_lat0, inp_dLon, inp_dLat, gridNx, gridNy
-      _RL namelist_dummy
       integer iUnit, oUnit, l
       CHARACTER*(MAX_LEN_MBUF) msgBuf
 

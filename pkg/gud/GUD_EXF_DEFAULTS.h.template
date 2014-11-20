@@ -1,0 +1,59 @@
+{{ EDIT_THIS_FILE }}
+
+#ifdef ALLOW_RADTRANS
+      DO l = 1, nlam
+       OASIM_Edfile(l) = ' '
+       OASIM_Esfile(l) = ' '
+       gud_inscal_OASIM(l) = 1. _d 0
+      ENDDO
+      OASIMstartdate1         = 0
+      OASIMstartdate2         = 0
+      OASIMperiod             = 0.0 _d 0
+      OASIMconst              = 0.0 _d 0
+      OASIM_exfremo_intercept = 0.0 _d 0
+      OASIM_exfremo_slope     = 0.0 _d 0
+      OASIMmask = 'c'
+#endif
+{% for fld,pre in flds %}
+      {{pre}}file = ' '
+      {{pre}}startdate1         = 0
+      {{pre}}startdate2         = 0
+      {{pre}}period             = 0.0 _d 0
+      {{pre}}const              = 0.0 _d 0
+      {{pre}}_exfremo_intercept = 0.0 _d 0
+      {{pre}}_exfremo_slope     = 0.0 _d 0
+      {{pre}}mask = 'c'
+
+      gud_inscal_{{pre}}    =  1. _d 0
+{% end %}
+#ifdef USE_EXF_INTERPOLATION
+      inp_lon0 = xgOrigin + delX(1)*exf_half
+      inp_lat0 = ygOrigin + delY(1)*exf_half
+      inp_dLon = delX(1)
+      inp_dLat = delY(1)
+# ifdef ALLOW_EXCH2
+      gridNx = exch2_mydNx(1)
+      gridNy = exch2_mydNy(1)
+# else /* ALLOW_EXCH2 */
+      gridNx = Nx
+      gridNy = Ny
+# endif /* ALLOW_EXCH2 */
+
+#ifdef ALLOW_RADTRANS
+      OASIM_lon0 = inp_lon0
+      OASIM_lat0 = inp_lat0
+      OASIM_nlon = gridNx
+      OASIM_nlat = gridNy
+      OASIM_lon_inc = inp_dLon
+      OASIM_interpMethod  = 1
+      OASIM_lat_inc(:) = inp_dLat
+#endif
+{% for i,(fld,pre) in enumerate(flds) %}
+      {{pre}}_lon0 = inp_lon0
+      {{pre}}_lat0 = inp_lat0
+      {{pre}}_nlon = gridNx
+      {{pre}}_nlat = gridNy
+      {{pre}}_lon_inc = inp_dLon
+      {{pre}}_interpMethod  = 1
+      {{pre}}_lat_inc(:) = inp_dLat{{ '\n' if i<len(flds)-1 else '' }}{% end %}
+#endif /* USE_EXF_INTERPOLATION */

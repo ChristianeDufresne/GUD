@@ -14,27 +14,74 @@ Example:
   mkgudtracers -r >> data.ptracers
 '''
 import sys
+import re
 from math import log10
 from fortran import OrderedDict
 from subprocess import Popen, PIPE
 from fortran import readparameters
 
+units = {
+    'DIC':     'mmol C/m^3',
+    'NH4':     'mmol N/m^3',
+    'NO2':     'mmol N/m^3',
+    'NO3':     'mmol N/m^3',
+    'PO4':     'mmol P/m^3',
+    'SiO2':    'mmol Si/m^3',
+    'FeT':     'mmol Fe/m^3',
+    'DOC':     'mmol C/m^3',
+    'DON':     'mmol N/m^3',
+    'DOP':     'mmol P/m^3',
+    'DOFe':    'mmol Fe/m^3',
+    'POC':     'mmol C/m^3',
+    'PON':     'mmol N/m^3',
+    'POP':     'mmol P/m^3',
+    'POSi':    'mmol Si/m^3',
+    'POFe':    'mmol Fe/m^3',
+    'PIC':     'mmol C/m^3',
+    'ALK':     'mmol eq/m^3',
+    'O2':      'mmol O/m^3',
+    'CDOM':    'mmol C/m^3',
+}
+unitsre = {
+    '^c[0-9]':   'mmol C/m^3',
+    '^n[0-9]':   'mmol N/m^3',
+    '^p[0-9]':   'mmol P/m^3',
+    '^si[0-9]':  'mmol Si/m^3',
+    '^fe[0-9]':  'mmol Fe/m^3',
+    '^Chl[0-9]': 'mg Chl a/m^3',
+}
+def getunit(name):
+    try:
+        return units[name]
+    except KeyError:
+        for k,v in unitsre.items():
+            if re.match(k, name):
+                return v
+        else:
+            return None
+
+
 args = sys.argv[1:]
 printref = '-r' in args
 printfile = '-f' in args
+printunits = '-u' in args
 template = None
 for arg in args:
-    if arg not in ['-r', '-f']:
+    if arg not in ['-r', '-f', '-u']:
         if template is None:
             template = arg
         else:
             sys.exit(__doc__)
 
-pipe = Popen(['cat', 'GUD_SIZE.h', 'GUD_INDICES.h'], stdout=PIPE)
-p = readparameters(pipe.stdout)
-ret = pipe.wait()
-if ret:
-    sys.exit(__doc__)
+pipe1 = Popen(['cat', 'GUD_OPTIONS.h', 'GUD_SIZE.h', 'GUD_INDICES.h'], stdout=PIPE)
+pipe2 = Popen(['grep', '-v', 'PACKAGES_CONFIG'], stdin=pipe1.stdout, stdout=PIPE)
+pipe1.stdout.close()
+pipe3 = Popen(['grep', '-v', 'CPP_OPTIONS'], stdin=pipe2.stdout, stdout=PIPE)
+pipe2.stdout.close()
+pipe4 = Popen(['cpp', '-DALLOW_GUD', '-traditional', '-P'], stdin=pipe3.stdout, stdout=PIPE)
+pipe3.stdout.close()
+p = readparameters(pipe4.stdout)
+pipe4.stdout.close()
 
 digits = int(log10(int(p['nplank']))) + 1
 
@@ -82,6 +129,10 @@ for k,s in sorted(starts.items(), key=lambda x:x[1]):
         else:
             if printref:
                 print "       PTRACERS_ref(:,{0})= ".format(i)
+            if printunits:
+                unit = getunit(name)
+                if unit is not None:
+                    print "       PTRACERS_units({0})= '{1}'".format(i, unit)
             if printfile:
                 print " PTRACERS_initialFile({0})= '',".format(i)
 

@@ -11,11 +11,13 @@ gud_readtraitparams.F
 ! these will not be in any common block or namelist
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+UNINIT_RL = -999999999D0
+
 pday = 86400.0D0
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-&GUD_TRAIT_PARAMS
+&GUD_RANDOM_PARAMS
 ! trait values used in gud_generate
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -50,7 +52,7 @@ val_R_NC = 16.0D0/120.0D0
 val_R_NC_diaz = 40.0D0/120.0D0
 val_R_PC = 1D0/120.0D0
 val_R_SiC_diatom = 16.0D0/120.0D0  ! 32 for Fanny's runs
-val_R_FeC = 1.0D-3/120.0D0 
+val_R_FeC = 1.0D-3/120.0D0
 val_R_FeC_diaz = 30.0D0 * val_R_FeC
 val_R_PICPOC = 0.0D0  !0.8D0
 val_R_ChlC   = 16D0/120D0          ! for atten_chl = atten_p * 16
@@ -58,7 +60,7 @@ val_R_ChlC   = 16D0/120D0          ! for atten_chl = atten_p * 16
 val_R_NC_zoo     = 16.0D0/120.0D0
 val_R_PC_zoo     = 1D0/120.0D0
 val_R_SiC_zoo    = 0.0D0
-val_R_FeC_zoo    = 1.0D-3/120.0D0 
+val_R_FeC_zoo    = 1.0D-3/120.0D0
 val_R_PICPOC_zoo = 0.0D0
 val_R_ChlC_zoo   = 0D0/120D0          ! for atten_chl = atten_p * 16
 
@@ -127,6 +129,11 @@ aphy_chl_ave = 0.02D0                        ! m2 (mg chla)-1 (ie. x chla gives 
 val_acclimtimescl=1./(60.D0*60.D0*24.D0*20.D0)  ! inverse time scale for Chl acclimation
                                              !#endif
 
+! GRAZERS
+
+! old defaults for 2 grazers
+
+oldTwoGrazers = .FALSE.
                                    ! set grazing rates .. small or big organism?
 ! GrazeFast = 1.0D0/(5.0D0*pday)
 GrazeFast = 1.0D0/(2.0D0*pday)
@@ -146,18 +153,32 @@ ExGrazfracsmall = 0.8D0
                                    ! set palatibility
 palathi = 1.0D0
 palatlo = 0.2D0
-                                   ! set grazing effeciency
-GrazeEfflow= 0.2D0
-GrazeEffmod= 0.5D0
-GrazeEffhi = 0.7D0
                                    ! set palatibilty diatom factor
 diatomgraz = 0.7D0
 coccograz = 0.6D0
 olargegraz = 1.0D0
+                                   ! set grazing effeciency
+GrazeEfflow= 0.2D0
+GrazeEffmod= 0.5D0
+GrazeEffhi = 0.7D0
 
-val_ass_eff = 0.70D0
+
+! new defaults for many grazers
+
+GrazeRate = 1.0D0/(2.0D0*pday)     ! grazing rate
+ExGrazfrac = 0.8D0                 ! fraction of sloppy feeding that goes to particulate
+
+val_palat = 0.0D0                  ! need to set in data.traits
+
+val_ass_eff = 0.70D0               ! grazing efficiency
 
 kgrazesat_val = 12D0               ! = 0.1 mmol P m-3
+
+Zoomort = 1.0D0/(30.0D0*pday)      ! zoo linear mortality rate (s-1)
+Zoomort2 = 0.D0                    ! zoo quadratic mortality ((mmol C)-1 s-1)
+Zooexfac = 0.7D0                   ! fraction of dead zoo that goes to particulate
+
+ZooDM = 100D0                      ! diameter (not used so far)
 
 /
 
@@ -167,281 +188,263 @@ kgrazesat_val = 12D0               ! = 0.1 mmol P m-3
 ! used in gud_generate_allometric
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-nPro = 2
-nSyn = 3
-nEuk = 4
-nDiatom = 6
-ngrazer = 1
+logvol0base = 0.0D0
+logvol0inc  = 0.0D0
+
+DIMENSION(nGroup,nGroup)
+grp_ExportFracPreyPred(:,:) = 0.5D0
 
 DIMENSION(nGroup)
+logvol0ind(:) = 0
+
 biovol0(1) = 0.125D0
 biovol0(2) = 0.5D0
 biovol0(3) = 4.D0
 biovol0(4) = 128.D0
 biovol0(5) = 8.D0
+biovolfac(:) = 2.0D0
 
-pp_sig_val = 1.0
+grp_nplank(:) = 0
+grp_photo(:) = 1
+grp_pred(:) = 0
+grp_prey(:) = 1
+grp_nsource(:) = 3
+grp_diacoc(:) = 0
+grp_diazo(:) = 0
+grp_taxon_mu(:) = 1D0
+grp_R_NC(:) = 16.0D0/120.0D0
+grp_R_PC(:) = 1D0/120.0D0
+grp_R_SiC(:) = 0D0
+grp_R_FeC(:) = 1.0D-3/120.0D0
+grp_R_ChlC(:) = 16D0/120D0
+grp_R_PICPOC(:) = 0.0D0
+grp_ExportFrac(:) = 0.5D0
+grp_mort(:) =  0.02D0 / pday
+grp_mort2(:) = 0.0D0
+grp_tempMort(:) = 1
+grp_tempMort2(:) = 1
+grp_tempcoeff1(:) = 1.D0/3.D0
+grp_tempcoeff2(:) = 0.001D0
+grp_tempcoeff3(:) = 1.04D0
+grp_tempopt(:) = 2.D0
+grp_tempdecay(:) = 4.D0
+grp_pp_sig(:) = 1.0D0
+#ifdef GEIDER
+grp_mQyield(:) = 7.5D-5
+grp_chl2cmax(:) = .3D0
+grp_inhibcoef_geid(:) = 0D0
+#else
+grp_ksatPAR(:) =    0.012D0
+grp_kinhPAR(:) =    6.0D-3  ! big: 1D-3
+#endif
+
+grp_ksatNH4fac(:) = 0.5D0  ! these are only used for gud_effective_ksat
+grp_ksatNO2fac(:) = 1.0D0
+
+grp_amminhib(:) = 4.6D0    ! coefficient for NH4 inhibition of NO uptake ((mmol N/m3)-1)
+grp_aphy_chl(:) = 0.02D0   ! mean of all spectra (m2 (mg chla)-1)
+grp_acclimtimescl(:) = 1D0/(20*86400D0)  ! inverse time scale for Chl acclimation
+grp_acclimtimescl_denom(:) = 1D0
+
+grp_ass_eff(:) = 0.70D0    ! grazing efficiency for prey group
+
 
 ! parameter = aV^b
 ! if errors are relative (*/) then state as "log(error)"
 ! if errors are absolute (+-) then state as "error"
-                                     !     Initial slope of PI curve
-a_alphachl       =  3.83D-7          ! mmol C (mg chl a)^-1 (mu Ein m^-2)^-1
-ae_alphachl      =  1.00D0
-b_alphachl       =  0.00D0
-be_alphachl      =  0.00D0
-                                     !ccccccccccccccccccccccccccccccccccccccccccccccccccccc
-                                     ! maximum specific grazing rate
-a_graz           =  21.9D0 / pday    ! d^-1
-ae_graz          =  1.00D0
-b_graz           = -0.16D0
-be_graz          =  0.02D0
-                                     ! half saturation grazing prey carbon concentration
-!  a_kg             =  2.24D+1       ! mmol C m^-3
-a_kg             =  1.00D0           ! mmol C m^-3
-ae_kg            =  3.80D0
-b_kg             =  0.00D0
-be_kg            =  0.03D0
-                                     !ccccccccccccccccccccccccccccccccccccccccccccccccccccc
-                                     ! sinking (enter as positive downwards)
-a_biosink        =  0.28D-1 / pday   ! m d^-1
-ae_biosink       =  1.00D0
-b_biosink        =  0.39D0
-be_biosink       =  0.00D0
-                                     ! swimming velocity (enter as positive upwards - converted in quota_generate_phyto.F)
-a_bioswim        =  0.00D0 / pday    ! m d^-1
-ae_bioswim       =  1.00D0
-b_bioswim        =  0.18D0
-be_bioswim       =  0.00D0
-                                     !ccccccccccccccccccccccccccccccccccccccccccccccccccccc
-                                     ! mortality
-a_mort           =  0.02D0 / pday    ! d^-1
-ae_mort          =  1.00D0
-b_mort           =  0.00D0
-be_mort          =  0.00D0
-                                     ! predator prey preference distribution parameters
-a_prdpry         =  1024.D0          ! dimensionless
-ae_prdpry        =  1.00D0
-b_prdpry         =  0.00D0
-be_prdpry        =  0.00D0
-                                     !ccccccccccccccccccccccccccccccccccccccccccccccccccccc
-                                     ! carbon
-                                     ! max photosynthetic rate (modified in quota_generate_plankton.F)
-a_vmax_DIC       =  1.00D0 / pday    ! d^-1
-ae_vmax_DIC      =  1.00D0
-b_vmax_DIC       = -0.15D0
-be_vmax_DIC      =  0.05D0
-                                     ! cellular carbon content
-a_qcarbon        =  1.80D-11         ! mmol C cell^-1
-ae_qcarbon       =  1.36D0
-b_qcarbon        =  0.94D0
-be_qcarbon       =  0.04D0
-                                     ! respiration (Note function of cellular C --> aC^b!)
-! a_respir         =  3.21D-11 / pday ! mmol C cell^-1 d^-1
-a_respir         =  0.00D0
-ae_respir        =  1.00D0
-b_respir         =  0.93D0
-be_respir        =  0.00D0
-                                     ! carbon excretion
-!  a_kexc_c       =  0.32D-1 / pday  ! d^-1
-a_kexc_c       =  0.00D0
-ae_kexc_c      =  1.36D0
-b_kexc_c       = -0.33D0
-be_kexc_c      =  0.09D0
-                                     ! fraction grazing to DOC
-a_beta_graz_c     =  1.00D0
-ae_beta_graz_c    =  1.00D0
-b_beta_graz_c     = -0.40D0
-be_beta_graz_c    =  0.00D0
-                                     ! fraction mortality to DOC
-a_beta_mort_c     =  1.00D0
-ae_beta_mort_c    =  1.00D0
-b_beta_mort_c     = -0.40D0
-be_beta_mort_c    =  0.00D0
-                                     ! nitrogen & nitrate
-                                     ! maximum NO3 uptake rate
-a_vmax_NO3    =  0.51D0 / pday   ! mmol N (mmol C)^-1 d^-1
-ae_vmax_NO3   =  1.00D0
-b_vmax_NO3    = -0.27D0
-be_vmax_NO3   =  0.00D0
-                                     ! NO3 half-saturation
-a_kn_NO3       =  0.17D0         ! (mmol N m^-3)
-ae_kn_NO3      =  1.36D0
-b_kn_NO3       =  0.27D0
-be_kn_NO3      =  0.07D0
-                                     ! N minimum quota
-a_qmin_n       =  0.07D0       ! mmol N (mmol C)^-1
-ae_qmin_n      =  1.00D0
-b_qmin_n       = -0.17D0
-be_qmin_n      =  0.00D0
-                                     ! N maximum quota
-a_qmax_n       =  0.25D0        ! mmol N (mmol C)^-1
-ae_qmax_n      =  1.00D0
-b_qmax_n       = -0.13D0
-be_qmax_n      =  0.00D0
-                                     ! nitrogen excretion
-a_kexc_n       =  0.24D-1 / pday ! d^-1
-a_kexc_n       =  0.00D0
-ae_kexc_n      =  1.36D0
-b_kexc_n       = -0.33D0
-be_kexc_n      =  0.09D0
-                                     ! fraction grazing to DON
-a_beta_graz_n     =  1.00D0
-ae_beta_graz_n    =  1.00D0
-b_beta_graz_n     = -0.40D0
-be_beta_graz_n    =  0.00D0
-                                     ! fraction mortality to DON
-a_beta_mort_n     =  1.00D0
-ae_beta_mort_n    =  1.00D0
-b_beta_mort_n     = -0.40D0
-be_beta_mort_n    =  0.00D0
-                                     ! nitrite
-                                     ! maximum NO2 uptake rate
-a_vmax_NO2    =  0.51D0 / pday  ! mmol N (mmol C)^-1 d^-1
-ae_vmax_NO2   =  1.36D0
-b_vmax_NO2    = -0.27D0
-be_vmax_NO2   =  0.07D0
-                                     ! NO2 half-saturation
-a_kn_NO2       =  0.17D0         ! (mmol N m^-3)
-ae_kn_NO2      =  1.36D0
-b_kn_NO2       =  0.27D0
-be_kn_NO2      =  0.08D0
-                                     ! ammonium
-                                     ! maximum NH4 uptake rate
-a_vmax_NH4    =  0.26D0 / pday  ! mmol N (mmol C)^-1 d^-1
-ae_vmax_NH4   =  1.36D0
-b_vmax_NH4    = -0.27D0
-be_vmax_NH4   =  0.07D0
-                                     ! NH4 half-saturation
-a_kn_NH4       =  0.85D-1        ! (mmol N m^-3)
-ae_kn_NH4      =  1.36D0
-b_kn_NH4       =  0.27D0
-be_kn_NH4      =  0.08D0
-                                     ! phosphate
-                                     ! maximum PO4 uptake rate
-a_vmax_PO4    =  0.77D-1 / pday ! mmol P (mmol C)^-1 d^-1
-ae_vmax_PO4   =  1.36D0
-b_vmax_PO4    = -0.27D0
-be_vmax_PO4   =  0.07D0
-                                     ! PO4 half-saturation
-a_kn_PO4       =  0.26D-1        ! (mmol N m^-3)
-ae_kn_PO4      =  1.36D0
-b_kn_PO4       =  0.27D0
-be_kn_PO4      =  0.08D0
-                                     ! minimum P quota
-a_qmin_p       =  2.00D-3       ! mmol N (mmol C)^-1
-ae_qmin_p      =  1.00D0
-b_qmin_p       =  0.00D0
-be_qmin_p      =  0.00D0
-                                     ! maximum P quota
-a_qmax_p       =  0.01D0        ! mmol N (mmol C)^-1
-ae_qmax_p      =  1.20D0
-b_qmax_p       =  0.00D0
-be_qmax_p      =  0.00D0
-                                     ! P excretion
-a_kexc_p       =  0.24D-1 / pday ! d^-1
-ae_kexc_p      =  1.36D0
-b_kexc_p       = -0.33D0
-be_kexc_p      =  0.09D0
-                                     ! fraction grazing to DOP
-a_beta_graz_p     =  1.00D0
-ae_beta_graz_p    =  1.00D0
-b_beta_graz_p     = -0.40D0
-be_beta_graz_p    =  0.00D0
-                                     ! fraction mortality to DOP
-a_beta_mort_p     =  1.00D0
-ae_beta_mort_p    =  1.00D0
-b_beta_mort_p     = -0.40D0
-be_beta_mort_p    =  0.00D0
-                                     ! silicate
-                                     ! maximum Si uptake rate
-a_vmax_SiO2     =  0.77D-1 / pday ! mmol Fe (mmol C)^-1 d^-1
-ae_vmax_SiO2    =  1.36D0
-b_vmax_SiO2     = -0.27D0
-be_vmax_SiO2    =  0.07D0
-                                     ! Si half-saturation
-a_kn_SiO2        =  0.24D-1        ! (mmol N m^-3)
-ae_kn_SiO2       =  1.36D0
-b_kn_SiO2        =  0.27D0
-be_kn_SiO2       =  0.08D0
-                                     ! minimum Si quota
-! a_qmin_si      =  0.84D-1        ! mmol N (mmol C)^-1
-! ae_qmin_si     =  1.00D0
-! b_qmin_si      = -0.17D0
-! be_qmin_si     =  0.00D0
-a_qmin_si      =  2.00D-3       ! mmol N (mmol C)^-1
-ae_qmin_si     =  1.00D0
-b_qmin_si      =  0.00D0
-be_qmin_si     =  0.00D0
-                                     ! maximum Si quota
-! a_qmax_si      =  0.30D0         ! mmol N (mmol C)^-1
-! ae_qmax_si     =  1.00D0
-! b_qmax_si      = -0.13D0
-! be_qmax_si     =  0.00D0
-a_qmax_si      =  4.00D-3       ! mmol N (mmol C)^-1
-ae_qmax_si     =  1.20D0
-b_qmax_si      =  0.00D0
-be_qmax_si     =  0.00D0
-                                     ! Si excretion
-a_kexc_si      =  0.00D0  / pday ! d^-1
-ae_kexc_si     =  1.00D0
-b_kexc_si      =  0.00D0
-be_kexc_si     =  0.00D0
-                                     ! fraction grazing to DOSi
-a_beta_graz_si    =  0.00D0
-ae_beta_graz_si   =  1.00D0
-b_beta_graz_si    =  0.00D0
-be_beta_graz_si   =  0.00D0
-                                     ! fraction mortality to DOSi
-a_beta_mort_si    =  0.00D0
-ae_beta_mort_si   =  1.00D0
-b_beta_mort_si    =  0.00D0
-be_beta_mort_si   =  0.00D0
-                                     ! iron
-                                     ! maximum Fe uptake rate
-! a_vmax_FeT    =  96.2D-6 / pday ! mmol Fe (mmol C)^-1 d^-1
-a_vmax_FeT    =  14.0D-6 / pday
-ae_vmax_FeT   =  1.36D0
-b_vmax_FeT    = -0.27D0
-be_vmax_FeT   =  0.07D0
-                                     ! Fe half-saturation
-! a_kn_feT       =  32.1D-6        ! (mmol N m^-3)
-a_kn_feT       =  80.0D-6
-ae_kn_FeT      =  1.36D0
-b_kn_FeT       =  0.27D0
-be_kn_FeT      =  0.08D0
-                                     ! minimum Fe quota
-a_qmin_fe      =  1.50D-6       ! mmol N (mmol C)^-1 - Mongin (2006)
-! a_qmin_fe      =  5.00D-6       ! mmol N (mmol C)^-1
-ae_qmin_fe     =  1.00D0
-b_qmin_fe      =  0.00D0
-be_qmin_fe     =  0.00D0
-                                     ! maximum Fe quota
-a_qmax_fe      =  80.0D-6       ! mmol N (mmol C)^-1 - Mongin (2006)
-! a_qmax_fe      =  15.0D-6       ! mmol N (mmol C)^-1
-ae_qmax_fe     =  1.20D0
-b_qmax_fe      =  0.00D0
-be_qmax_fe     =  0.00D0
-                                     ! Fe excretion
-a_kexc_fe      =  0.00D0  / pday ! d^-1
-ae_kexc_fe     =  1.00D0
-b_kexc_fe      =  0.00D0
-be_kexc_fe     =  0.00D0
-                                     ! fraction grazing to DOFe
-a_beta_graz_fe    =  1.00D0
-ae_beta_graz_fe   =  1.00D0
-b_beta_graz_fe    = -0.40D0
-be_beta_graz_fe   =  0.00D0
-                                     ! fraction mortality to DOFe
-a_beta_mort_fe    =  1.00D0
-ae_beta_mort_fe   =  1.00D0
-b_beta_mort_fe    = -0.40D0
-be_beta_mort_fe   =  0.00D0
+                                       !ccccccccccccccccccccccccccccccccccccccccccccccccccccc
+                                       ! maximum specific grazing rate
+a_graz(:)           =  21.9D0 / pday   ! d^-1
+a_graz_denom(:)     =  1.D0
+b_graz(:)           = -0.16D0
+                                       ! half saturation grazing prey carbon concentration
+!  a_kg(:)             =  2.24D+1      ! mmol C m^-3
+a_kg(:)             =  1.00D0          ! mmol C m^-3
+b_kg(:)             =  0.00D0
+                                       !ccccccccccccccccccccccccccccccccccccccccccccccccccccc
+                                       ! sinking (enter as positive downwards)
+a_biosink(:)        =  0.28D-1 / pday  ! m d^-1
+a_biosink_denom(:)  =  1.D0
+b_biosink(:)        =  0.39D0
+                                       ! swimming velocity (enter as positive upwards - converted in quota_generate_phyto.F)
+a_bioswim(:)        =  0.00D0 / pday   ! m d^-1
+a_bioswim_denom(:)  =  1.D0
+b_bioswim(:)        =  0.18D0
+                                       !ccccccccccccccccccccccccccccccccccccccccccccccccccccc
+                                       ! mortality
+a_mort(:)           =  0.02D0 / pday   ! d^-1
+a_mort_denom(:)     =  1.D0
+b_mort(:)           =  0.00D0
+                                       ! predator prey preference distribution parameters
+a_prdpry(:)         =  1024.D0         ! dimensionless
+b_prdpry(:)         =  0.00D0
+                                       !ccccccccccccccccccccccccccccccccccccccccccccccccccccc
+                                       ! carbon
+                                       ! max photosynthetic rate (modified in quota_generate_plankton.F)
+a_vmax_DIC(:)       =  1.00D0 / pday   ! d^-1
+a_vmax_DIC_denom(:) =  1.D0
+b_vmax_DIC(:)       = -0.15D0
+                                       ! cellular carbon content
+a_qcarbon(:)        =  1.80D-11        ! mmol C cell^-1
+b_qcarbon(:)        =  0.94D0
+                                       ! respiration (Note function of cellular C --> aC^b!)
+! a_respir(:)         =  3.21D-11 / pday ! mmol C cell^-1 d^-1
+a_respir(:)         =  0.00D0
+a_respir_denom(:)   =  1.D0
+b_respir(:)         =  0.93D0
+                                       ! carbon excretion
+! a_kexc_c(:)         =  0.32D-1 / pday  ! d^-1
+a_kexc_c(:)         =  0.00D0
+b_kexc_c(:)         = -0.33D0
+                                       ! fraction grazing to DOC
+a_beta_graz_c(:)    =  1.00D0
+b_beta_graz_c(:)    = -0.40D0
+                                       ! fraction mortality to DOC
+a_beta_mort_c(:)    =  1.00D0
+b_beta_mort_c(:)    = -0.40D0
+                                       ! nitrogen & nitrate
+                                       ! maximum NO3 uptake rate
+a_vmax_NO3(:)       =  0.51D0 / pday   ! mmol N (mmol C)^-1 d^-1
+a_vmax_NO3_denom(:) =  1.D0
+b_vmax_NO3(:)       = -0.27D0
+                                       ! NO3 half-saturation
+a_kn_NO3(:)         =  0.17D0          ! mmol N m^-3
+b_kn_NO3(:)         =  0.27D0
+                                       ! N minimum quota
+a_qmin_n(:)         =  0.07D0          ! mmol N (mmol C)^-1
+b_qmin_n(:)         = -0.17D0
+                                       ! N maximum quota
+a_qmax_n(:)         =  0.25D0          ! mmol N (mmol C)^-1
+b_qmax_n(:)         = -0.13D0
+                                       ! nitrogen excretion
+! a_kexc_n(:)         =  0.24D-1 / pday  ! d^-1
+a_kexc_n(:)         =  0.00D0
+b_kexc_n(:)         = -0.33D0
+                                       ! fraction grazing to DON
+a_beta_graz_n(:)    =  1.00D0
+b_beta_graz_n(:)    = -0.40D0
+                                       ! fraction mortality to DON
+a_beta_mort_n(:)    =  1.00D0
+b_beta_mort_n(:)    = -0.40D0
+                                       ! nitrite
+                                       ! maximum NO2 uptake rate
+a_vmax_NO2(:)       =  0.51D0 / pday   ! mmol N (mmol C)^-1 d^-1
+a_vmax_NO2_denom(:) =  1.0D0
+b_vmax_NO2(:)       = -0.27D0
+                                       ! NO2 half-saturation
+a_kn_NO2(:)         =  0.17D0          ! mmol N m^-3
+b_kn_NO2(:)         =  0.27D0
+                                       ! ammonium
+                                       ! maximum NH4 uptake rate
+a_vmax_NH4(:)       =  0.26D0 / pday   ! mmol N (mmol C)^-1 d^-1
+a_vmax_NH4_denom(:) =  1.0D0
+b_vmax_NH4(:)       = -0.27D0
+                                       ! NH4 half-saturation
+a_kn_NH4(:)         =  0.85D-1         ! mmol N m^-3
+b_kn_NH4(:)         =  0.27D0
+
+a_vmax_N(:)         =  1.28D0 / pday   ! vmax_n has to be >= vmax_no3+vmax_no2+vmax_nh4 for all sizes!
+a_vmax_N_denom(:)   =  1.D0
+b_vmax_N(:)         = -0.27D0
+
+                                       ! phosphate
+                                       ! maximum PO4 uptake rate
+a_vmax_PO4(:)       =  0.77D-1 / pday  ! mmol P (mmol C)^-1 d^-1
+a_vmax_PO4_denom(:) =  1.0D0
+b_vmax_PO4(:)       = -0.27D0
+                                       ! PO4 half-saturation
+a_kn_PO4(:)         =  0.26D-1         ! mmol P m^-3
+b_kn_PO4(:)         =  0.27D0
+                                       ! minimum P quota
+a_qmin_p(:)         =  2.00D-3         ! mmol P (mmol C)^-1
+b_qmin_p(:)         =  0.00D0
+                                       ! maximum P quota
+a_qmax_p(:)         =  0.01D0          ! mmol P (mmol C)^-1
+b_qmax_p(:)         =  0.00D0
+                                       ! P excretion
+a_kexc_p(:)         =  0.24D-1 / pday  ! d^-1
+b_kexc_p(:)         = -0.33D0
+                                       ! fraction grazing to DOP
+a_beta_graz_p(:)    =  1.00D0
+b_beta_graz_p(:)    = -0.40D0
+                                       ! fraction mortality to DOP
+a_beta_mort_p(:)    =  1.00D0
+b_beta_mort_p(:)    = -0.40D0
+                                       ! silicate
+                                       ! maximum Si uptake rate
+a_vmax_SiO2(:)      =  0.77D-1 / pday  ! mmol Si (mmol C)^-1 d^-1
+a_vmax_SiO2_denom(:) =  1.0D0
+b_vmax_SiO2(:)      = -0.27D0
+                                       ! Si half-saturation
+a_kn_SiO2(:)        =  0.24D-1         ! mmol Si m^-3
+b_kn_SiO2(:)        =  0.27D0
+                                       ! minimum Si quota
+! a_qmin_si(:)        =  0.84D-1         ! mmol Si (mmol C)^-1
+! b_qmin_si(:)        = -0.17D0
+a_qmin_si(:)        =  2.00D-3         ! mmol Si (mmol C)^-1
+b_qmin_si(:)        =  0.00D0
+                                       ! maximum Si quota
+! a_qmax_si(:)        =  0.30D0        ! mmol Si (mmol C)^-1
+! b_qmax_si(:)        = -0.13D0
+a_qmax_si(:)        =  4.00D-3         ! mmol Si (mmol C)^-1
+b_qmax_si(:)        =  0.00D0
+                                       ! Si excretion
+a_kexc_si(:)        =  0.00D0  / pday  ! d^-1
+b_kexc_si(:)        =  0.00D0
+                                       ! fraction grazing to DOSi
+a_beta_graz_si(:)   =  0.00D0
+b_beta_graz_si(:)   =  0.00D0
+                                       ! fraction mortality to DOSi
+a_beta_mort_si(:)   =  0.00D0
+b_beta_mort_si(:)   =  0.00D0
+                                       ! iron
+                                       ! maximum Fe uptake rate
+! a_vmax_FeT(:)       =  96.2D-6 / pday  ! mmol Fe (mmol C)^-1 d^-1
+a_vmax_FeT(:)       =  14.0D-6 / pday
+a_vmax_FeT_denom(:) =  1.0D0
+b_vmax_FeT(:)       = -0.27D0
+                                       ! Fe half-saturation
+! a_kn_feT(:)         =  32.1D-6       ! mmol Fe m^-3
+a_kn_feT(:)         =  80.0D-6
+b_kn_FeT(:)         =  0.27D0
+                                       ! minimum Fe quota
+a_qmin_fe(:)        =  1.50D-6         ! mmol Fe (mmol C)^-1 - Mongin (2006)
+! a_qmin_fe(:)        =  5.00D-6       ! mmol Fe (mmol C)^-1
+b_qmin_fe(:)        =  0.00D0
+                                       ! maximum Fe quota
+a_qmax_fe(:)        =  80.0D-6         ! mmol Fe (mmol C)^-1 - Mongin (2006)
+! a_qmax_fe(:)        =  15.0D-6       ! mmol Fe (mmol C)^-1
+b_qmax_fe(:)        =  0.00D0
+                                       ! Fe excretion
+a_kexc_fe(:)        =  0.00D0  / pday  ! d^-1
+b_kexc_fe(:)        =  0.00D0
+                                       ! fraction grazing to DOFe
+a_beta_graz_fe(:)   =  1.00D0
+b_beta_graz_fe(:)   = -0.40D0
+                                       ! fraction mortality to DOFe
+a_beta_mort_fe(:)   =  1.00D0
+b_beta_mort_fe(:)   = -0.40D0
+
+GUD_effective_ksat = .FALSE.
 
 /
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 &DEPENDENT
 ! dependent and constant (not read-in) parameters
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+CODE: grp_acclimtimescl(:)=grp_acclimtimescl(:)/grp_acclimtimescl_denom(:)
+CODE: a_graz(:) = a_graz(:)/a_graz_denom(:)
+CODE: a_mort(:) = a_mort(:)/a_mort_denom(:)
+CODE: a_respir(:) = a_respir(:)/a_respir_denom(:)
+CODE: a_biosink(:) = a_biosink(:)/a_biosink_denom(:)
+CODE: a_bioswim(:) = a_bioswim(:)/a_bioswim_denom(:)
+CODE: a_vmax_DIC(:) = a_vmax_DIC(:)/a_vmax_DIC_denom(:)
+CODE: a_vmax_NO3(:) = a_vmax_NO3(:)/a_vmax_NO3_denom(:)
+CODE: a_vmax_NO2(:) = a_vmax_NO2(:)/a_vmax_NO2_denom(:)
+CODE: a_vmax_NH4(:) = a_vmax_NH4(:)/a_vmax_NH4_denom(:)
+CODE: a_vmax_N(:) = a_vmax_N(:)/a_vmax_N_denom(:)
+CODE: a_vmax_PO4(:) = a_vmax_PO4(:)/a_vmax_PO4_denom(:)
+CODE: a_vmax_SiO2(:) = a_vmax_SiO2(:)/a_vmax_SiO2_denom(:)
+CODE: a_vmax_FeT(:) = a_vmax_FeT(:)/a_vmax_FeT_denom(:)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

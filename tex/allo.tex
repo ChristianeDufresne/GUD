@@ -1,0 +1,67 @@
+\documentclass{article}
+\def\dd{{\mathrm{d}}}
+\def\ee{{\mathrm{e}}}
+
+\begin{document}
+
+Non-allometric traits:
+\[
+  x = a
+\]
+from
+\[
+  \chi_{[a_{\min}, a_{\max}]}(a) \,\dd a
+\]
+
+Allometric traits:
+\[
+  x = a V^{b}
+\]
+from
+\[
+  \exp\left\{-\frac{(\log a-\log a_x)^2}{2(\log a_x^\ee)^2}\right\}
+  \exp\left\{-\frac{(b-b_x)^2}{2(b_x^\ee)^2}\right\}
+  \,\dd\log a \,\dd b
+\]
+  
+
+\begin{tabular}{ll}
+  trait          & allom.param.suffix \\\hline
+  alphachl       & a\_alphachl \\
+  grazemax       & a\_graz \\
+  kexcC          & a\_kexc\_c \\
+  kexcFe         & a\_kexc\_fec \\
+  kexcN          & a\_kexc\_n \\
+  kexcP          & a\_kexc\_p \\
+  kexcSi         & a\_kexc\_sic \\
+  kgrazesat      & a\_kg \\
+  ksatFeT        & a\_kn\_FeT \\
+  ksatNH4        & a\_kn\_NH4 \\
+  ksatNO2        & a\_kn\_NO2 \\
+  ksatNO3        & a\_kn\_NO3 \\
+  ksatPO4        & a\_kn\_PO4 \\
+  ksatSiO2       & a\_kn\_SiO2 \\
+  PCmax          & a\_vmax\_DIC \\
+  pp\_opt        & a\_prdpry \\
+  qcarbon        & a\_qcarbon \\
+  Qfemax         & a\_qmax\_fe \\
+  Qfemin         & a\_qmin\_fe \\
+  Qnmax          & a\_qmax\_n \\
+  Qnmin          & a\_qmin\_n \\
+  Qpmax          & a\_qmax\_p \\
+  Qpmin          & a\_qmin\_p \\
+  Qsimax         & a\_qmax\_si \\
+  Qsimin         & a\_qmin\_si \\
+  respiration    & a\_respir \\
+  vmax\_FeT      & a\_vmax\_FeT \\
+  vmax\_NH4      & a\_vmax\_NH4 \\
+  vmax\_NO2      & a\_vmax\_NO2 \\
+  vmax\_NO3      & a\_vmax\_NO3 \\
+  vmax\_PO4      & a\_vmax\_PO4 \\
+  vmax\_SiO2     & a\_vmax\_SiO2 \\
+  wsink          & a\_biosink \\
+  wswim          & a\_bioswim \\
+  \hline
+  mort           & fixed \\
+  \end{tabular}
+  \end{document}

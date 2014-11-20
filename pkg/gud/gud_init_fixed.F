@@ -37,10 +37,10 @@ CEOP
 
 C     !LOCAL VARIABLES:
       CHARACTER*(MAX_LEN_MBUF) msgBuf
-      integer iUnit1, iUnit2, jp, k
+      integer iUnit1, iUnit2, k
 #ifdef ALLOW_RADTRANS
       character*80 title
-      integer ios, i, l, ilambda
+      integer ios, i, l, ilambda, jp
       _RL planck, c, hc, oavo, hcoavo, rlamm
       _RL lambdain, ain, apsin, bin, bbin
 #endif

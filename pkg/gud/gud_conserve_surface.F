@@ -32,18 +32,10 @@ C============== Local variables ============================================
       INTEGER i,j,k,bi,bj
       INTEGER np, iTr
       _RL totflxC
-#ifdef PQUOTA
       _RL totflxP
-#endif
-#ifdef NQUOTA
       _RL totflxN
-#endif
-#ifdef FEQUOTA
       _RL totflxFe
-#endif
-#ifdef SIQUOTA
       _RL totflxSi
-#endif
 #ifdef ALLOW_CARBON
       _RL totflxA
       _RL totflxO
@@ -51,18 +43,10 @@ C============== Local variables ============================================
       _RL vol, voltot
 
       totflxC = 0. _d 0
-#ifdef PQUOTA
       totflxP = 0. _d 0
-#endif
-#ifdef NQUOTA
       totflxN = 0. _d 0
-#endif
-#ifdef FEQUOTA
       totflxFe = 0. _d 0
-#endif
-#ifdef SIQUOTA
       totflxSi = 0. _d 0
-#endif
 #ifdef ALLOW_CARBON
       totflxA = 0. _d 0
       totflxO = 0. _d 0
@@ -81,26 +65,23 @@ c carbon budget
       totflxC=totflxC+totSurfCorPtr(iCDOM)*R_CP_CDOM  !CDOM
 #endif
 
-#ifdef PQUOTA
 c Phosphorus budget
       totflxP=totflxP+totSurfCorPtr(iPO4)    !PO4
       totflxP=totflxP+totSurfCorPtr(iDOP)    !DOP
       totflxP=totflxP+totSurfCorPtr(iPOP)   !POP
       DO np=1,nplank
-       IF (np .LE. npquota) THEN
+#ifdef PQUOTA
         iTr=ip+np-1
         totflxP=totflxP+totSurfCorPtr(iTr)  !Phy 
-       ELSE
+#else
         iTr=ic+np-1
         totflxP=totflxP+totSurfCorPtr(iTr)*R_PC(np)  !Phy 
-       ENDIF
+#endif
       ENDDO
 #ifdef ALLOW_CDOM
       totflxP=totflxP+totSurfCorPtr(iCDOM)     !CDOM
 #endif
-#endif
 
-#ifdef NQUOTA
 c Nitrogen budget
       totflxN=totflxN+totSurfCorPtr(iNO3)    !NO3
       totflxN=totflxN+totSurfCorPtr(iNH4)   !NH4
@@ -108,50 +89,46 @@ c Nitrogen budget
       totflxN=totflxN+totSurfCorPtr(iDON)    !DON
       totflxN=totflxN+totSurfCorPtr(iPON)   !PON
       DO np=1,nplank
-       IF (np .LE. nnquota) THEN
+#ifdef NQUOTA
         iTr=in+np-1
         totflxN=totflxN+totSurfCorPtr(iTr)  !Phy
-       ELSE
+#else
         iTr=ic+np-1
         totflxN=totflxN+totSurfCorPtr(iTr)*R_NC(np)  !Phy
-       ENDIF
+#endif
       ENDDO
 #ifdef ALLOW_CDOM
       totflxN=totflxN+totSurfCorPtr(iCDOM)*R_NP_CDOM  !CDOM
 #endif
-#endif
 
-#ifdef FEQUOTA
 c Iron budget
       totflxFe=totflxFe+totSurfCorPtr(iFeT)    !Fet
       totflxFe=totflxFe+totSurfCorPtr(iDOFe)   !DOFe
       totflxFe=totflxFe+totSurfCorPtr(iPOFe)   !POFe
       DO np=1,nplank
-       IF (np .LE. nfequota) THEN
+#ifdef FEQUOTA
         iTr=ife+np-1
         totflxFe=totflxFe+totSurfCorPtr(iTr)  !Phy
-       ELSE
+#else
         iTr=ic+np-1
         totflxFe=totflxFe+totSurfCorPtr(iTr)*R_FeC(np)  !Phy
-       ENDIF
+#endif
       ENDDO
 #ifdef ALLOW_CDOM
       totflxFe=totflxFe+totSurfCorPtr(iCDOM)*R_FeP_CDOM  !CDOM
 #endif
-#endif
 
-#ifdef SIQUOTA
 c Silica budget
       totflxSi=totflxSi+totSurfCorPtr(iSiO2)   !Si
       totflxSi=totflxSi+totSurfCorPtr(iPOSi)   !POSi
       DO np=1,nplank
-       IF (np .LE. nsiquota) THEN
+#ifdef SIQUOTA
         iTr=isi+np-1
         totflxSi=totflxSi+totSurfCorPtr(iTr)  !Phy
-       ELSE
+#else
         iTr=ic+np-1
         totflxSi=totflxSi+totSurfCorPtr(iTr)*R_SiC(np)  !Phy
-       ENDIF
+#endif
       ENDDO
 c------------------------------------------------------------
 #ifdef ALLOW_CARBON
@@ -159,7 +136,6 @@ c alkalinity budget !!!!! NOT FULL BUDGET!!!!!
       totflxA=totflxA+totSurfCorPtr(iALK)    !ALK
 c oxygem budget !!!!!!!! NOT FULL BUDGET !!!!!!!!!!!
       totflxO=totflxO+totSurfCorPtr(iO2)    !O2
-#endif
 #endif
 
       voltot = 0. _d 0
@@ -182,18 +158,10 @@ C--   Everyone else must wait
 
 C     mean tracer change
       totflxC  = ptracers_dTLev(1)*totflxC /voltot
-#ifdef NQUOTA
       totflxN  = ptracers_dTLev(1)*totflxN /voltot
-#endif
-#ifdef PQUOTA
       totflxP  = ptracers_dTLev(1)*totflxP /voltot
-#endif
-#ifdef FEQUOTA
       totflxFe = ptracers_dTLev(1)*totflxFe/voltot
-#endif
-#ifdef SIQUOTA
       totflxSi = ptracers_dTLev(1)*totflxSi/voltot
-#endif
 #ifdef ALLOW_CARBON
       totflxA  = ptracers_dTLev(1)*totflxA /voltot
       totflxO  = ptracers_dTLev(1)*totflxO /voltot
@@ -207,22 +175,14 @@ C     add neglected flux to tracer globally
           DO j=1,sNy
            Ptracer(i,j,k,bi,bj,iDIC)=Ptracer(i,j,k,bi,bj,iDIC)+
      &                               totflxC*maskC(i,j,k,bi,bj)
-#ifdef PQUOTA
            Ptracer(i,j,k,bi,bj,iPO4)=Ptracer(i,j,k,bi,bj,iPO4)+
      &                               totflxP *maskC(i,j,k,bi,bj)
-#endif
-#ifdef NQUOTA
            Ptracer(i,j,k,bi,bj,iNO3)=Ptracer(i,j,k,bi,bj,iNO3)+
      &                               totflxN *maskC(i,j,k,bi,bj)
-#endif
-#ifdef FEQUOTA
            Ptracer(i,j,k,bi,bj,iFeT)=Ptracer(i,j,k,bi,bj,iFeT)+
      &                               totflxFe*maskC(i,j,k,bi,bj)
-#endif
-#ifdef SIQUOTA
-           Ptracer(i,j,k,bi,bj,iSi )=Ptracer(i,j,k,bi,bj,iSi )+
+           Ptracer(i,j,k,bi,bj,iSiO2)=Ptracer(i,j,k,bi,bj,iSiO2)+
      &                               totflxSi*maskC(i,j,k,bi,bj)
-#endif
 #ifdef ALLOW_CARBON
            Ptracer(i,j,k,bi,bj,iALK)=Ptracer(i,j,k,bi,bj,iALK)+
      &                               totflxA*maskC(i,j,k,bi,bj)

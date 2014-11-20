@@ -17,9 +17,9 @@ C
 #ifndef CHLQUOTA
       COMMON /GUD_CHL_STORE/ chlPrev
 #ifdef ALLOW_RADTRANS
-      _RL chlPrev(sNx,sNy,Nr,nSx,nSy,nPhoto)
+      _RL chlPrev(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy,nPhoto)
 #else
-      _RL chlPrev(sNx,sNy,Nr,nSx,nSy)
+      _RL chlPrev(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
 #endif
 #endif
 
@@ -40,15 +40,19 @@ C
       INTEGER GUD_cons_Si_unit
       INTEGER GUD_cons_A_unit
       INTEGER GUD_cons_O_unit
+
+      COMMON /GUD_CONS_3D/ GUD_Nfix, GUD_Ndenit
+      _RL GUD_Nfix(sNx,sNy,Nr,nSx,nSy)
+      _RL GUD_Ndenit(sNx,sNy,Nr,nSx,nSy)
 #endif
 
 C Carbon Variables
 
        COMMON /CARBON_NEEDS/
-     &              AtmosP, pH, pCO2, FluxCO2, FluxO2
+     &              pH, pCO2, Atmosp, FluxCO2, FluxO2
+      _RL  pH(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
+      _RL  pCO2(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
       _RL  AtmosP(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
-      _RL  pH(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
-      _RL  pCO2(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL  FluxCO2(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL  FluxO2(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 

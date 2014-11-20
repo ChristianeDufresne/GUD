@@ -1,0 +1,862 @@
+\documentclass[11pt,letterpaper,english]{article}
+\usepackage[width=7in,left=.75in,top=.75in,bottom=1in]{geometry}
+%\usepackage[T1]{fontenc}
+%\usepackage[latin1]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{babel}
+\usepackage{color}
+\usepackage[colorlinks=true]{hyperref}
+\usepackage{marginnote}
+\usepackage[qualifier-mode=phrase,qualifier-phrase={\,}]{siunitx}
+%\usepackage{wrapfig}
+
+\DeclareSIUnit\Molar{\textsc{m}}
+\DeclareSIUnit\muMolar{\milli\mol\per\meter\cubed}
+
+\setlength\parskip{\medskipamount}
+\setlength\parindent{0pt}
+
+\newcommand{\qtext}[1]{\qquad\text{#1}}
+\newcommand{\lxr}[1]{{\tt #1}}
+\renewcommand{\ll}[1]{{\tt #1}}
+\let\ds=\displaystyle
+
+\let\norm=\|
+\def\|#1|{\operatorname{#1}}
+
+\newcommand{\ee}{\mathrm{e}}
+\newcommand{\DDt}{\operatorname{D}_t}
+
+\DeclareMathOperator{\DIC}{DIC}
+\DeclareMathOperator{\PO}{PO}
+\DeclareMathOperator{\Fe}{Fe}
+\DeclareMathOperator{\FeL}{FeL}
+\DeclareMathOperator{\Si}{Si}
+\DeclareMathOperator{\SiO}{SiO}
+\DeclareMathOperator{\NH}{NH}
+\DeclareMathOperator{\NO}{NO}
+\DeclareMathOperator{\Alk}{Alk}
+\DeclareMathOperator{\DOM}{DOM}
+\DeclareMathOperator{\DOC}{DOC}
+\DeclareMathOperator{\DOP}{DOP}
+\DeclareMathOperator{\DON}{DON}
+\DeclareMathOperator{\DOFe}{DOFe}
+\DeclareMathOperator{\POM}{POM}
+\DeclareMathOperator{\POP}{POP}
+\DeclareMathOperator{\PON}{PON}
+\DeclareMathOperator{\POFe}{POFe}
+\DeclareMathOperator{\POSi}{POSi}
+\DeclareMathOperator{\PIC}{PIC}
+\DeclareMathOperator{\POC}{POC}
+\DeclareMathOperator{\CDOM}{CDOM}
+\DeclareMathOperator{\chl}{chl}
+\DeclareMathOperator{\chlc}{chl\text{:}c}
+\DeclareMathOperator{\chln}{chl\text{:}n}
+\DeclareMathOperator{\POiv}{PO4}
+\DeclareMathOperator{\NHiv}{NH4}
+\DeclareMathOperator{\NOii}{NO2}
+\DeclareMathOperator{\NOiii}{NO3}
+\DeclareMathOperator{\SiOii}{SiO2}
+
+\DeclareMathOperator{\QFe}{\mathit{Q}Fe}
+
+\newcommand{\N}{\mathrm{N}}
+\newcommand{\F}{\mathrm{F}}
+\newcommand{\C}{\mathrm{C}}
+\renewcommand{\P}{\mathrm{P}}
+\renewcommand{\O}{\mathrm{O}}
+\newcommand{\fe}{\mathrm{fe}}
+\let\unit=\si
+\renewcommand{\si}{\mathrm{si}}
+
+\newcommand{\m}{\operatorname{m}}
+
+\newcommand{\total}{{\mathrm{T}}}
+\newcommand{\FeT}{\Fe_\total}
+\newcommand{\Ltot}{L_\total}
+
+\newcommand{\sed}{{\text{sed}}}
+\newcommand{\stab}{\text{stab}}
+\newcommand{\Lstab}{\beta_{\stab}}
+\newcommand{\tot}{\text{tot}}
+
+\newcommand{\PICPOC}{{\text{PIC:POC}}}
+\newcommand{\diss}{{\text{diss}}}
+\newcommand{\resp}{{\text{resp}}}
+\newcommand{\graz}{{\text{graz}}}
+\newcommand{\scav}{{\text{scav}}}
+\newcommand{\free}{{\text{free}}}
+\newcommand{\sink}{{\text{sink}}}
+\newcommand{\reg}{{\text{reg}}}
+\newcommand{\phy}{{\text{phy}}}
+\newcommand{\zoo}{{\text{zoo}}}
+\newcommand{\up}{{\text{up}}}
+\newcommand{\inhib}{{\text{inhib}}}
+\newcommand{\acclim}{{\text{acclim}}}
+\newcommand{\nit}{{\text{nit}}}
+\newcommand{\oxi}{{\text{oxi}}}
+\newcommand{\remin}{{\text{remin}}}
+\newcommand{\crit}{{\text{crit}}}
+\newcommand{\export}{{\text{exp}}}
+\newcommand{\mort}{{\text{mort}}}
+
+\newcommand{\X}{c}
+\newcommand{\palat}{p}
+\newcommand{\eps}{{\mathtt{EPS}}}
+
+
+\begin{document}
+
+\section{GUD ecosystem model}
+
+\begin{align*}
+  \DDt \DIC   &= -\sum_j U^{\DIC}_j \cdot (1 + R^{\PICPOC}_j)
+                 + r_{\DOC} \DOC + (r_{\POC} \POC)
+                 + \kappa^\diss_\C \PIC \\
+  \DDt \PO_4  &= -\sum_j U^{\POiv}_j + r_{\DOP} \DOP + (r_{\POP} \POP) \\
+  \DDt \NH_4  &= -\sum_j U^{\NHiv}_j + r_{\DON} \DON + (r_{\PON} \PON) - P_{\NOii}
+                                     - D_{\NHiv} \\
+  \DDt \NO_2  &= -\sum_j U^{\NOii}_j + P_{\NOii} - P_{\NOiii} \\
+  \DDt \NO_3  &= -\sum_j U^{\NOiii}_j + P_{\NOiii} - D_{\NOiii} \\
+  \DDt \SiO_2 &= -\sum_j U^{\SiOii}_j + r_{\POSi} \POSi \\
+  \DDt \FeT   &= -\sum_j U^{\Fe}_j + r_{\DOFe} \DOFe + (r_{\POFe} \POFe) + S_{\Fe} \\[-1ex]
+\noalign{Plankton:}
+  \DDt \X_j   &= U^{\DIC}_j - m_j \X'_j - R^\C_j - G_j + g_j^\C \\
+\noalign{with P quota:}
+  \DDt p_j    &= U^{\POiv}_j - m_j p'_j - G_j Q^\P_j + g_j^\P \\
+\noalign{with N quota:}
+  \DDt n_j    &= U^{\N}_j - m_j n'_j - G_j Q^\N_j + g_j^\N \\
+\noalign{with Si quota:}
+  \DDt \si_j  &= U^{\SiOii}_j - m_j \si'_j - G_j Q^{\Si}_j \\
+\noalign{with Fe quota:}
+  \DDt \fe_j  &= U^{\Fe}_j - m_j \fe'_j - G_j Q^{\Fe}_j + g_j^{\Fe} \\
+\noalign{with Chl quota:}
+  \DDt \chl_j &= S^{\chl}_j - m_j \chl'_j - G_j \cdot \chlc_j
+\end{align*}
+With \verb|ALLOW_CDOM|, all particulate remineralization terms (in parenthesis)
+except Si are absent.  Terms: $U$ -- uptake; $P$ -- nitrification;
+$D$ -- denitrification; $R$ -- respiration; $G$, $g$ -- grazing;
+$S$ -- synthesis/other sources.
+
+
+
+\subsection{Geider growth}
+
+\[
+  U^{\DIC}_j = P^\C_j \X_j
+      \underbrace{{}-{\tt synthcost}\cdot U^\N_j}_{\mathclap{
+                      \text{only with both N and Chl quotas}}}
+\]
+
+\[
+  P^\C_j = P^{\C\m}_j \left(
+    1 - \exp\left\{ -\frac{\gamma^{\QFe}_j
+                     \langle\alpha I\rangle_j
+                     \chlc_j }{ P^{\C\m}_j }
+            \right\}
+  \right) \gamma^\inhib_j
+  \cdot{\tt ngrow}
+  \qquad\text{if } I>I_{\min} \text{ and } P^{\C\m}_j > 0 \text{, else } 0
+\]
+\[
+  \langle\alpha I\rangle_j = \sum_{l=1}^{\tt nlam} \alpha^{\chl}_{j,l} I_l
+\]
+\[
+  P^{\C\m}_j = P_{\C,j}^{\max} \gamma^{\|nut|}_j f^\phy_j(T) \gamma_{\|pCO2|}
+\]
+(${\tt ngrow}=\gamma_{\|pCO2|}=1$).
+
+Without dynamic Chl quota, we set\footnote{Notation:
+$[A]_a^b\equiv\max(a,\min(b,A))$}
+\[
+  \chlc_j = \chlc_j^{\|acclim|}
+\]
+\[
+  \chlc_j^{\|acclim|} = \left[
+      \frac{\chlc^{\max}{_j}}
+           {1 + \chlc^{\max}_j\langle\alpha I\rangle_j/(2P^{\C\m}_j)}
+    \right]_{\chlc^{\min}_j}^{\chlc^{\max}_j}
+  \qquad \text{if } P^{\C\m}_j \ne 0 \text{, else } \chlc^{\min}_j .
+\]
+
+Photo inhibition:
+\[
+  \gamma^\inhib_j = \begin{cases}
+    c^\inhib_j \cdot \verb|EkoverE| & \text{if } \verb|EkoverE| \le 1 \\
+    1                               & \text{otherwise}
+  \end{cases}
+\]
+where
+\[
+  \verb|EkoverE| = \frac{P^{\C\m}_j/(\chlc_j\cdot\overline{\alpha}_j)}
+                   {\langle\alpha I\rangle_j/\overline{\alpha}_j}
+\]
+and
+\[
+  \overline{\alpha}_j = \sum_l \Delta\lambda_l \alpha^{\chl}_{j,l} \Big/
+                        \sum_l \Delta\lambda_l
+  \;.
+\]
+
+
+
+\subsection{Nutrient uptake and limitation}
+
+\[
+  \gamma^{\|nut|}_j = \min(\gamma^\P_j, \gamma^\N_j, \gamma^{\Si}_j,
+                           \gamma^{\Fe}_j)
+\]
+
+\paragraph{Without P quota:} Monod limitation
+\[
+  \gamma^\P_j = \frac{\mathrm{PO}_4}{\mathrm{PO}_4 + k^{\POiv}_j}
+\]
+\[
+  U^\P_j = R^{\P:\C}_j P^\C_j \X_j
+\]
+\paragraph{With P quota:} normalized Droop limitation
+\[
+  \gamma^\P_j = \left[ \frac{1 - Q^{\P\min}_j/Q^{\P}_j}
+                            {1 - Q^{\P\min}_j/Q^{\P\max}_j}
+                \right]_0^1
+\]
+\[
+  U^\P_j = V^{\P\max}_j \frac{\mathrm{PO}_4}{\mathrm{PO}_4 + k^{\POiv}_j}
+                \left[ \frac{Q^{\P\max}_j - Q^{\P}_j}
+                            {Q^{\P\max}_j - Q^{\P\min}_j}
+                \right]_0^1
+           f^\up_j(T) \cdot \X_j
+\]
+
+\paragraph{Si} has linear limitation when using a Si quota,
+\[
+  \gamma^{\Si}_j = \left[ \frac{Q^{\Si}_j - Q^{\Si\min}_j}
+                           {Q^{\Si\max}_j - Q^{\Si\min}_j}
+                   \right]_0^1
+\]
+and is otherwise analogous to P.
+
+
+\paragraph{Without N quota:}
+
+-- diazotroph: no limitation, no consumption
+\[
+  \gamma^\N_j = 1
+\]
+\[
+  U^{\NHiv}_j = U^{\NOii}_j = U^{\NOiii}_j = 0
+\]
+
+-- not diazotroph: modified Monod limitation
+\[
+  \gamma^\N_j = \left[ \gamma^{\NHiv}_j + \gamma^{\NOii}_j + \gamma^{\NOiii}_j \right]_0^1
+\]
+\[
+  \gamma^{\NHiv}_j = \verb|useNH4|_j \cdot \frac{\NH_4}{\NH_4 + k^{\NHiv}_j}
+\]
+\[
+  \gamma^{\NOii}_j = \verb|useNO2|_j \cdot
+  \ee^{-\sigma_1 \NH_4} \cdot
+  \begin{cases}
+    \dfrac{\NO_2}{\NO_2 + k^{\NOii}_j} & \text{if not }\verb|combNO| \\[3ex]
+    \dfrac{\NO_2}{\NO_2 + \NO_3 + k^{\NOiii}_j} & \text{if }\verb|combNO|
+  \end{cases}
+\]
+\[
+  \gamma^{\NOiii}_j = \verb|useNO3|_j \cdot
+  \ee^{-\sigma_1 \NH_4} \cdot
+  \begin{cases}
+    \dfrac{\NO_3}{\NO_3 + k^{\NOiii}_j} & \text{if not }\verb|combNO| \\[3ex]
+    \dfrac{\NO_3}{\NO_2 + \NO_3 + k^{\NOiii}_j} & \text{if }\verb|combNO|
+  \end{cases}
+\]
+\begin{align}
+  U^{\NHiv}_j &= \frac{\gamma^{\NHiv}_j}
+                 {\gamma^{\NHiv}_j + \gamma^{\NOii}_j + \gamma^{\NOiii}_j + \eps}
+                 R^{\N:\C}_j P^\C_j \X_j
+  \label{eq:UNH4} \\
+  U^{\NOii}_j &= \frac{\gamma^{\NOii}_j}
+                 {\gamma^{\NHiv}_j + \gamma^{\NOii}_j + \gamma^{\NOiii}_j + \eps}
+                 R^{\N:\C}_j P^\C_j \X_j
+  \label{eq:UNO2} \\
+  U^{\NOiii}_j &= \frac{\gamma^{\NOiii}_j}
+                  {\gamma^{\NHiv}_j + \gamma^{\NOii}_j + \gamma^{\NOiii}_j + \eps}
+                  R^{\N:\C}_j P^\C_j \X_j
+  \label{eq:UNO3}
+\end{align}
+
+
+\paragraph{With N quota:} linear limitation
+\[
+  \gamma^\N_j = \left[ \frac{Q^{\N}_j - Q^{\N\min}_j}
+                        {Q^{\N\max}_j - Q^{\N\min}_j}
+                \right]_0^1
+\]
+\begin{align*}
+  U^{\NHiv}_j &= V^{\NHiv\max}_j
+                 \frac{\NH_4}{\NH_4 + k^{\NHiv}_j}
+                 \left[ \frac{Q^{\N\max}_j - Q^{\N}_j}
+                             {Q^{\N\max}_j - Q^{\N\min}_j}
+                 \right]_0^1
+                 f^\up_j(T) \cdot \X_j \\
+  U^{\NOii}_j &= V^{\NOii\max}_j \cdot
+                 \ee^{-\sigma_1 \NH_4} \cdot
+                 \frac{\NO_2}{\NO_2 + k^{\NOii}_j}
+                 \left[ \frac{Q^{\N\max}_j - Q^{\N}_j}
+                             {Q^{\N\max}_j - Q^{\N\min}_j}
+                 \right]_0^1
+                 f^\up_j(T) \cdot \X_j \\
+  U^{\NOiii}_j &= V^{\NOiii\max}_j \cdot
+                  \ee^{-\sigma_1 \NH_4} \cdot
+                  \frac{\NO_3}{\NO_3 + k^{\NOiii}_j}
+                  \left[ \frac{Q^{\N\max}_j - Q^{\N}_j}
+                              {Q^{\N\max}_j - Q^{\N\min}_j}
+                  \right]_0^1
+                  f^\up_j(T) \cdot \X_j
+                  \cdot \gamma^{\QFe}_j
+\end{align*}
+
+-- diazotroph: consume what is available, fix what is missing (up to $V^{\N\max}_j$),
+\[
+  U^{\N}_j = \max\biggl( U^{\NHiv}_j + U^{\NOii}_j + U^{\NOiii}_j,\;
+                 V^{\N\max}_j
+                 \left[ \frac{Q^{\N\max}_j - Q^{\N}_j}
+                             {Q^{\N\max}_j - Q^{\N\min}_j}
+                 \right]_0^1
+                 f^\up_j(T) \cdot \X_j
+             \biggr) \\
+\]
+%with $V^{\N\max}_j \ge V^{\NHiv\max}_j + V^{\NOii\max}_j + V^{\NOiii\max}_j$.
+Rate of nitrogen fixation is
+\[
+  U^{\N}_j - U^{\NHiv}_j - U^{\NOii}_j - U^{\NOiii}_j
+\]
+\textbf{DON excretion?}
+
+
+-- not diazotroph:
+\[
+  U^{\N}_j = U^{\NHiv}_j + U^{\NOii}_j + U^{\NOiii}_j
+\]
+
+
+\paragraph{Without Fe quota:}
+\[
+  \gamma^{\Fe}_j = \frac{\FeT}{\FeT + k^{\Fe}_j}
+\]
+\[
+  \gamma^{\QFe}_j = 1
+\]
+\[
+  U^{\Fe}_j = R^{\Fe:\C}_j P^\C_j \X_j
+\]
+
+\paragraph{With Fe quota,} iron limitation (normalized Droop) moves to
+photosynthesis and nitrate uptake,
+\[
+  \gamma^{\Fe}_j = 1
+\]
+\[
+  \gamma^{\QFe}_j = \left[ \frac{1 - Q^{\Fe\min}_j/Q^{\Fe}_j}
+                                {1 - Q^{\Fe\min}_j/Q^{\Fe\max}_j}
+                    \right]_0^1
+\]
+\[
+  U^{\Fe}_j = V^{\Fe\max}_j \frac{\FeT}{\FeT + k^{\Fe}_j}
+                \left[ \frac{Q^{\Fe\max}_j - Q^{\Fe}_j}
+                            {Q^{\Fe\max}_j - Q^{\Fe\min}_j}
+                \right]_0^1
+           f^\up_j(T) \cdot \X_j
+\]
+
+
+
+\subsection{Chlorophyll synthesis}
+
+\paragraph{With N quota:}
+\[
+  S^{\chl}_j = \rho^{\chl}_j U^\N_j
+\]
+where
+\[
+  \rho^{\chl}_j = \chln^{\max}_j \frac{P^\C_j}
+                             {\langle\alpha I\rangle_j \cdot \chlc_j}
+  \qtext{if } \langle\alpha I\rangle_j \cdot \chlc_j > 0
+  \text{, else } \chln^{\max}_j \;.
+\]
+%Also, DIC uptake is reduced by the cost of synthesis, $\verb|synthcost|\cdot U^\N_j$.
+
+\paragraph{Without N quota:}~
+
+-- with \verb|GUD_GEIDER_RHO_SYNTH|:
+\[
+  S^{\chl}_j = \rho^{\chl}_j \cdot P^\C_j \X_j
+           + \tau^{\|acclim|}_j (\chlc_j^{\|acclim|} - \chlc_j) \X_j
+\]
+where
+\[
+  \rho^{\chl}_j = \chlc^{\max}_j \frac{P^\C_j}
+                                {\langle\alpha I\rangle_j \chlc^\acclim_j}
+  \qtext{if } \langle\alpha I\rangle_j > 0 \text{ and } \chlc^\acclim_j > 0
+  \text{, else } \mathbf{0} \;.
+\]
+
+-- else
+\[
+  S^{\chl}_j = \chlc_j^{\|acclim|} \cdot P^\C_j \X_j
+             + \tau^{\|acclim|}_j (\chlc_j^{\|acclim|} - \chlc_j) \X_j
+\]
+
+\paragraph{Without Chl quota,} current chl, i.e., $\X_j\cdot\chlc_j$,
+is stored for the next time step.
+
+
+
+\subsection{Organic matter pools}
+
+\begin{align*}
+  \DDt \DOC  &= \sum_j (1-f^\export_j) m_j \X_j  + g^{\DOC}  - r_{\DOC} \DOC
+\\
+  \DDt \DOP  &= \sum_j (1-f^\export_j) m_j p_j   + g^{\DOP}  - r_{\DOP} \DOP
+\\
+  \DDt \DON  &= \sum_j (1-f^\export_j) m_j n_j   + g^{\DON}  - r_{\DON} \DON
+\\
+  \DDt \DOFe &= \sum_j (1-f^\export_j) m_j \fe_j + g^{\DOFe} - r_{\DOFe} \DOFe
+\\
+  \DDt \PIC  &= \sum_j (1-f^\export_j) m_j \X_j R^\PICPOC_j + g^{\PIC}
+                -\kappa^\diss_\C \PIC
+\\
+  \DDt \POC  &= \sum_j f^\export_j m_j \X_j  + g^{\POC}  - r_{\POC} \POC
+\\
+  \DDt \POP  &= \sum_j f^\export_j m_j p_j   + g^{\POP}  - r_{\POP} \POP
+\\
+  \DDt \PON  &= \sum_j f^\export_j m_j n_j   + g^{\PON}  - r_{\PON} \PON
+\\
+  \DDt \POSi &= \sum_j f^\export_j m_j \si_j + g^{\POSi} - r_{\POSi} \POSi
+\\
+  \DDt \POFe &= \sum_j f^\export_j m_j \fe_j + g^{\POFe} - r_{\POFe} \POFe
+\end{align*}
+
+
+
+\subsection{Remineralization}
+
+Remineralization rates are temperature dependent:
+\[
+  r_{*O*} = f^\remin(T) \kappa_{*O*}
+\]
+
+nitrogen chemistry:
+\begin{align*}
+  P_{\NOii}  &= \kappa^{\|nit|}_{\rm a} \NH_4 \gamma^\nit \\
+  P_{\NOiii} &= \kappa^{\|nit|}_{\rm b} \NO_2 \gamma^\nit
+\end{align*}
+where
+\[
+  \gamma^\nit = \max(0, 1-I/I_\oxi)
+  \qtext{if } I_\oxi > 0 \text{, else } 1 \;.
+\]
+
+
+
+\subsection{Dynamic CDOM ({\tt \#define ALLOW\_CDOM})}
+
+Remineralization of particulate organic matter to inorganic matter is replaced by
+\begin{align*}
+  \DDt \CDOM &= f_{\CDOM} (r_{\POP} \POP + g^{\DOP}) - D_{\CDOM}
+  \\
+  \DDt \DOP  &= \dots + D_{\CDOM} - f_{\CDOM} (r_{\POP} \POP + g^{\DOP}) \\
+  \DDt \DOC  &= \dots + R^{\C:\P}_{\CDOM} (D_{\CDOM} - f_{\CDOM} (r_{\POP} \POP + g^{\DOP})) \\
+  \DDt \DON  &= \dots + R^{\N:\P}_{\CDOM} (D_{\CDOM} - f_{\CDOM} (r_{\POP} \POP + g^{\DOP})) \\
+  \DDt \DOFe &= \dots + R^{\Fe:\P}_{\CDOM}(D_{\CDOM} - f_{\CDOM} (r_{\POP} \POP + g^{\DOP}))
+\end{align*}
+where
+\begin{align*}
+  D_{\CDOM} &= \left( r^{\|degrad|}_{\CDOM}
+                  + r^{\|bleach|}_{\CDOM} \min(1, I/I_{\CDOM}) \right)
+             f^\remin(T) \cdot \CDOM
+\end{align*}
+($\CDOM$ is still in P units.)
+
+
+
+\subsection{Denitrification ({\tt \#define ALLOW\_DENIT})}
+
+When $\O_2<\O_2^\crit$, denitrification occurs:
+\begin{align*}
+  D_{\NHiv}  &= r_{\DON} \DON + (r_{\PON} \PON)
+  \qtext{if } \O_2<\O_2^\crit \text{, else } 0 \\
+  D_{\NOiii} &= {\tt denit\_NO3} \cdot \bigl(r_{\DOP} \DOP + (r_{\POP} \POP) \bigr)
+  \qtext{if } \O_2<\O_2^\crit \text{, else } 0
+\end{align*}
+(the particulate organic terms are not present with \verb|ALLOW_CDOM|).
+
+When $\O_2<\O_2^\crit$ and $\NO_3<\NO_3^\crit$ (and \verb|ALLOW_DENIT|),
+all remineralization, denitrification and CDOM degradation (except
+bleaching) stops.
+
+
+
+\subsection{Carbon chemistry}
+
+\begin{align*}
+  \DDt \Alk &= -\biggl( P_{\NOiii} - \sum_j U^{\NOiii}_j \biggr)
+    - 2\biggl( \sum_j P^\C_j \X_j R^\PICPOC_j - \kappa^\diss_\C \PIC \biggr)
+    + D_{\NOiii}
+\\
+  \DDt \O_2 &= R_{\O:\P} \biggl( \sum_j U^{\POiv}_j
+           - r_{\DOP} \DOP - (r_{\POP} \POP)
+         \biggr)
+\end{align*}
+The POP term is not present with \verb|ALLOW_CDOM|.
+
+\dots surface forcing \dots
+
+
+
+\subsection{Iron chemistry}
+
+\[
+  S_{\Fe} = \delta_{k,1} \frac{\alpha_{\Fe}}{\Delta r_\F h_\C} F_{\Fe}
+          + \delta_{k\le{\tt kMaxFeSed}\text{ bottom}}
+            \frac{1}{\Delta r_\F h_\C} F_{\Fe}^\sed
+          - r_\scav \Fe'
+\]
+where
+\[
+  F_{\Fe}^\sed = \begin{cases}
+    {\tt fesedflux\_pcm}\cdot w^\P_\sink R^{\C:\P}_\sed \POP
+    & \text{if \tt IRON\_SED\_SOURCE\_VARIABLE}, \\
+    {\tt fesedflux}
+    & \text{else.}
+    \end{cases}
+\]
+and
+\[
+  r_\scav = \begin{cases}
+    r_\scav I_\scav \left(\dfrac{\POP}{R^{\POP:\POC}_\scav}\right)^{e_\scav}
+    & \text{if \tt PART\_SCAV}, \\
+    {\tt scav}
+    & \text{else.}
+    \end{cases}
+\]
+\textbf{Should be POC directly? or POFe??}
+
+The free iron concentration $\Fe'$ is determined as detailed in App.~\ref{app:fe}.
+
+
+
+\subsection{Mortality and Respiration}
+
+Mortality stops at $\X_j^{\min}$,
+\[
+  m_j c'_j = m^{(1)}_j \max\left(f^{\mort\max}_j, f^\mort(T)\right) (\X_j - \X_j^{\min})
+      + m^{(2)}_j \max\left(f^{\mort2\max}_j, f^{\mort2}(T)\right) (\X_j - \X_j^{\min})^2
+\]
+Other quotas are regulated proportionally, e.g.,
+\[
+  m_j p'_j = m_j c'_j Q^\P_j
+\]
+Respiration also,
+\[
+  R^\C_j = r^\resp_j f^\remin(T) (\X_j - \X_j^{\min})
+\]
+(maybe should not use $\X_j^{\min}$ for respiration?)
+
+
+
+\subsection{Exudation ({\tt \#define ALLOW\_EXUDE})}
+
+Basically, mortality is increased on a per-element basis, i.e.,
+\[
+  m_j^{\P} p'_j = m_j p'_j + \kappa^{\|exc|}_{\P\,j} (\X_j - \X_j^{\min}) Q^\P_j
+\]
+is used in place of $m_j p'_j$ in the $p_j$ and $\POP$, $\DOP$ equations, etc.
+Export fractions are the same as for mortality.
+(Maybe should NOT use $\X_j^{\min}$ in this case, or have a separate one for each quota?)
+
+
+
+\subsection{Grazing}
+
+Grazing loss of plankton $j$:
+\[
+  G_j = \sum_{z\in\|pred|} G_{j,z}
+\]
+where
+\[
+  G_{j,z} = g^{\max}_z
+       \frac{(\palat_{j,z} \X_j)^s}{A_z}
+       \frac{p_z^h}{p_z^h + {k^\graz_z}^h}
+       (1 - \ee^{-i_\graz p_z})
+       f^\graz_z(T)
+       \X_z
+\]
+with
+\[
+  A_z = \biggl[ \sum_j (\palat_{j,z} \X_j)^s \biggr]_{\ge\tt phygrazmin}
+\]
+\[
+  p_z = \biggl[ \sum_j \palat_{j,z} \X_j - {\tt phygrazmin} \biggr]_{\ge 0}
+\]
+$s$ is 1 for non-switching and 2 for switching grazers (\verb|#define GUD_GRAZING_SWITCH|).
+The exponent $h$ defaults to 1.
+
+\textbf{Note:} For non-switching grazers ($s=1$), Ben has an additional factor
+\[
+  \frac{S^{[j]}_z}{S^\phy_z + S^\zoo_z}
+\]
+in $G_{j,z}$ where
+\begin{align*}
+  S^\phy_z &= \sum_{j\in\phy} \palat_{j,z} \X_j
+\\
+  S^\zoo_z &= \sum_{j\in\zoo} \palat_{j,z} \X_j
+\end{align*}
+and $S^{[j]}_z$ is the sum for the class plankton $j$ belongs to.
+\textbf{This is not implemented yet!}
+
+Gains from grazing:\\
+-- plankton species $z$:
+\begin{align*}
+  g^{\C}_z &= \sum_j G_{j,z} a_{j,z} \reg^{Q\C}_z
+\\
+  g^{\P}_z &= \sum_j G_{j,z} a_{j,z} \reg^{Q\P}_z Q^\P_j
+  \qquad\text{if PQUOTA}
+\\
+  &\dots\displaybreak[0]
+\\
+\intertext{-- organic matter pools:}
+  g^{\DOC} &= \sum_{j,z} G_{j,z} (1 - a_{j,z} \reg^{Q\C}_z) (1 - f^{\exp\graz}_z)
+\\
+  g^{\DOP} &= \sum_{j,z} \begin{cases}
+    G_{j,z} (1 - a_{j,z} \reg^{Q\P}_z) (1 - f^{\exp\graz}_z) Q^\P_j
+    &\text{if PQUOTA} \\
+    G_{j,z} (R^{\P:\C}_j - a_{j,z} R^{\P:\C}_z) (1 - f^{\exp\graz}_z)
+    &\text{else}
+  \end{cases}
+\\
+  &\dots\displaybreak[0]
+\\
+  g^{\POC} &= \sum_{j,z} G_{j,z} (1 - a_{j,z} \reg^{Q\C}_z) f^{\exp\graz}_z
+\\
+  g^{\POP} &= \sum_{j,z} \begin{cases}
+    G_{j,z} (1 - a_{j,z} \reg^{Q\P}_z) f^{\exp\graz}_z Q^\P_j
+    &\text{if PQUOTA} \\
+    G_{j,z} (R^{\P:\C}_j - a_{j,z} R^{\P:\C}_z) f^{\exp\graz}_z
+    &\text{else}
+    \end{cases}
+\\
+  &\dots\displaybreak[0]
+\\
+  g^{\POSi} &= \sum_{j,z} G_{j,z} Q^{\Si}_j
+\\
+  g^{\PIC} &= \sum_{j,z} G_{j,z} R^\PICPOC_z
+\end{align*}
+where
+\begin{align*}
+  \reg^{Q\P}_z &= \left[ \frac{Q^{\P\max}_j - Q^{\P}_j}
+                              {Q^{\P\max}_j - Q^{\P\min}_j}
+                  \right]_0^1
+\\
+  &\dots
+\\
+  \reg^{Q\C}_z &= \min\left\{
+        1-\reg^{Q\P}_z, 1-\reg^{Q\N}_z, 1-\reg^{\QFe}_z \right\}
+  \qquad\text{(only quota elements)}
+\end{align*}
+
+\textbf{Monod-style grazing} (\verb|#define GUD_GRAZING_MONOD_STYLE|)
+assumes fixed plankton stoichiometry (i.e., no quotas except possibly Chl), no
+grazing inhibition ($i_{\graz}\to\infty$) and a prey-dependent grazing export
+fraction, $f^{\exp\graz}_j$ instead of a predator-dependent one.  With these
+changes, the above equations apply.
+
+
+
+\subsection{Temperature dependence}
+
+\paragraph{TEMP\_VERSION 1}
+\begin{gather*}
+  f^\phy_j(T) = \left[ c_j \left[ e_{1 j}^T
+      \ee^{\ds -e_{2 j} {| T - T^{\|opt|}_j |}^{p_j}}  % only with TEMP_RANGE
+    - n \right]_{\ge\num{E-10}}
+    \right]^{\le 1}
+\\
+  f^{\up}_j(T) =
+  f^\graz_z(T) =
+  f^\remin(T) =
+  f^\mort(T) =
+  f^{\mort2}(T) =
+  1
+\end{gather*}
+where the exponential is only present with \verb|TEMP_RANGE|.
+
+\paragraph{TEMP\_VERSION 2}
+\begin{gather*}
+  f^\phy_j(T) = c^{\|Arr|}_j \left[
+      \ee^{\ds A^{\|Arr|}_{\|e|}
+           \bigl( (T+273.15)^{-1} - {T^{\|Arr|}_{\|ref|}}^{-1} \bigr)}
+      \ee^{\ds -e_{2 j} {| T - T^{\|opt|}_j |}^{p_j}}  % only with TEMP_RANGE
+    \right]_{\ge\num{E-10}}
+\\
+  f^{\up}_j(T) =
+  f^\graz_z(T) =
+  f^\remin(T) =
+  f^\mort(T) =
+  f^{\mort2}(T) =
+  f_{\|Arr|}(T)
+\\
+  f_{\|Arr|}(T) = c^{\|Arr|}_j \left[
+      \ee^{\ds A^{\|Arr|}_{\|e|}
+           \bigl( (T+273.15)^{-1} - {T^{\|Arr|}_{\|ref|}}^{-1} \bigr)}
+    \right]_{\ge\num{E-10}}
+\end{gather*}
+where the second exponential in $f^\phy$ again is only present with \verb|TEMP_RANGE|.
+
+\paragraph{TEMP\_VERSION 3}
+\begin{gather*}
+  f^\phy_j(T) =
+  f^{\up}_j(T) =
+  f^\graz_z(T) =
+  f^\remin(T) =
+  f^\mort(T) =
+  f^{\mort2}(T) =
+  f^{\|Arr|}(T) =
+  \left[ \ee^{\ds A_{\|e|} (T - T_{\|ref|})} \right]_{\ge\num{E-10}}
+\end{gather*}
+
+\begin{tabular}{lll}
+trait                 & \multicolumn{1}{l}{value}
+                                         & \multicolumn{1}{l}{parameter} \\\hline
+\noalign{for version 1:\vspace*{1ex}}
+\ll{phytoTempCoeff}   & $c_j=1/3$        & \ll{grp\_tempcoeff1}  \\
+\ll{phytoTempExp1}    & $e_{1j}=1.04$    & \ll{grp\_tempcoeff3}\quad
+                ($E_{\|a|}=\SI{28.023}{\kilo\J\per\mol}$ at $\SI{20}{\degreeCelsius}$) \\
+                      & $n=0.3$          & \ll{tempnorm}  \\
+\noalign{for version 2:}
+                      & $c^{\|Arr|}=0.5882$       & \ll{TempCoeffArr}  \\
+                      & $A^{\|Arr|}_{\|e|}=-4000$ & \ll{TempAeArr}\quad
+                                           ($E_{\|a|}=\SI{33.257}{\kilo\J\per\mol}$) \\
+                      & $T^{\|Arr|}_{\|ref|}=293.15$ & \ll{TempRefArr}  \\
+\noalign{for version 3:}
+                      & $A_{\|e|}=0.05$   &
+                ($E_{\|a|}=\SI{35.725}{\kilo\J\per\mol}$ at $\SI{20}{\degreeCelsius}$) \\
+                      & $T_{\|ref|}=20$ \\
+\noalign{for \ll{TEMP\_RANGE}:\vspace*{1ex}}
+\ll{phytoTempExp2}    & $e_{2j}=0.001$   & \ll{grp\_tempcoeff2}  \\
+\ll{phytoTempOptimum} & $T^{\|opt|}_j=2$ & \ll{grp\_tempopt}  \\
+\ll{phytoDecayPower}  & $p_{j}=4$        & \ll{grp\_tempdecay}  \\\hline
+\end{tabular}
+
+(With random generation, $T^{\|opt|}_j$ is drawn from a range
+tempmax${}-{}$temprange${}\cdot[0,1]$.)
+
+Version 3 is the same as version 1 with $e_1=1.0512710963760241$,
+$c=0.36787944117144233$, $n=0$ and no \verb|TEMP_RANGE| (except for the constraint
+to be smaller than 1).
+
+
+\subsection{Regularization}
+
+The following are needed so one can turn off P, Si and Fe limitations by setting
+half saturations to 0 (and $R^{x:\C}$ resp.\ $V^{x\max}$ also),
+\begin{align*}
+  \PO_4  &= \max(\eps, \|pTracer|(\|iPO4|))
+\\
+  \SiO_2 &= \max(\eps, \|pTracer|(\|iSiO2|))
+\\
+  \FeT   &= \max(\eps, \|pTracer|(\|iFeT|))
+\end{align*}
+where $\eps=\num{E-38}$.
+
+The following are included so that zero/negative abundances do not give crazy quota
+values,
+%\[ \X_j = \max(0, c_j) \]
+\begin{align*}
+  Q^{\P}_j  &= \max(\eps\cdot R^{\P:\C}_j, p_j) / \max(\eps, \X_j) \\
+  Q^{\N}_j  &= \max(\eps\cdot R^{\N:\C}_j, n_j) / \max(\eps, \X_j) \\
+  Q^{\Si}_j &= \max(\eps\cdot R^{\Si:\C}_j, \si_j) / \max(\eps, \X_j) \\
+  Q^{\Fe}_j &= \max(\eps\cdot R^{\Fe:\C}_j, \fe_j) / \max(\eps, \X_j) \\
+  \chlc_j &= \max(\eps\cdot R^{\chlc}_j, \chl_j) / \max(\eps, c_j)
+\end{align*}
+(should use $Q^{\P\min}_j$ instead of $R^{\P:\C}_j$ when running with quota?)
+For grazing, quotas are instead set to zero when $\X_j=0$.  (Could use this
+also for uptake, but set to $Q^{\P\min}_j$ instead.)
+
+Eqs~(\ref{eq:UNH4})--(\ref{eq:UNO3}) also contain similar regularizations.
+
+None of these should matter for normal abundances/concentrations.
+
+
+
+
+\clearpage
+
+\appendix
+
+\section{Fe chemistry}\label{app:fe}
+
+The rate of iron scavenging depends on the amount of free dissolved iron which
+is determined following \cite{Parekh2004}, \cite{Dutkiewicz2005}.
+Free dissolved iron, $\Fe'$, is assumed to be in equilibrium with dissolved iron
+bound to ligands via
+\[
+  \Fe' + L' \rightleftharpoons \FeL
+\]
+i.e.,
+\[
+  \frac{[\FeL]}{[\Fe'][L']} = \Lstab
+  \;,
+\]
+given $\FeL+\Fe'=\FeT$ and $\FeL+L'=\Ltot$.  The solution is
+\[
+ \begin{split}
+  L' &= \frac{ \Lstab (\Ltot - \FeT) - 1
+             +\sqrt{(1 - \Lstab (\Ltot - \FeT))^2 + 4 \Lstab \Ltot}}
+          {2 \Lstab}
+    \\
+  \FeL &= \Ltot - L' \\
+  \Fe' &= \FeT - \FeL
+%       &= \tfrac12 \left(
+%          \FeT - \Ltot - 1/\Lstab
+%             + \sqrt{(1/\Lstab - (\Ltot - \FeT))^2 + 4 \Ltot/\Lstab}
+%         \right)
+  \;.
+ \end{split}
+\]
+If \lxr{MINFE} is defined, $\Fe'$ will be constrained to be no more than $\Fe'_{\max}$,
+and $\FeT$ adjusted accordingly, assuming that excess free iron is scavenged away.
+This is done before and after each biogeochemical subtimestep as the above reaction
+is very fast.  By the same reasoning, one could actually solve for equilibrium under
+the condition that $\Fe'$ stay below $\Fe'_{\max}$, thus imposing a limit directly on
+$\FeT$.
+
+%The effective scavenging rate of total dissolved iron, $c_{\scav}\Fe'/\FeT$, is shown
+%in Fig.\ \ref{fig:scavenging}.
+%
+%\begin{figure}
+%\centering
+%\includegraphics[width=.7\textwidth]{scavenging.pdf}
+%\caption{Dissolved-iron scavenging rate and free iron concentration as
+%a function of total dissolved iron.}
+%\label{fig:scavenging}
+%\end{figure}
+
+\begin{tabular}{@{}l@{\qquad}l@{${}={}$}l}
+\ll{ligand\_tot}  & $\Ltot=\SI{e-3}{\muMolar}$
+                  & total ligand (\unit{\muMolar})  \\
+\ll{ligand\_stab} & $\Lstab=1/(\SI{5E-6}{\muMolar})$
+                  & ligand stablity rate ratio (\unit{\meter\cubed\per\milli\mol}) \\
+\ll{freefemax}    & $\Fe'_{\max}=\SI{0.4E-3}{\muMolar}$
+                  & maximal concentration of free iron (\unit{\milli\mol\per\meter\cubed})
+\end{tabular}
+
+
+\bibliography{mendeley}{}
+\bibliographystyle{apalike}
+
+\end{document}
+

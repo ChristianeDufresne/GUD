@@ -52,13 +52,9 @@ C local variables for carbon chem
       _RL surfsi
       _RL surftemp(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL surfsalt(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
-      INTEGER iprt,jprt
-      LOGICAL pH_isLoaded
 CEOP
 
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-
-      k=1
 
 #ifdef ALLOW_OFFLINE
       IF ( useOffLine ) THEN
@@ -73,75 +69,34 @@ C =================================================================
       iMin=1
       iMax=sNx
 
-      DO bj=myByLo(myThid),myByHi(myThid)
-       DO bi=myBxLo(myThid),myBxHi(myThid)
-         DO j=1-OLy,sNy+OLy
-          DO i=1-OLx,sNx+OLx
-            pH(i,j,bi,bj) = 8. _d 0
-          ENDDO
-         ENDDO
-       ENDDO
-      ENDDO
-
-      DO bj=myByLo(myThid),myByHi(myThid)
-       DO bi=myBxLo(myThid),myBxHi(myThid)
-        DO j=1-OLy,sNy+OLy
-         DO i=1-OLx,sNx+OLx
-          ak0(i,j,bi,bj)=0. _d 0
-          ak1(i,j,bi,bj)=0. _d 0
-          ak2(i,j,bi,bj)=0. _d 0
-          akw(i,j,bi,bj)=0. _d 0
-          akb(i,j,bi,bj)=0. _d 0
-          akf(i,j,bi,bj)=0. _d 0
-          ak1p(i,j,bi,bj)=0. _d 0
-          ak2p(i,j,bi,bj)=0. _d 0
-          ak3p(i,j,bi,bj)=0. _d 0
-          aksi(i,j,bi,bj)=0. _d 0
-          fugf(i,j,bi,bj)=0. _d 0
-          ff(i,j,bi,bj)=0. _d 0
-          ft(i,j,bi,bj)=0. _d 0
-          st(i,j,bi,bj)=0. _d 0
-          bt(i,j,bi,bj)=0. _d 0
-         ENDDO
-        ENDDO
-       ENDDO
-      ENDDO
-
-c      pH_isLoaded = .FALSE.
-c      IF ( nIter0.GT.PTRACERS_Iter0 .OR.
-c     &    (nIter0.EQ.PTRACERS_Iter0 .AND. pickupSuff.NE.' ')
-c     &   ) THEN
-cC       Read pH from a pickup file if needed
-c        CALL DIC_READ_PICKUP(
-c     O                        pH_isLoaded,
-c     I                        nIter0, myThid )
-c      ENDIF
-
-      DO bj=myByLo(myThid),myByHi(myThid)
-       DO bi=myBxLo(myThid),myBxHi(myThid)
-
-C determine inorganic carbon chem coefficients
-        DO j=jMin,jMax
-         DO i=iMin,iMax
-          surfsalt(i,j) = 
-     &            max(4. _d 0, min(50. _d 0, salt(i,j,k,bi,bj)))
-          surftemp(i,j) =
-     &            max(-4. _d 0, min(39. _d 0, theta(i,j,k,bi,bj)))
-         ENDDO
-        ENDDO
-
-        CALL GUD_CARBON_COEFFS(
-     I                       surftemp,surfsalt,
-     I                       bi,bj,iMin,iMax,jMin,jMax,myThid)
-
-C====================================================================
-
-        IF ( .NOT.pH_isLoaded ) THEN
+      IF (nIter0.EQ.PTRACERS_Iter0 .AND. .NOT. pickupSuff.NE.' ') THEN
 C set guess of pH for first step here
 
-          WRITE(standardMessageUnit,*) 'QQ: pCO2 approximation method'
-          iprt = MIN(20,sNx)
-          jprt = MIN(20,sNy)
+       DO bj=myByLo(myThid),myByHi(myThid)
+        DO bi=myBxLo(myThid),myBxHi(myThid)
+
+         DO k=1,Nr
+
+C determine inorganic carbon chem coefficients
+          DO j=jMin,jMax
+           DO i=iMin,iMax
+            surfsalt(i,j) = 
+     &              max(4. _d 0, min(50. _d 0, salt(i,j,k,bi,bj)))
+            surftemp(i,j) =
+     &              max(-4. _d 0, min(39. _d 0, theta(i,j,k,bi,bj)))
+           ENDDO
+          ENDDO
+          
+          CALL GUD_CARBON_COEFFS(
+     I                       surftemp,surfsalt,
+     I                       bi,bj,iMin,iMax,jMin,jMax,k,myThid)
+
+          DO j=1-OLy,sNy+OLy
+           DO i=1-OLx,sNx+OLx
+            pH(i,j,k,bi,bj) = 8. _d 0
+           ENDDO
+          ENDDO
+
 c first approximation
 C$TAF LOOP = parallel
           DO j=jMin,jMax
@@ -175,23 +130,22 @@ C$TAF STORE surfalk(i,j), surfphos(i,j), surfsi(i,j)   = dic_surf
      I        ak0(i,j,bi,bj), fugf(i,j,bi,bj),
      I        ff(i,j,bi,bj),
      I        bt(i,j,bi,bj), st(i,j,bi,bj), ft(i,j,bi,bj),
-     U        pH(i,j,bi,bj), pCO2(i,j,bi,bj), co3dummy,
+     U        pH(i,j,k,bi,bj), pCO2(i,j,k,bi,bj), co3dummy,
      I        i,j,k,bi,bj, it ,  myThid )
              ENDDO
             ENDIF
-            IF (i.EQ.iprt .AND. j.EQ.jprt)
-     &       WRITE(standardMessageUnit,*) 'QQ first guess pH',
-     &        pH(iprt,jprt,bi,bj),
-     &        theta(iprt,jprt,1,bi,bj), salt(iprt,jprt,1,bi,bj),
-     &        surfdic, surfphos,surfsi,surfalk
            ENDDO
           ENDDO
 
-        ENDIF
+C        end k loop
+         ENDDO
 
-C     end bi,bj loops
+C      end bi,bj loops
+        ENDDO
        ENDDO
-      ENDDO
+
+C     time to initialize
+      ENDIF
 
 #endif /* ALLOW_CARBON */
 #endif /* ALLOW_GUD */

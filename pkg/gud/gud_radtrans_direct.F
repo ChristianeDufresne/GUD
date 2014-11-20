@@ -186,7 +186,7 @@ c bottom boundary condition: c1 = 0
          c3d(2*kbot) = 0. _d 0  ! not used
          y3d(2*kbot) = 0. _d 0  ! = 0
 
-         CALL SOLVE_TRIDIAGONAL_PIVOT(a3d,b3d,c3d,y3d,2*kbot,myThid)
+         CALL GUD_SOLVE_TRIDIAG(a3d,b3d,c3d,y3d,2*kbot,myThid)
 
 C compute irradiances
          DO k=1,kbot

@@ -8,7 +8,6 @@ C - PIC: grazers must have R_PICPOC = 0!
 C   need to set all R_PICPOC to zero to emulate monod without carbon
 C   (maybe not)
 C   with carbon???
-C - diazotrophy with quota
 
 #include "GUD_OPTIONS.h"
 
@@ -21,7 +20,7 @@ C !INTERFACE: ==========================================================
      O     chlout, diags,
      I     PAR, photoTempFunc, reminTempFunc, uptakeTempFunc,
 #ifdef GUD_DEBUG
-     I     iG, jG, k,
+     I     iG, jG, k, dT,
 #endif
      I     myTime,myIter,myThid)
 
@@ -31,6 +30,7 @@ C !USES: ===============================================================
       IMPLICIT NONE
 #include "GUD_SIZE.h"
 #include "GUD_INDICES.h"
+#include "GUD_DIAGS.h"
 #include "GUD_GENPARAMS.h"
 #include "GUD_TRAITS.h"
 
@@ -50,6 +50,7 @@ C  myThid :: thread number
       _RL myTime
 #ifdef GUD_DEBUG
       INTEGER iG, jG, k
+      _RL dT
 #endif
 
 C !INPUT/OUTPUT PARAMETERS: ============================================
@@ -307,9 +308,11 @@ c       have nitrogen quota
         uptakeNH4 = Vmax_NH4(j)*limitNH4*regQ*uptakeTempFunc*X
         uptakeNO2 = Vmax_NO2(j)*limitNO2*regQ*uptakeTempFunc*X
         uptakeNO3 = Vmax_NO3(j)*limitNO3*regQ*uptakeTempFunc*X
-#if USE_FELIMIT_PS
+#ifdef FEQUOTA
         uptakeNO3 = uptakeNO3 * limitfe
 #endif
+        uptakeN = MAX(uptakeNH4 + uptakeNO2 + uptakeNO3,
+     &                Vmax_N(j)*regQ*uptakeTempFunc*X*diazo(j))
 
 c       linear limitation
         limitn = MAX(0., MIN(1., (Qn - Qnmin(j))/
@@ -329,7 +332,7 @@ C       normalize to sum (approx) 1
         fracNO2 = limitNO2/(limitn + EPS)
         fracNO3 = limitNO3/(limitn + EPS)
 C if diazo, all fracN* == 0 but want no N limitation
-        limitn = MIN(1.0, limitn + diazotroph(j))
+        limitn = MIN(1.0, limitn + diazo(j))
 #endif /* NQUOTA */
 c        IF (limitn .GT. 0.0) THEN
 c          ngrow = ((10*4+2)/(10*4 + 2*limitNH4/limitn +
@@ -339,7 +342,7 @@ c        ELSE
 c        ENDIF
 
         limitnut = MIN(limitn, limitp, limitsi)
-#if ! USE_FELIMIT_PS
+#ifndef FEQUOTA
         limitnut = MIN(limitnut, limitfe)
 #endif
 
@@ -389,7 +392,7 @@ C       quotas are already relative to carbon
 
         alpha_I_growth = alpha_I
 C a la quota
-#if USE_FELIMIT_PS
+#ifdef FEQUOTA
         alpha_I_growth = alpha_I_growth*limitfe
 #endif
 
@@ -461,8 +464,6 @@ C            rhochl = Chl2Nmax/(alpha_I*chl2c)*ngrow ???
           ELSE
             rhochl = Chl2Nmax
           ENDIF
-          uptakeN = uptakeNH4 + uptakeNO2 +
-     &              uptakeNO3
           uptakeDIC = uptakeDIC - synthcost*uptakeN
           synthChl = rhochl*uptakeN
 #else
@@ -503,15 +504,22 @@ C=======================================================================
         consumFeT  = consumFeT  + uptakeFeT 
 
         diags(iPP) = diags(iPP) + growth
-        IF (diazotroph(j) .GT. 0.0 _d 0) THEN
-         diags(iNfix) = diags(iNfix) + growth*Qn
+        IF (diazo(j) .GT. 0.0 _d 0) THEN
+         diags(iNfix)=diags(iNfix)+uptakeN-uptakeNH4-uptakeNO2-uptakeNO3
         ENDIF
 
+#ifdef GUD_DEBUG
+      IF (iG.eq.iDEBUG.and.jG.eq.jDEBUG.and.k.eq.kDEBUG) THEN
+       print*,'uptakeNO3',myiter,j,X,NO3,uptakeNO3*dT,uptakeN*dT,
+     &       fracNO3,limitn,limitNH4,limitNO2,limitNO3,
+     &  useNO3(j),combNO(j),NO2,ksatNO3(j),inhibNH4
+      ENDIF
+#endif
 C=======================================================================
 
        gTr(ic+j-1)=gTr(ic+j-1)  + uptakeDIC
 #ifdef NQUOTA
-       gTr(in+j-1)=gTr(in+j-1)  + uptakeNH4 + uptakeNO2 + uptakeNO3
+       gTr(in+j-1)=gTr(in+j-1)  + uptakeN
 #endif
 #ifdef PQUOTA
        gTr(ip+j-1)=gTr(ip+j-1)  + uptakePO4
@@ -533,6 +541,7 @@ C=======================================================================
      &     uptakeNH4,
      &     uptakeNO2,
      &     uptakeNO3,
+     &     uptakeN,
      &     uptakePO4,
      &     uptakeSiO2,
      &     uptakeFeT
@@ -629,6 +638,7 @@ c loss of O2 by remineralization
       gTr(iNH4 )=gTr(iNH4 ) + reminDON - prodNO2
       gTr(iNO2 )=gTr(iNO2 ) + prodNO2 - prodNO3
       gTr(iNO3 )=gTr(iNO3 )           + prodNO3
+      diags(iDenitN) = 0.0
 #ifdef ALLOW_DENIT
       IF (O2 .LT. O2crit) THEN
         denitNH4 = reminDON
@@ -641,8 +651,16 @@ c loss of O2 by remineralization
         gTr(iNH4)=gTr(iNH4) - denitNH4
         gTr(iNO3)=gTr(iNO3) - denit_NO3/denit_np*denit
         gTr(iALK)=gTr(iALK) + denit_NO3/denit_np*denit
+        diags(iDenitN) = denitNH4 + denit_NO3/denit_np*denit
       ENDIF
 #endif /* ALLOW_DENIT */
+#ifdef GUD_DEBUG
+      IF (iG.eq.iDEBUG.and.jG.eq.jDEBUG.and.k.eq.kDEBUG) THEN
+       print*,'consumNO3',myiter,k,NO3,consumNO3*10800
+       IF (O2 .LT. O2crit)
+     &       print*,'denitNO3',denit_NO3/denit_np*denit*10800
+      ENDIF
+#endif
 
       gTr(iPO4 )=gTr(iPO4 ) + reminDOP
       gTr(iFeT )=gTr(iFeT ) + reminDOFe

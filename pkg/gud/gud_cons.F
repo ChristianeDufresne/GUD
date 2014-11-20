@@ -36,6 +36,8 @@ C============== Local variables ============================================
       _RL tmptotA
       _RL tmptotO
 #endif
+      _RL tmptotNfix
+      _RL tmptotNdenit
       _RL vol, voltot
 
       INTEGER i,j,k,bi,bj
@@ -50,6 +52,8 @@ c
       tmptotA = 0. _d 0
       tmptotO = 0. _d 0
 #endif
+      tmptotNfix = 0. _d 0
+      tmptotNdenit = 0. _d 0
       voltot = 0. _d 0
 
       DO bj=myByLo(myThid),myByHi(myThid)
@@ -80,13 +84,13 @@ c Phosphorus budget
           tmptotP=tmptotP+Ptracer(i,j,k,bi,bj,iDOP)*vol    !DOP
           tmptotP=tmptotP+Ptracer(i,j,k,bi,bj,iPOP)*vol   !POP
           DO np=1,nplank
-           IF (np .LE. npquota) THEN
+#ifdef PQUOTA
             iTr=ip+np-1
             tmptotP=tmptotP+Ptracer(i,j,k,bi,bj,iTr)*vol  !Phy 
-           ELSE
+#else
             iTr=ic+np-1
             tmptotP=tmptotP+Ptracer(i,j,k,bi,bj,iTr)*R_PC(np)*vol  !Phy 
-           ENDIF
+#endif
           ENDDO
 #ifdef ALLOW_CDOM
           tmptotP=tmptotP+Ptracer(i,j,k,bi,bj,iCDOM)*R_PC_CDOM*vol     !CDOM
@@ -99,13 +103,13 @@ c Nitrogen budget
           tmptotN=tmptotN+Ptracer(i,j,k,bi,bj,iDON)*vol    !DON
           tmptotN=tmptotN+Ptracer(i,j,k,bi,bj,iPON)*vol   !PON
           DO np=1,nplank
-           IF (np .LE. nnquota) THEN
+#ifdef NQUOTA
             iTr=in+np-1
             tmptotN=tmptotN+Ptracer(i,j,k,bi,bj,iTr)*vol  !Phy
-           ELSE
+#else
             iTr=ic+np-1
             tmptotN=tmptotN+Ptracer(i,j,k,bi,bj,iTr)*R_NC(np)*vol  !Phy
-           ENDIF
+#endif
           ENDDO
 #ifdef ALLOW_CDOM
           tmptotN=tmptotN+Ptracer(i,j,k,bi,bj,iCDOM)*R_NC_CDOM*vol  !CDOM
@@ -116,13 +120,13 @@ c Iron budget
           tmptotFe=tmptotFe+Ptracer(i,j,k,bi,bj,iDOFe)*vol   !DOFe
           tmptotFe=tmptotFe+Ptracer(i,j,k,bi,bj,iPOFe)*vol   !POFe
           DO np=1,nplank
-           IF (np .LE. nfequota) THEN
+#ifdef FEQUOTA
             iTr=ife+np-1
             tmptotFe=tmptotFe+Ptracer(i,j,k,bi,bj,iTr)*vol  !Phy
-           ELSE
+#else
             iTr=ic+np-1
             tmptotFe=tmptotFe+Ptracer(i,j,k,bi,bj,iTr)*R_FeC(np)*vol  !Phy
-           ENDIF
+#endif
           ENDDO
 #ifdef ALLOW_CDOM
           tmptotFe=tmptotFe+Ptracer(i,j,k,bi,bj,iCDOM)*R_FeC_CDOM*vol  !CDOM
@@ -132,13 +136,13 @@ c Silica budget
           tmptotSi=tmptotSi+Ptracer(i,j,k,bi,bj,iSiO2)*vol   !Si
           tmptotSi=tmptotSi+Ptracer(i,j,k,bi,bj,iPOSi)*vol   !POSi
           DO np=1,nplank
-           IF (np .LE. nsiquota) THEN
+#ifdef SIQUOTA
             iTr=isi+np-1
             tmptotSi=tmptotSi+Ptracer(i,j,k,bi,bj,iTr)*vol  !Phy
-           ELSE
+#else
             iTr=ic+np-1
             tmptotSi=tmptotSi+Ptracer(i,j,k,bi,bj,iTr)*R_SiC(np)*vol  !Phy
-           ENDIF
+#endif
           ENDDO
 c------------------------------------------------------------
 #ifdef ALLOW_CARBON
@@ -147,6 +151,9 @@ c alkalinity budget !!!!! NOT FULL BUDGET!!!!!
 c oxygem budget !!!!!!!! NOT FULL BUDGET !!!!!!!!!!!
           tmptotO=tmptotO+Ptracer(i,j,k,bi,bj,iO2)*vol    !O2
 #endif
+
+          tmptotNfix=tmptotNfix+GUD_Nfix(i,j,k,bi,bj)*vol
+          tmptotNdenit=tmptotNdenit+GUD_Ndenit(i,j,k,bi,bj)*vol
         ENDDO
         ENDDO
         ENDDO
@@ -163,11 +170,14 @@ c oxygem budget !!!!!!!! NOT FULL BUDGET !!!!!!!!!!!
       _GLOBAL_SUM_RL(tmptotA,myThid)
       _GLOBAL_SUM_RL(tmptotO,myThid)
 #endif
+      _GLOBAL_SUM_RL(tmptotNfix,myThid)
+      _GLOBAL_SUM_RL(tmptotNdenit,myThid)
 
       IF ( myProcId.EQ.0 .AND. myThid.EQ.1 ) THEN
         WRITE(GUD_cons_C_unit,*), myIter, tmptotC, tmptotC/voltot
         WRITE(GUD_cons_P_unit,*), myIter, tmptotP, tmptotP/voltot
-        WRITE(GUD_cons_N_unit,*), myIter, tmptotN, tmptotN/voltot
+        WRITE(GUD_cons_N_unit,*), myIter, tmptotN, tmptotN/voltot,
+     &                 tmptotNfix/voltot, tmptotNdenit/voltot
         WRITE(GUD_cons_Fe_unit,*), myIter, tmptotFe, tmptotFe/voltot
         WRITE(GUD_cons_Si_unit,*), myIter, tmptotSi, tmptotSi/voltot
 #ifdef ALLOW_CARBON

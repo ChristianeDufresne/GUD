@@ -15,7 +15,8 @@
  /
  &GUD_RADTRANS_PARAMS
  /
- &GUD_TRAIT_PARAMS
+ &GUD_RANDOM_PARAMS
+ oldTwoGrazers= .TRUE.,
  diatom_growfac= 1.0,
  /
  &GUD_ALLOMETRIC_PARAMS

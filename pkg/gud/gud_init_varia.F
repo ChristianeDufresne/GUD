@@ -22,10 +22,8 @@ C     !USES:
 #include "PARAMS.h"
 #include "EXF_PARAM.h"
 #include "PTRACERS_SIZE.h"
-#include "PTRACERS_FIELDS.h"
-#ifdef ALLOW_DIAZ
 #include "PTRACERS_PARAMS.h"
-#endif
+#include "PTRACERS_FIELDS.h"
 #include "GUD_SIZE.h"
 #include "GUD_INDICES.h"
 #include "GUD_GENPARAMS.h"
@@ -61,7 +59,7 @@ C     !LOCAL VARIABLES:
 #ifdef ALLOW_DIAZ
       IF (nIter0.EQ.PTRACERS_Iter0) THEN
        DO jp=1,nplank
-        IF (diazotroph(jp) .EQ. 1.0 _d 0) THEN
+        IF (diazo(jp) .EQ. 1) THEN
          Ptracer(:,:,:,:,:,ic+jp-1) = Ptracer(:,:,:,:,:,ic+jp-1) *
      &                                diaz_ini_fac
 #ifdef NQUOTA
@@ -89,8 +87,14 @@ C     !LOCAL VARIABLES:
       ENDIF
 #endif
 
-      IF(gud_read_phos)THEN
+      IF (gud_read_phos .AND. nIter0.EQ.PTRACERS_Iter0) THEN
        Ptracer(:,:,:,:,:,ic:ec) = 120.0 _d 0*Ptracer(:,:,:,:,:,ic:ec)
+      ENDIF
+ 
+      IF ( nIter0.GT.PTRACERS_Iter0 .OR.
+     &    (nIter0.EQ.PTRACERS_Iter0 .AND. pickupSuff.NE.' ')
+     &   ) THEN
+       CALL GUD_READ_PICKUP(nIter0, myThid)
       ENDIF
 
       IF (nIter0 .EQ. gud_chlIter0) THEN

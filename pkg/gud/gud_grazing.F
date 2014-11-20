@@ -42,7 +42,6 @@ C  gTr    :: accumulates computed tendencies
 CEOP
 
 #ifdef ALLOW_GUD
-#ifndef GUD_GRAZING_MONOD_STYLE
 
 c !LOCAL VARIABLES: ====================================================
       INTEGER jz, jp
@@ -72,6 +71,9 @@ c !LOCAL VARIABLES: ====================================================
 #endif
 
       _RL totkillc, totkilln, totkillp, totkillsi, totkillfe
+#ifdef ALLOW_CARBON
+      _RL totkillPIC
+#endif
       _RL totkillexpc, totkillexpn, totkillexpp, totkillexpfe
       _RL predexpc, predexpn, predexpp, predexpfe
       _RL graz2OC, graz2ON, graz2OP, graz2OFe
@@ -202,13 +204,16 @@ C       regulate grazing near full quota
         sumpref = MAX(phygrazmin, sumpref)
         tmp = grazemax(jz)*grazTempFunc(jz)*X(jz)*
      &    (sumprey**hollexp/(sumprey**hollexp+kgrazesat(jz)**hollexp))*
-     &    (1.0 - EXP(-inhib_graz*sumprey))
+     &    (1.0 - EXP(-inhib_graz*sumprey))**inhib_graz_exp
 
         totkillc  = 0.0 _d 0
         totkilln  = 0.0 _d 0
         totkillp  = 0.0 _d 0
         totkillsi = 0.0 _d 0
         totkillfe = 0.0 _d 0
+#ifdef ALLOW_CARBON
+        totkillPIC= 0.0 _d 0
+#endif
         totkillexpc  = 0.0 _d 0
         totkillexpn  = 0.0 _d 0
         totkillexpp  = 0.0 _d 0
@@ -231,8 +236,11 @@ C       regulate grazing near full quota
           totkillp  = totkillp  + grazphy*Qp (jp)
           totkillsi = totkillsi + grazphy*Qsi(jp)
           totkillfe = totkillfe + grazphy*Qfe(jp)
+#ifdef ALLOW_CARBON
+          totkillPIC= totkillPIC+ grazphy*R_PICPOC(jp)
+#endif
 
-          expFrac = ExportFracGraz(jp)
+          expFrac = ExportFracPreyPred(jp,jz)
           totkillexpc  = totkillexpc  + expFrac*grazphy
           totkillexpn  = totkillexpn  + expFrac*grazphy*Qn (jp)
           totkillexpp  = totkillexpp  + expFrac*grazphy*Qp (jp)
@@ -290,7 +298,7 @@ C       regulate grazing near full quota
         graz2POSi = graz2POSi + totkillsi
 
 #ifdef ALLOW_CARBON
-        graz2PIC  = graz2PIC  + totkillc*R_PICPOC(jz)
+        graz2PIC  = graz2PIC  + totkillPIC
 #endif
 
 C     end predator loop
@@ -354,7 +362,7 @@ C==== mortality ========================================================
       respir     = 0.0 _d 0
 
       DO jp = 1, nplank
-        Xe = X(jp) - Xmin(jp)
+        Xe = MAX(0 _d 0, X(jp) - Xmin(jp))
         mortX = mort(jp)*Xe*MAX(mortTempFuncMin(jp), mortTempFunc) +
      &          mort2(jp)*Xe*Xe*MAX(mort2TempFuncMin(jp), mort2TempFunc)
 
@@ -447,7 +455,6 @@ C==== mortality ========================================================
       gTr(iDOFe)=gTr(iDOFe)              - R_FeP_CDOM*exude_CDOM
 #endif
 
-#endif /* GUD_GRAZING_MONOD_STYLE */
 #endif /* ALLOW_GUD */
 
       RETURN

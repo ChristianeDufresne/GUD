@@ -11,6 +11,28 @@ C #include GUD_INDICES.h
 C    !DESCRIPTION:
 C Contains indices into ptracer array
 
+      INTEGER nNQuota, nPQuota, nSiQuota, nFeQuota
+#ifdef NQUOTA
+      PARAMETER(nNQuota=nplank)
+#else
+      PARAMETER(nNQuota=0)
+#endif
+#ifdef PQUOTA
+      PARAMETER(nPQuota=nplank)
+#else
+      PARAMETER(nPQuota=0)
+#endif
+#ifdef SIQUOTA
+      PARAMETER(nSiQuota=nplank)
+#else
+      PARAMETER(nSiQuota=0)
+#endif
+#ifdef FEQUOTA
+      PARAMETER(nFeQuota=nplank)
+#else
+      PARAMETER(nFeQuota=0)
+#endif
+
       integer iDIC
       integer iNH4
       integer iNO2
@@ -95,15 +117,6 @@ C Contains indices into ptracer array
       PARAMETER (eChl   =iChl+nChl-1)
 
       PARAMETER (nGud=eChl)
-
-      integer iPP
-      integer iNfix
-      integer iDenit
-      integer gud_nDiag
-      PARAMETER(iPP=   1)
-      PARAMETER(iNfix= 2)
-      PARAMETER(iDenit=3)
-      PARAMETER(gud_nDiag=iDenit)
 
 CEOP
 #endif /* ALLOW_GUD */

@@ -35,6 +35,12 @@
  fields(32,1)= 'atten   ',
  fields(33,1)= 'surfPAR ',
  fields(34,1)= 'exfPAR  ',
+ fields(35,1)= 'pH      ',
+ fields(36,1)= 'pCO2    ',
+ fields(37,1)= 'fluxCO2 ',
+ fields(38,1)= 'gDICsurf',
+ fields(39,1)= 'gALKsurf',
+ fields(40,1)= 'gO2surf ',
  &
  &diag_statis_parms
  &

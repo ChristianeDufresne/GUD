@@ -15,7 +15,7 @@ C Contains dimensions and index ranges for cell model.
       integer iMinPhoto, iMaxPhoto, nPhoto
       integer iMinPrey, iMaxPrey
       integer iMinPred, iMaxPred
-      integer nNQuota, nPQuota, nSiQuota, nFeQuota, nChl
+      integer nChl
       parameter(nlam=13)
       parameter(nopt=4)
       parameter(nplank=80)
@@ -25,10 +25,6 @@ C Contains dimensions and index ranges for cell model.
       parameter(iMinPred=iMaxPhoto+1, iMaxPred=nplank)
       parameter(nPhoto=iMaxPhoto+1-iMinPhoto)
 C     to turn off nitrogen quota, set to zero
-      parameter(nNQuota=0)
-      parameter(nPQuota=0)
-      parameter(nSiQuota=0)
-      parameter(nFeQuota=0)
       parameter(nChl=0)
 
 CEOP

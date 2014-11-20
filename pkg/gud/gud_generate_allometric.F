@@ -38,604 +38,326 @@ C !FUNCTIONS: ==========================================================
 C !LOCAL VARIABLES: ====================================================
 C     msgBuf   :: Informational/error meesage buffer
       CHARACTER*(MAX_LEN_MBUF) msgBuf
-      INTEGER jp,jp2,l
+      INTEGER jp,jp2,jz,g,gz,l,jpg(nGroup),gmin
+      _RL logvol, vol, volmin
       _RL RandNo
-      _RL mortdays
-      _RL year
-      _RL month
-      _RL fiveday
-      _RL rtime
-      _RL tmpsrt
-      _RL tmpend
-      _RL tmprng
       _RL prd_pry
-      _RL factor
+      _RL kappa
       _RL taxon_mu(nplank)
-      _RL a,b,p,error
-      _RL heterotrophy(nplank)
+      _RL isphoto(nplank)
+      _RL ispred(nplank)
+      _RL isprey(nplank)
+      _RL prey_ass_eff(nplank)
 #ifdef ALLOW_RADTRANS
       INTEGER iopt
       _RL sm
 #endif
 
 C     these used to be global in quota pkg
-      INTEGER use_NO3(nplank)
-      INTEGER use_Si(nplank)
-      INTEGER pft(nplank)
-      _RL autotrophy(nplank)
-      _RL biovol(nplank)
-      _RL qcarbon(nplank)
       _RL pp_opt(nplank)
       _RL pp_sig(nplank)
       _RL pp_pry(nplank)
 
+      INTEGER group(nplank)
+      INTEGER iGroup(nplank)
+      INTEGER diacoc(nplank)
+      INTEGER nsource(nplank)
+      _RL biovol(nplank)
+      _RL qcarbon(nplank)
+
 C ======================================================================
 
-      IF (nPro+nSyn+nEuk+nDiatom .GE. nPlank .OR.
-     &    ngrazer .GT. nPlank) THEN
-        STOP 'Need nPlank >= ngrazer and > nPro+nSyn+nEuk+nDiatom'
-      ENDIF
+      DO jp=1,nplank
+        IF (diazo(jp) .NE. UNINIT_I) THEN
+         WRITE(msgBuf,'(2A)') 'GUD_GENERATE_ALLOMETRIC: ',
+     &    'do no set diazo, set grp_diazo instead.'
+         CALL PRINT_ERROR( msgBuf, myThid )
+         STOP 'ABNORMAL END: S/R GUD_GENERATE_ALLOMETRIC'
+        ENDIF
+      ENDDO
 
 c..........................................................
 c Generate plankton volumes and stochastic parameters
 c..........................................................
-      factor = 2. _d 0
 c       Allocate Phytoplankton Taxa
 c
-c       pft != 6 are grazed
-c       heterotrophy == 1 graze
-c Prochloro
-      do jp2=1,nPro
-        jp = jp2
-        biovol(jp)    = biovol0(1) * factor**(jp2-1)
-        autotrophy(jp)= 1.00 _d 0
-        use_NO3(jp)   = 1
-        nsource(jp)   = 3
-        diacoc(jp)    = 0
-        taxon_mu(jp)  = 1.00 _d 0
-        pft(jp)       = 1
-      enddo
-c Synnecho
-      do jp2=1,nSyn
-        jp = nPro + jp2
-        biovol(jp)    = biovol0(2) * factor**(jp2-1)
-        autotrophy(jp)= 1.00 _d 0
-        use_NO3(jp)   = 1
-        nsource(jp)   = 3
-        diacoc(jp)    = 0
-        taxon_mu(jp)  = 1.40 _d 0
-        pft(jp)       = 2
-      enddo
-c Small Euk
-      do jp2=1,nEuk
-        jp = nPro + nSyn + jp2
-        biovol(jp)    = biovol0(3) * factor**(jp2-1)
-        autotrophy(jp)= 1.0 _d 0
-        use_NO3(jp)   = 1
-        nsource(jp)   = 3
-        diacoc(jp)    = 0
-        taxon_mu(jp)  = 2.10 _d 0
-        pft(jp)       = 3
-      enddo
-c Diatoms
-      do jp2=1,nDiatom
-        jp = nPro + nSyn + nEuk + jp2
-        biovol(jp)    = biovol0(4) * factor**(jp2-1)
-        autotrophy(jp)= 1.0 _d 0
-        use_NO3(jp)   = 1
-        nsource(jp)   = 3
-        diacoc(jp)    = 0
-        taxon_mu(jp)  = 3.8 _d 0
-        pft(jp)       = 4
-      enddo
-c Specialist grazers
-      do jp2=1,ngrazer
-        jp = nPlank - ngrazer + jp2
-        biovol(jp)    = biovol0(5) * factor**(jp2-1)
-        autotrophy(jp)= 0.00 _d 0
-        use_NO3(jp)   = 0
-        nsource(jp)   = 0
-        diacoc(jp)    = 0
-        taxon_mu(jp)  = 0.00 _d 0
-        pft(jp)       = 6
-      enddo
-c
-      do jp=1,nPlank
-       heterotrophy(jp)=1.0 _d 0 - autotrophy(jp)
-       diazotroph(jp) = 0
-       if (diacoc(jp) .eq. 1) then
-         use_si(jp) = 0
-       endif
-c      elemental ratios for the non-quota elements
-       IF(pft(jp).EQ.6) THEN
-        R_NC(jp) = val_R_NC_zoo
-        R_PC(jp) = val_R_PC_zoo
-        R_SiC(jp) = val_R_SiC_zoo
-        R_FeC(jp) = val_R_FeC_zoo
-        R_ChlC(jp) = val_R_ChlC_zoo
-        R_PICPOC(jp) = val_R_PICPOC_zoo
-       ELSE
-        IF(diacoc(jp) .EQ. 1.0 _d 0)then
-          R_SiC(jp) =  val_R_SiC_diatom
-        ELSE
-          R_SiC(jp) = 0.0 _d 0
+c       isprey == 1 are grazed
+c       ispred == 1 graze
+      DO g=1,nGroup
+        jpg(g) = 0
+        IF (logvol0ind(g) .GT. 0) THEN
+          logvol = logvol0base + (logvol0ind(g)-1)*logvol0inc
+          biovol0(g) = 10 _d 0 ** logvol
         ENDIF
-        IF(diacoc(jp) .EQ. 2.0 _d 0)then
-          R_PICPOC(jp) =  val_R_PICPOC
-        ELSE
-          R_PICPOC(jp) = 0.0 _d 0
+      ENDDO
+      IF (gud_sort_biovol) THEN
+c      sort by volume
+       DO jp=1,nplank
+        volmin = 1 _d 38
+        gmin = 0
+C       first check phototrophs
+        DO g=1,ngroup
+         IF (grp_photo(g).NE.0) THEN
+          vol = biovol0(g)*biovolfac(g)**jpg(g)
+          IF (jpg(g).LT.grp_nplank(g) .AND. vol.LT.volmin) THEN
+           gmin = g
+           volmin = vol
+          ENDIF
+         ENDIF
+        ENDDO
+C       then pure heterotrophs
+        IF (gmin.EQ.0) THEN
+         DO g=1,ngroup
+          IF (grp_photo(g).EQ.0) THEN
+           vol = biovol0(g)*biovolfac(g)**jpg(g)
+           IF (jpg(g).LT.grp_nplank(g) .AND. vol.LT.volmin) THEN
+            gmin = g
+            volmin = vol
+           ENDIF
+          ENDIF
+         ENDDO
         ENDIF
-c   set N:P and iron requirement according to diazotroph status
-        IF(diazotroph(jp) .EQ. 1.0 _d 0)then
-          R_NC(jp) = val_R_NC_diaz
-          R_FeC(jp) =  val_R_FeC_diaz
-        ELSE
-          R_NC(jp) = val_R_NC
-          R_FeC(jp) = val_R_FeC
+        IF (gmin.EQ.0) THEN
+         STOP 'gmin'
         ENDIF
-c   set C:P ratio
-        R_PC(jp) = val_R_PC
-        R_ChlC(jp) = val_R_ChlC
+        group(jp) = gmin
+        biovol(jp) = volmin
+        jpg(gmin) = jpg(gmin) + 1
+        igroup(jp) = jpg(gmin)
+       ENDDO
+       DO g=1,ngroup
+        IF (jpg(g).NE.grp_nplank(g)) THEN
+         STOP 'grp_nplank'
+        ENDIF
+       ENDDO
+      ELSE
+C      sort by group
+       jp = 1
+       DO g=1,ngroup
+        DO jp2=1,grp_nplank(g)
+         IF (jp .GT. nPlank) THEN
+          WRITE(msgBuf,'(2A)') 'GUD_GENERATE_ALLOMETRIC: ',
+     &     'need SUM(grp_nplank) = nPlank, nPlank too small'
+          CALL PRINT_ERROR( msgBuf, myThid )
+          STOP 'ABNORMAL END: S/R GUD_GENERATE_ALLOMETRIC'
+         ENDIF
+         group(jp)  = g
+         biovol(jp) = biovol0(g) * biovolfac(g)**(jp2-1)
+         jp = jp + 1
+        ENDDO
+       ENDDO
+       IF (jp .NE. nPlank + 1) THEN
+        WRITE(msgBuf,'(2A,2I4)') 'GUD_GENERATE_ALLOMETRIC: ',
+     &   'need SUM(grp_nplank) = nPlank, not ',jp-1,nPlank
+        CALL PRINT_ERROR( msgBuf, myThid )
+        STOP 'ABNORMAL END: S/R GUD_GENERATE_ALLOMETRIC'
        ENDIF
-      enddo
-c
-c ----------------------------------------------------------------------
-c Allometry
-#ifdef UNCERTAINTY
-      error = 1.0 _d 0
-#else
-      error = 0.0 _d 0
-C       set stdev of allometric parameters to zero
-#endif
-c ----------------------------------------------------------------------
-      do jp=1,nplank
-        ! parameters independent of nutrient element
+      ENDIF
 
-        IF (autotrophy(jp) .EQ. 1) THEN
-          Xmin(jp) = phymin
-          amminhib(jp) = val_amminhib
-          acclimtimescl(jp) = val_acclimtimescl
+      DO jp=1,nplank
+        g = group(jp)
+        jp2 = igroup(jp)
+
+        isphoto(jp)    = grp_photo(g)
+        ispred(jp)     = grp_pred(g)
+        isprey(jp)     = grp_prey(g)
+        nsource(jp)    = grp_nsource(g)
+        diacoc(jp)     = grp_diacoc(g)
+        diazo(jp)      = grp_diazo(g)
+        taxon_mu(jp)   = grp_taxon_mu(g)
+        R_NC(jp)       = grp_R_NC(g)
+        R_PC(jp)       = grp_R_PC(g)
+        R_SiC(jp)      = grp_R_SiC(g)
+        R_FeC(jp)      = grp_R_FeC(g)
+        R_ChlC(jp)     = grp_R_ChlC(g)
+        R_PICPOC(jp)   = grp_R_PICPOC(g)
+
+        Xmin(jp) = phymin*(1.0 _d 0 - ispred(jp))
+        amminhib(jp) = grp_amminhib(g)
+        acclimtimescl(jp) = grp_acclimtimescl(g)
+
+#ifdef GEIDER
+        mQyield(jp) = grp_mQyield(g)
+        chl2cmax(jp) = grp_chl2cmax(g)
+#endif
+
+        IF (nsource(jp) .EQ. 3) THEN
+         useNH4(jp) = 1
+         useNO2(jp) = 1
+         useNO3(jp) = 1
+         combNO(jp) = 1
+        ELSEIF (nsource(jp) .EQ. 2) THEN
+         useNH4(jp) = 1
+         useNO2(jp) = 0
+         useNO3(jp) = 0
+         combNO(jp) = 0
+        ELSEIF (nsource(jp) .EQ. 1) THEN
+         useNH4(jp) = 1
+         useNO2(jp) = 1
+         useNO3(jp) = 0
+         combNO(jp) = 0
         ELSE
-          Xmin(jp) = 0.0 _d 0
+         useNH4(jp) = 0
+         useNO2(jp) = 0
+         useNO3(jp) = 0
+         combNO(jp) = 0
         ENDIF
 
 c CARBON CONTENT
-        p = gud_random(myThid)
-        call invnormal(a,p,
-     &         log10(a_qcarbon),log10(ae_qcarbon)*error)
-        call invnormal(b,p,b_qcarbon,be_qcarbon*error)
-        qcarbon(jp)    = 10. _d 0**a * biovol(jp) ** b
-c INITIAL SLOPE P-I
-        p = gud_random(myThid)
-        call invnormal(a,p,
-     &         log10(a_alphachl),log10(ae_alphachl)*error)
-        call invnormal(b,p,b_alphachl,be_alphachl*error)
-        do l=1,nlam
-          alphachl(jp,l) = 10. _d 0**a * biovol(jp) ** b
-        enddo
+        qcarbon(jp) = a_qcarbon(g) * biovol(jp)**b_qcarbon(g)
 c RESPIRATION RATE
-        p = gud_random(myThid)
-        IF (a_respir.NE.0. _d 0) THEN
-        call invnormal(a,p,
-     &         log10(a_respir),log10(ae_respir)*error)
-        call invnormal(b,p,b_respir,be_respir*error)
-        respiration(jp) = 10. _d 0**a
-     &                    * (12. _d 9 * qcarbon(jp)) ** b
+        respiration(jp) = a_respir(g)
+     &                    * (12. _d 9 * qcarbon(jp))**b_respir(g)
      &                    / qcarbon(jp)
-        if (pft(jp).eq.6) then
-          respiration(jp) = respiration(jp) * 0.50 _d 0
-        endif
-        ELSE
-          respiration(jp) = 0.0 _d 0
-        ENDIF
-c MAXIMUM GRAZING RATE
-        p = gud_random(myThid)
-        call invnormal(a,p,
-     &         log10(a_graz),log10(ae_graz)*error)
-        call invnormal(b,p,b_graz,be_graz*error)
-        grazemax(jp) = 10. _d 0**a * biovol(jp) ** b
-     &                   * heterotrophy(jp)
-c GRAZING SIZE PREFERENCE RATIO
-        if (pft(jp).eq.5) then ! dinoflagellates prey upon similar sized plankton
-          pp_opt(jp)      = 1.0 _d 0
-        else ! other types follow standard relationship
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_prdpry),log10(ae_prdpry)*error)
-          call invnormal(b,p,b_prdpry,be_prdpry*error)
-          pp_opt(jp)      = 10. _d 0**a * biovol(jp) ** b
-        endif
-c STANDARD DEVIATION OF SIZE PREFERENCE
-c          pp_sig(jp) = 0.50 _d 0
-c          pp_sig(jp) = 1.00 _d 0
-          pp_sig(jp) = pp_sig_val
-c FRACTION GRAZED TO POM
-C            p = gud_random(myThid)
-C            call invnormal(a,p,
-C     &           log10(a_beta_graz(io)),log10(ae_beta_graz(io))*error)
-C            call invnormal(b,p,b_beta_graz(io),be_beta_graz(io)*error)
-C            beta_graz(io,jp) = 10. _d 0**a * biovol(jp) ** b
-C            beta_graz(io,jp)=min(max(
-C     &                       beta_graz(io,jp),0.5 _d 0),0.9 _d 0)
-        if (pft(jp).lt.3) ExportFracGraz(jp)=1.0-0.8
-        if (pft(jp).gt.2) ExportFracGraz(jp)=1.0-0.5
 c FRACTION MORTALITY TO POM
-C            p = gud_random(myThid)
-C            call invnormal(a,p,
-C     &           log10(a_beta_mort(io)),log10(ae_beta_mort(io))*error)
-C            call invnormal(b,p,b_beta_mort(io),be_beta_mort(io)*error)
-C            beta_mort(io,jp)= 10. _d 0**a * biovol(jp) ** b
-C            beta_mort(io,jp)=min(max(
-C     &                       beta_mort(io,jp),0.5 _d 0),0.9 _d 0)
-        if (pft(jp).lt.3) ExportFrac(jp)=1.0-0.8
-        if (pft(jp).gt.2) ExportFrac(jp)=1.0-0.5
-c GRAZING HALF-SATURATION
-        p = gud_random(myThid)
-        call invnormal(a,p,
-     &         log10(a_kg),log10(ae_kg)*error)
-        call invnormal(b,p,b_kg,be_kg*error)
-        kgrazesat(jp) = 10. _d 0**a * biovol(jp) ** b
+        ExportFrac(jp) = grp_ExportFrac(g)
 c PHYTOPLANKTON SINKING
-        p = gud_random(myThid)
-        call invnormal(a,p,
-     &         log10(a_biosink),log10(ae_biosink)*error)
-        call invnormal(b,p,b_biosink,be_biosink*error)
-        if (pft(jp).eq.6) then
-          wsink(jp)    =  0.0 _d 0 ! grazers don't sink
-        else
-          wsink(jp)    =  (10.0 _d 0**a) * biovol(jp) ** b
-        endif
+        wsink(jp) = a_biosink(g) * biovol(jp)**b_biosink(g)
 c SWIMMING
-        p = gud_random(myThid)
-        IF (a_bioswim.NE.0. _d 0) THEN
-        call invnormal(a,p,
-     &         log10(a_bioswim),log10(ae_bioswim)*error)
-        call invnormal(b,p,b_bioswim,be_bioswim*error)
-        if (autotrophy(jp).eq.1) then
-          wswim(jp)    =  0.00 _d 0 ! only grazers can swim
-        else
-          wswim(jp)    = (10.0 _d 0**a) * biovol(jp) ** b
-        endif
-        ELSE
-          wswim(jp)    =  0.00 _d 0
-        ENDIF
+        wswim(jp) = a_bioswim(g) * biovol(jp)**b_bioswim(g)
+     &              *(1.0 _d 0 - ispred(jp))
 c MORTALITY
         ! constant background mortality
-        mort(jp) = a_mort
-        if (pft(jp).eq.6) then
-          ! grazers have lower mortality
-          mort(jp) = 1.00 _d 0 * a_mort
-        endif
-        mort2(jp) = 0.0 _d 0
-        if (pft(jp).eq.6) then
-          mortTempFuncMin(jp) = 0.0 _d 0
-          mort2TempFuncMin(jp) = 0.0 _d 0
-        else
-          mortTempFuncMin(jp) = 1.0 _d 0
-          mort2TempFuncMin(jp) = 1.0 _d 0
-        endif
+        mort(jp) = grp_mort(g)
+        mort2(jp) = grp_mort2(g)
+        ! if 0, temperature dependent, if 1, not.
+        mortTempFuncMin(jp) = MIN(1, 1 - grp_tempMort(g))
+        mort2TempFuncMin(jp) = MIN(1, 1 - grp_tempMort2(g))
 C parameters relating to inorganic nutrients
 c MAXIMUM NUTRIENT UPTAKE RATE
 C carbon
-        p = gud_random(myThid)
-        call invnormal(a,p,
-     &         log10(a_vmax_DIC),log10(ae_vmax_DIC)*error)
-        call invnormal(b,p,b_vmax_DIC,be_vmax_DIC*error)
-        PCmax(jp)= 10. _d 0**a * biovol(jp) ** b
+        PCmax(jp)= a_vmax_DIC(g) * biovol(jp)**b_vmax_DIC(g)
      &             * taxon_mu(jp)
 
-        IF (jp .LE. nNQuota) THEN
-C NH4
-          p = gud_random(myThid)
-          call invnormal(a,p,log10(a_vmax_NH4),log10(ae_vmax_NH4)*error)
-          call invnormal(b,p,b_vmax_NH4,be_vmax_NH4*error)
-C         Pro has higher NH4 affinity
-          vmax_NH4(jp)= 10. _d 0**a * biovol(jp) ** b * autotrophy(jp)*
-     &                  (2.0 - use_NO3(jp))
-          p = gud_random(myThid)
-          call invnormal(a,p,log10(a_kn_NH4),log10(ae_kn_NH4)*error)
-          call invnormal(b,p,b_kn_NH4,be_kn_NH4*error)
-          ksatNH4(jp) = 10. _d 0**a * biovol(jp) ** b
-C     *                  * autotrophy(jp)
-C NO2     
-          p = gud_random(myThid)
-          call invnormal(a,p,log10(a_vmax_NO2),log10(ae_vmax_NO2)*error)
-          call invnormal(b,p,b_vmax_NO2,be_vmax_NO2*error)
-          vmax_NO2(jp)= 10. _d 0**a * biovol(jp) ** b * autotrophy(jp)
-          p = gud_random(myThid)
-          call invnormal(a,p,log10(a_kn_NO2),log10(ae_kn_NO2)*error)
-          call invnormal(b,p,b_kn_NO2,be_kn_NO2*error)
-          ksatNO2(jp) = 10. _d 0**a * biovol(jp) ** b
-C     *                  * autotrophy(jp)
-C NO3     
-          p = gud_random(myThid)
-          call invnormal(a,p,log10(a_vmax_NO3),log10(ae_vmax_NO3)*error)
-          call invnormal(b,p,b_vmax_NO3,be_vmax_NO3*error)
-          vmax_NO3(jp)= 10. _d 0**a * biovol(jp) ** b * autotrophy(jp)*
-     &                  use_NO3(jp)
-          p = gud_random(myThid)
-          call invnormal(a,p,log10(a_kn_NO3),log10(ae_kn_NO3)*error)
-          call invnormal(b,p,b_kn_NO3,be_kn_NO3*error)
-          ksatNO3(jp) = 10. _d 0**a * biovol(jp) ** b
-C     *                  * autotrophy(jp)
+        vmax_NH4(jp)  = a_vmax_NH4(g)  * biovol(jp)**b_vmax_NH4(g)
+        vmax_NO2(jp)  = a_vmax_NO2(g)  * biovol(jp)**b_vmax_NO2(g)
+        vmax_NO3(jp)  = a_vmax_NO3(g)  * biovol(jp)**b_vmax_NO3(g)
+        vmax_N(jp)    = a_vmax_N(g)    * biovol(jp)**b_vmax_N(g)
+        vmax_PO4(jp)  = a_vmax_PO4(g)  * biovol(jp)**b_vmax_PO4(g)
+        vmax_SiO2(jp) = a_vmax_SiO2(g) * biovol(jp)**b_vmax_SiO2(g)
+        vmax_FeT(jp)  = a_vmax_FeT(g)  * biovol(jp)**b_vmax_FeT(g)
+
+        Qnmin(jp) = a_qmin_n(g) * biovol(jp)**b_qmin_n(g)
+        Qnmax(jp) = a_qmax_n(g) * biovol(jp)**b_qmax_n(g)
+
+        Qpmin(jp) = a_qmin_p(g) * biovol(jp)**b_qmin_p(g)
+        Qpmax(jp) = a_qmax_p(g) * biovol(jp)**b_qmax_p(g)
+
+        Qsimin(jp) = a_qmin_si(g) * biovol(jp)**b_qmin_si(g)
+        Qsimax(jp) = a_qmax_si(g) * biovol(jp)**b_qmax_si(g)
+
+        Qfemin(jp) = a_qmin_fe(g) * biovol(jp)**b_qmin_fe(g)
+        Qfemax(jp) = a_qmax_fe(g) * biovol(jp)**b_qmax_fe(g)
+
+        ksatNH4(jp) = a_kn_NH4(g) * biovol(jp)**b_kn_NH4(g)
+        ksatNO2(jp) = a_kn_NO2(g) * biovol(jp)**b_kn_NO2(g)
+        ksatNO3(jp) = a_kn_NO3(g) * biovol(jp)**b_kn_NO3(g)
+        ksatPO4(jp) = a_kn_PO4(g) * biovol(jp)**b_kn_PO4(g)
+        ksatSiO2(jp) = a_kn_SiO2(g) * biovol(jp)**b_kn_SiO2(g)
+        ksatFeT(jp) = a_kn_FeT(g) * biovol(jp)**b_kn_FeT(g)
+
+        IF (GUD_effective_ksat) THEN
+c        compute effective half sat for uptake of non-quota elements
+C we compute it for NO3 and scale for others
+         kappa= (ksatNO3(jp)*PCmax(jp)*Qnmin(jp)*(Qnmax(jp)-Qnmin(jp)))/
+     &          (vmax_NO3(jp)*Qnmax(jp) +
+     &                       PCmax(jp)*Qnmin(jp)*(Qnmax(jp)-Qnmin(jp)))
+#ifndef NQUOTA
+         ksatNO3(jp) = kappa
+         ksatNO2(jp) = kappa*grp_ksatNO2fac(g)
+         ksatNH4(jp) = kappa*grp_ksatNH4fac(g)
+#endif
+#ifndef PQUOTA
+         ksatPO4(jp) = kappa/R_NC(jp)*R_PC(jp)
+#endif
+#ifndef SIQUOTA
+         ksatSiO2(jp) = kappa/R_NC(jp)*R_SiC(jp)
+#endif
+#ifndef FEQUOTA
+         ksatFeT(jp) = kappa/R_NC(jp)*R_FeC(jp)
+#endif
         ENDIF
-        IF (jp .LE. nPQuota) THEN
-C PO4     
-          p = gud_random(myThid)
-          call invnormal(a,p,log10(a_vmax_PO4),log10(ae_vmax_PO4)*error)
-          call invnormal(b,p,b_vmax_PO4,be_vmax_PO4*error)
-          vmax_PO4(jp)= 10. _d 0**a * biovol(jp) ** b * autotrophy(jp)
-          p = gud_random(myThid)
-          call invnormal(a,p,log10(a_kn_PO4),log10(ae_kn_PO4)*error)
-          call invnormal(b,p,b_kn_PO4,be_kn_PO4*error)
-          ksatPO4(jp) = 10. _d 0**a * biovol(jp) ** b
-C     *                  * autotrophy(jp)
-        ENDIF
-        IF (jp .LE. nSiQuota) THEN
-C SiO2    
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_vmax_SiO2),log10(ae_vmax_SiO2)*error)
-          call invnormal(b,p,b_vmax_SiO2,be_vmax_SiO2*error)
-          vmax_SiO2(jp)= 10. _d 0**a * biovol(jp) ** b * autotrophy(jp)*
-     &                   float(use_Si(jp))
-          p = gud_random(myThid)
-          call invnormal(a,p,log10(a_kn_SiO2),log10(ae_kn_SiO2)*error)
-          call invnormal(b,p,b_kn_SiO2,be_kn_SiO2*error)
-          ksatSiO2(jp) = 10. _d 0**a * biovol(jp) ** b*
-     &                   float(use_Si(jp))
-C     *                  * autotrophy(jp)
+
+        vmax_NH4(jp) = vmax_NH4(jp) * useNH4(jp)
+        vmax_NO2(jp) = vmax_NO2(jp) * useNO2(jp)
+        vmax_NO3(jp) = vmax_NO3(jp) * useNO3(jp)
 C Silicate parameters to zero for non-diatoms
+        IF (diacoc(jp) .NE. 1) THEN
+          vmax_SiO2(jp) = 0.0 _d 0
+          ksatSiO2(jp) = 0.0 _d 0
+          R_SiC(jp) = 0.0 _d 0
         ENDIF
-        IF (jp .LE. nFeQuota) THEN
-C FeT     
-          p = gud_random(myThid)
-          call invnormal(a,p,log10(a_vmax_FeT),log10(ae_vmax_FeT)*error)
-          call invnormal(b,p,b_vmax_FeT,be_vmax_FeT*error)
-          vmax_FeT(jp)= 10. _d 0**a * biovol(jp) ** b * autotrophy(jp)
-          p = gud_random(myThid)
-          call invnormal(a,p,log10(a_kn_FeT),log10(ae_kn_FeT)*error)
-          call invnormal(b,p,b_kn_FeT,be_kn_FeT*error)
-          ksatFeT(jp) = 10. _d 0**a * biovol(jp) ** b
-C     *                  * autotrophy(jp)
-        ENDIF
-c
+
 C parameters relating to quota nutrients
 c EXCRETION
-        IF (a_kexc_c.NE.0. _d 0 .AND. ae_kexc_c.NE.0. _d 0) THEN
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_kexc_c),log10(ae_kexc_c)*error)
-          call invnormal(b,p,b_kexc_c,be_kexc_c*error)
-          kexcC(jp) = 10. _d 0**a * biovol(jp) ** b
-        ENDIF
+        kexcC(jp) = a_kexc_c(g) * biovol(jp)**b_kexc_c(g)
+        kexcN(jp) = a_kexc_n(g) * biovol(jp)**b_kexc_n(g)
+        kexcP(jp) = a_kexc_p(g) * biovol(jp)**b_kexc_p(g)
+        kexcSi(jp) = a_kexc_si(g) * biovol(jp)**b_kexc_si(g)
+        kexcFe(jp) = a_kexc_fe(g) * biovol(jp)**b_kexc_fe(g)
 
-        IF (jp .LE. nNQuota .AND. a_kexc_n.NE.0. _d 0 .AND.
-     &                           ae_kexc_n.NE.0. _d 0) THEN
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_kexc_n),log10(ae_kexc_n)*error)
-          call invnormal(b,p,b_kexc_n,be_kexc_n*error)
-          kexcN(jp) = 10. _d 0**a * biovol(jp) ** b
-        ENDIF
-
-        IF (jp .LE. nPQuota .AND. a_kexc_p.NE.0. _d 0 .AND.
-     &                           ae_kexc_p.NE.0. _d 0) THEN
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_kexc_p),log10(ae_kexc_p)*error)
-          call invnormal(b,p,b_kexc_p,be_kexc_p*error)
-          kexcP(jp) = 10. _d 0**a * biovol(jp) ** b
-        ENDIF
-
-c        p = gud_random(myThid)
-c        call invnormal(a,p,log10(a_kexc_si),log10(ae_kexc_si)*error)
-c        call invnormal(b,p,b_kexc_si,be_kexc_si*error)
-c        kexcSi(jp) = 10. _d 0**a * biovol(jp) ** b
-        kexcSi(jp) = 0.0 _d 0
-
-c        p = gud_random(myThid)
-c        call invnormal(a,p,log10(a_kexc_fe),log10(ae_kexc_fe)*error)
-c        call invnormal(b,p,b_kexc_fe,be_kexc_fe*error)
-c        kexcFe(jp) = 10. _d 0**a * biovol(jp) ** b
-        kexcFe(jp) = 0.0 _d 0
-
-        IF (jp .LE. nNQuota) THEN
-c MINIMUM QUOTA
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_qmin_n),log10(ae_qmin_n)*error)
-          call invnormal(b,p,b_qmin_n,be_qmin_n*error)
-          Qnmin(jp) = 10. _d 0**a * biovol(jp) ** b
-c MAXIMUM QUOTA
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_qmax_n),log10(ae_qmax_n)*error)
-          call invnormal(b,p,b_qmax_n,be_qmax_n*error)
-          Qnmax(jp) = 10. _d 0**a * biovol(jp) ** b
-        ENDIF
-
-        IF (jp .LE. nPQuota) THEN
-c MINIMUM QUOTA
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_qmin_p),log10(ae_qmin_p)*error)
-          call invnormal(b,p,b_qmin_p,be_qmin_p*error)
-          Qpmin(jp) = 10. _d 0**a * biovol(jp) ** b
-c MAXIMUM QUOTA
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_qmax_p),log10(ae_qmax_p)*error)
-          call invnormal(b,p,b_qmax_p,be_qmax_p*error)
-          Qpmax(jp) = 10. _d 0**a * biovol(jp) ** b
-        ENDIF
-
-        IF (jp .LE. nsiQuota) THEN
-c MINIMUM QUOTA
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_qmin_si),log10(ae_qmin_si)*error)
-          call invnormal(b,p,b_qmin_si,be_qmin_si*error)
-          Qsimin(jp) = 10. _d 0**a * biovol(jp) ** b *
-     &                 *use_Si(jp)
-c MAXIMUM QUOTA
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_qmax_si),log10(ae_qmax_si)*error)
-          call invnormal(b,p,b_qmax_si,be_qmax_si*error)
-          Qsimax(jp) = 10. _d 0**a * biovol(jp) ** b *
-     &                 *use_Si(jp)
-        ENDIF
-
-        IF (jp .LE. nfeQuota) THEN
-c MINIMUM QUOTA
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_qmin_fe),log10(ae_qmin_fe)*error)
-          call invnormal(b,p,b_qmin_fe,be_qmin_fe*error)
-          Qfemin(jp) = 10. _d 0**a * biovol(jp) ** b
-c MAXIMUM QUOTA
-          p = gud_random(myThid)
-          call invnormal(a,p,
-     &           log10(a_qmax_fe),log10(ae_qmax_fe)*error)
-          call invnormal(b,p,b_qmax_fe,be_qmax_fe*error)
-          Qfemax(jp) = 10. _d 0**a * biovol(jp) ** b
-        ENDIF
-
-c Zooplankton have approximately Redfieldian N:C ratio
-        if (pft(jp).eq.6) then
-          qnmin(jp) = 0.0755 _d 0
-          qnmax(jp) = 0.1510 _d 0
-        endif
-c PREFERENCE FUNCTION
-        ! assign grazing preference according to predator/prey radius ratio
-        do jp2=1,nplank ! jp2 denotes prey
-          if (heterotrophy(jp).gt.0. _d 0.and.pft(jp2).ne.6) then
-            prd_pry = biovol(jp) / biovol(jp2)
-            palat(jp2,jp) =
-#ifdef GUD_GRAZING_MONOD_STYLE
-     &        EXP(-(LOG(prd_pry/pp_opt(jp))**2) / (2*pp_sig(jp)**2))
-     &                                          / pp_sig(jp)/2. _d 0
-#else
-            ! lower preference for larger P
-     &        1.0 _d 0
-C     &        biovol(jp2)**(-0.16 _d 0)
-#endif
-C              ! reduce diatom palatability
-C              if (pft(jp2).eq.5) then
-C                palat(jp2,jp) = palat(jp2,jp) * 0.8
-C              endif
-            if (palat(jp2,jp).lt.1. _d -4) then
-              palat(jp2,jp)=0. _d 0
-            endif
-            asseff(jp2,jp) = val_ass_eff
-          else
-            palat(jp2,jp) = 0. _d 0
-          endif
-        enddo
-c
 c..........................................................
 c generate phyto Temperature Function parameters
 c.......................................................
-        phytoTempCoeff(jp) = tempcoeff1
-        phytoTempExp1(jp) = tempcoeff3
-        phytoTempExp2(jp) = tempcoeff2_small
-     &                      + (tempcoeff2_big-tempcoeff2_small)
-     &                      * float(jp-1)/float(nplank-1)
-        phytoTempOptimum(jp) = 2. _d 0
-        phytoDecayPower(jp) = tempdecay
+        phytoTempCoeff(jp)   = grp_tempcoeff1(g)
+        phytoTempExp1(jp)    = grp_tempcoeff3(g)
+        phytoTempExp2(jp)    = grp_tempcoeff2(g)
+        phytoTempOptimum(jp) = grp_tempopt(g)
+        phytoDecayPower(jp)  = grp_tempdecay(g)
 
-c..........................................................
-      enddo
+c MAXIMUM GRAZING RATE
+        grazemax(jp) = a_graz(g) * biovol(jp)**b_graz(g)
+c GRAZING SIZE PREFERENCE RATIO
+        pp_opt(jp) = a_prdpry(g) * biovol(jp)**b_prdpry(g)
+c STANDARD DEVIATION OF SIZE PREFERENCE
+        pp_sig(jp) = grp_pp_sig(g)
+c GRAZING HALF-SATURATION
+        kgrazesat(jp) = a_kg(g) * biovol(jp)**b_kg(g)
 
-C ======================================================================
-C dependent traits
+#ifdef GEIDER
+        inhibcoef_geid(jp) = grp_inhibcoef_geid(g)
+#else
+        ksatPAR(jp) = grp_ksatPAR(g)
+        kinhPAR(jp) = grp_kinhPAR(g)
+#endif /* GEIDER */
 
-      DO jp = 1, nPlank
-C       should be local - leave unset
-C        mQyield(jp)        = 0.0 _d 0
-C        physize(jp)        = 0.0 _d 0
-C        phyto_esd(jp)      = 0.0 _d 0
-C        phyto_vol(jp)      = 0.0 _d 0
-
-C for non-quota nitrogen
-        IF (nsource(jp) .EQ. 3) THEN
-         useNH4(jp) = 1.0
-         useNO2(jp) = 1.0
-         useNO3(jp) = 1.0
-         combNO(jp) = 1.0
-        ELSEIF (nsource(jp) .EQ. 2) THEN
-         useNH4(jp) = 1.0
-         useNO2(jp) = 0.0
-         useNO3(jp) = 0.0
-         combNO(jp) = 0.0
-        ELSEIF (nsource(jp) .EQ. 1) THEN
-         useNH4(jp) = 1.0
-         useNO2(jp) = 1.0
-         useNO3(jp) = 0.0
-         combNO(jp) = 0.0
-        ELSE
-         useNH4(jp) = 0.0
-         useNO2(jp) = 0.0
-         useNO3(jp) = 0.0
-         combNO(jp) = 0.0
-        ENDIF
+C     jp
       ENDDO
 
-      DO jp = iMinPhoto, iMaxPhoto
-#ifdef GEIDER
-C      should depend on size
-       RandNo = gud_random(myThid)
-       chl2cmax(jp) = Smallchl2cmax +RandNo*Smallchl2cmaxrange
+c..........................................................
 
-c NB:  LL Pro should be inhibited
-       inhibcoef_geid(jp) = 0. _d 0
-
-#ifdef ALLOW_RADTRANS
-       ap_type(jp) = 0
-
-       iopt = ap_type(jp)
-       IF (1 .LE. iopt .AND. iopt .LE. nOpt) THEN
-        DO l = 1,nlam
-         aphy_chl(jp,l) = aphy_chl_type(iopt,l)
-         aphy_chl_ps(jp,l) = aphy_chl_ps_type(iopt,l)
-         bphy_chl(jp,l) = bphy_chl_type(iopt,l)
-         bbphy_chl(jp,l) = bbphy_chl_type(iopt,l)
-        ENDDO
-       ELSE
-        WRITE(msgBuf,'(2A,2I4)') 'GUD_INIT_FIXED: ',
-     &   "invalid optical phyto type:",jp,iopt
-        CALL PRINT_ERROR( msgBuf, myThid )
-        STOP 'ABNORMAL END: S/R GUD_INIT_FIXED'
-       ENDIF
-
-C NB:  this overrides alphachl set from allometry above!!!
-       DO l = 1,nlam
-         alphachl(jp,l) = mQyield(jp) * aphy_chl_ps(jp,l)
-       ENDDO
-
-       sm = 0.0 _d 0
-       DO l = 1, nlam
-        sm = sm + wb_width(l)*alphachl(jp,l)
-       ENDDO
-       alpha_mean(jp) = sm/wb_totalWidth
-
-       chl2cmin(jp)=chl2cmax(jp)/
-     &           (1+(chl2cmax(jp)* alpha_mean(jp) *2000. _d 0)/
-     &              (2*pcmax(jp)))
+c PREFERENCE FUNCTION
+c     assign grazing preference according to predator/prey radius ratio
+      DO jz=1,nplank
+        gz = group(jz)
+        DO jp=1,nplank ! jp denotes prey
+          g = group(jp)
+          IF (ispred(jz).GT.0 .AND. isprey(jp).GT.0) THEN
+            prd_pry = biovol(jz) / biovol(jp)
+            palat(jp,jz) =
+#ifdef GUD_GRAZING_MONOD_STYLE
+     &        EXP(-(LOG(prd_pry/pp_opt(jz))**2) / (2*pp_sig(jz)**2))
+     &                                          / pp_sig(jz)/2. _d 0
 #else
-       alpha_mean(jp) = alphachl(jp,1)
-       chl2cmin(jp) = 0. _d 0
-#endif /* ALLOW_RADTRANS */
-
-#else /* not GEIDER */
-C      should depend on size
-       RandNo = gud_random_normal(myThid)
-       ksatPAR(jp) = abs(smallksatpar+smallksatparstd*RandNo)
-       RandNo = gud_random_normal(myThid)
-       kinhPAR(jp) = abs(smallkinhPAR+smallkinhPARstd*RandNo)
-#endif /* GEIDER */
-C     jp
+            ! lower preference for larger P
+     &        1.0 _d 0
+C     &        biovol(jp)**(-0.16 _d 0)
+#endif
+C              ! reduce diatom palatability
+C              if (pft(jp).eq.5) then
+C                palat(jp,jz) = palat(jp,jz) * 0.8
+C              endif
+            IF (palat(jp,jz).LT.palat_min) THEN
+              palat(jp,jz) = 0. _d 0
+            ENDIF
+c ASSIMILATION EFFICIENCY FOR PREY jp
+            asseff(jp,jz) = grp_ass_eff(g)
+c FRACTION GRAZED TO POM
+            ExportFracPreyPred(jp,jz) = grp_ExportFracPreyPred(g,gz)
+          ELSE
+            palat(jp,jz) = 0. _d 0
+          ENDIF
+        ENDDO
       ENDDO
 
 #endif  /*ALLOW_GUD*/

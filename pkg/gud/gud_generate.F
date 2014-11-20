@@ -78,6 +78,7 @@ C     msgBuf    - Informational/error meesage buffer
       _RL fiveday
       _RL rtime
       _RL dm
+      _RL dmzoo(nplank)
       _RL volp
       _RL sm
       _RL PI
@@ -88,6 +89,15 @@ C     msgBuf    - Informational/error meesage buffer
 C     used to be global in monod pkg
       _RL phyto_esd(nplank)
       _RL phyto_vol(nplank)
+
+      INTEGER group(nplank)
+      INTEGER iGroup(nplank)
+      INTEGER physize(nplank)
+      INTEGER diacoc(nplank)
+      INTEGER nsource(nplank)
+      _RL biovol(nplank)
+      _RL qcarbon(nplank)
+
 C ======================================================================
 
 c length of day (seconds)
@@ -113,37 +123,16 @@ c length of day (seconds)
        Vmax_NH4(np) = 0.0 _d 0
        Vmax_NO2(np) = 0.0 _d 0
        Vmax_NO3(np) = 0.0 _d 0
+       Vmax_N(np) = 0.0 _d 0
        Vmax_PO4(np) = 0.0 _d 0
        Vmax_SiO2(np) = 0.0 _d 0
 
 C      initialize discrete traits to "unset"
-C       physize(np)    = -1
-C       diacoc(np)     = -1
-C       diazotroph(np) = -1
-C       nsource(np)    = -1
+       physize(np)    = -1
+       diacoc(np)     = -1
+       diazo(np) = -1
+       nsource(np)    = -1
       ENDDO
-
-C ======================================================================
-C allow to set some discrete traits from file
-
-      CALL OPEN_COPY_DATA_FILE(
-     I                   'data.traits', 'GUD_INIT_FIXED',
-     O                   iUnit1,
-     I                   myThid )
-
-      IF ( myProcId.EQ.0 .AND. myThid.EQ.1 ) THEN
-        CALL MDSFINDUNIT( iUnit2, mythid )
-        open(iUnit2,file='gud_traits.nml',status='unknown')
-      ELSE
-        iUnit2 = -1
-      ENDIF
-
-      CALL GUD_READTRAITS(iUnit1, iUnit2, myThid)
-
-      IF ( iUnit2 .GE. 0 ) THEN
-        close(iUnit2)
-      ENDIF
-      CLOSE(iUnit1)
 
 C ======================================================================
 c     phytoplankton
@@ -163,93 +152,93 @@ C at this point independent of whether diatom or coccolithophor or not
       RandNoSize = gud_random(myThid)
       IF (physize(np).LT.0) THEN
        IF(RandNoSize .GT. 0.500 _d 0)then
-        physize(np) = 1.0 _d 0
+        physize(np) = 1
        ELSE
-        physize(np) = 0.0 _d 0
+        physize(np) = 0
        ENDIF
       ENDIF
 #ifdef TWO_SPECIES_SETUP
-      IF (np.EQ.1) physize(np) = 1.0 _d 0
-      IF (np.EQ.2) physize(np) = 0.0 _d 0
+      IF (np.EQ.1) physize(np) = 1
+      IF (np.EQ.2) physize(np) = 0
 #endif
 #ifdef NINE_SPECIES_SETUP
       IF (np.LT.3.or.np.EQ.6.or.np.EQ.9) then
-        physize(np) = 1.0 _d 0
+        physize(np) = 1
       ELSE
-        physize(np) = 0.0 _d 0
+        physize(np) = 0
       ENDIF
 #endif
 c
 c phyto either diatoms (diacoc=1.0) and use silica or cocolithophor
 c (diacoc=2.0) and produce PIC or neither (diacoc=0.0)
 c if they are large
-      IF (physize(np).EQ.1.0 _d 0) then
+      IF (physize(np).EQ.1) then
         RandNoDiatom = gud_random(myThid)
         IF (diacoc(np) .LT. 0) THEN
          IF(RandNoDiatom .GT. 0.500 _d 0)then
-          diacoc(np) = 1.0 _d 0
+          diacoc(np) = 1
          ELSE
-          diacoc(np) = 0.0 _d 0
+          diacoc(np) = 0
          ENDIF
 c         IF(RandNo .GT. 0.670 _d 0)then
-c           diacoc(np) = 1.0 _d 0
+c           diacoc(np) = 1
 c         ENDIF
 c         IF(RandNo .GT. 0.330 _d 0 .AND. RandNo. le. 0.67 _d 0)then
-c           diacoc(np) = 2.0 _d 0
+c           diacoc(np) = 2
 c         ENDIF
 c         IF (RandNo .LE. 0.330 _d 0) then
-c           diacoc(np) = 0.0 _d 0
+c           diacoc(np) = 0
 c         ENDIF
         ENDIF
       ELSE
-         diacoc(np) = 0.0 _d 0
+         diacoc(np) = 0
       ENDIF
 #ifdef TWO_SPECIES_SETUP
-      diacoc(np) = 0.0 _d 0
+      diacoc(np) = 0
 #endif
 #ifdef NINE_SPECIES_SETUP
       IF (np.EQ.1) then
-        diacoc(np) = 1.0 _d 0
+        diacoc(np) = 1
       ELSE
-        diacoc(np) = 0.0 _d 0
+        diacoc(np) = 0
       ENDIF
       IF (np.EQ.9) then
-        diacoc(np) = 2.0 _d 0
+        diacoc(np) = 2
       ENDIF
 #endif
 
-c phyto either diazotrophs (diazotroph=1.0) or not (diazotroph=0.0)
+c phyto either diazotrophs (diazo=1.0) or not (diazo=0.0)
       RandNoDiazo = gud_random(myThid)
-      IF (diazotroph(np) .LT. 0) THEN
+      IF (diazo(np) .LT. 0) THEN
        IF(RandNoDiazo .GT. 0.6700 _d 0)then
-        diazotroph(np) = 1.0 _d 0
+        diazo(np) = 1
        ELSE
-        diazotroph(np) = 0.0 _d 0
+        diazo(np) = 0
        ENDIF
       ENDIF
 c TEST ...........................................
 #ifndef ALLOW_DIAZ
-      diazotroph(np) = 0.0 _d 0
+      diazo(np) = 0
 #endif
 c TEST ...........................................
 #ifdef TWO_SPECIES_SETUP
-      diazotroph(np) = 0.0 _d 0
+      diazo(np) = 0
 #endif
 #ifdef NINE_SPECIES_SETUP
       IF (np.GT.5.AND.np.LT.8) then
-         diazotroph(np) = 1.0 _d 0
+         diazo(np) = 1
       ELSE
-         diazotroph(np) = 0.0 _d 0
+         diazo(np) = 0
       ENDIF
 #endif
 
       RandNoGrow = gud_random(myThid)
       RandNoMort = gud_random(myThid)
 c nutrient source 
-      IF(diazotroph(np) .ne. 1.0 _d 0)then
+      IF(diazo(np) .ne. 1)then
          RandNoNsrc = gud_random(myThid)
          IF (nsource(np) .LT. 0) THEN
-          IF (physize(np).EQ.1.0 _d 0) then   
+          IF (physize(np).EQ.1) then   
            nsource(np) = 3
           ELSE
            IF(RandNoNsrc .GT. 0.670 _d 0)then
@@ -304,12 +293,13 @@ c each 'type', once assigned, gets given actual values in wavebands_init_vari.F
 c ANNA_Q could use tricho abs and scattering spectra (Subramanian et al. 1999)
 c ANNA_Q think diaz is turned off for now
 c Diaz will be 0 if not defined, and will have nsource = 0. 
+      print*,'nopt',nopt,np,nsource(np),ap_type(np)
       IF (nOpt.EQ.4) then
        RandNoAPType3 = gud_random(myThid)
        RandNoAPType2 = gud_random(myThid)
        RandNoAPType1 = gud_random(myThid)
        IF (ap_type(np) .LT. 0) THEN
-       IF (nsource(np).EQ.0) then   !if diazotroph
+       IF (nsource(np).EQ.0) then   !if diazo
         IF (physize(np).EQ.1.0d0) then !if BIG
         ap_type(np) = 1                !euk (assume diatom association)
         ELSE                           !or
@@ -345,12 +335,13 @@ c Diaz will be 0 if not defined, and will have nsource = 0.
         ENDIF
        ENDIF
        ENDIF
+       print*,'ap',np,nsource(np),ap_type(np)
       ENDIF
 c
       IF (nOpt.EQ.12) then
        RandNoAPType4 = gud_random(myThid)
        IF (ap_type(np) .LT. 0) THEN
-       IF (nsource(np).EQ.0) then   !if diazotroph
+       IF (nsource(np).EQ.0) then   !if diazo
         IF (physize(np).EQ.1.0d0) then !if BIG
          IF (diacoc(np).EQ.1.0d0) then
            ap_type(np) = 5                !diatom association
@@ -422,7 +413,7 @@ c ANNA ENDIF
       RandNoTemp = gud_random(myThid)
       RandNoKsat = gud_random(myThid)
 #ifndef GEIDER
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
          RandNoKsatPAR = gud_random_normal(myThid)
          RandNoKinhPAR = gud_random_normal(myThid)
       ELSE
@@ -441,7 +432,7 @@ c QQ remove someday
 C ======================================================================
 
 c size of phytoplankton
-      IF(physize(np).EQ. 1.0 _d 0)then
+      IF(physize(np).EQ. 1)then
         dm = 10. _d 0  ! diameter (micrometer)
       ELSE
         dm = 1. _d 0  ! diameter (micrometer)
@@ -455,27 +446,27 @@ c common block variables (in m and m3)
 
 c growth rates
 c big/small phyto growth rates..
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         growthdays = Biggrow +RandNoGrow*Biggrowrange
       ELSE
         growthdays = Smallgrow +RandNoGrow*Smallgrowrange
       ENDIF
 #ifdef TWO_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         growthdays = Biggrow 
       ELSE
         growthdays = Smallgrow
       ENDIF
 #endif
 #ifdef NINE_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         growthdays = Biggrow
       ELSE
         growthdays = Smallgrow
       ENDIF
 #endif
 c but diazotrophs always slower due to energetics
-      IF(diazotroph(np) .EQ. 1.0 _d 0) then
+      IF(diazo(np) .EQ. 1) then
           growthdays = growthdays * diaz_growfac
       ENDIF
 c cocco have slower growth than other large
@@ -495,7 +486,7 @@ c now convert to a growth rate
 
 c mortality and export fraction rates
 c big/small phyto mortality rates..
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         mortdays = Bigmort +RandnoMort*Bigmortrange
         ExportFrac(np)=Bigexport
       ELSE
@@ -503,14 +494,14 @@ c big/small phyto mortality rates..
         ExportFrac(np)=Smallexport
       ENDIF
 #ifdef TWO_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         mortdays = Bigmort
       ELSE
         mortdays = Smallmort
       ENDIF
 #endif
 #ifdef NINE_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         mortdays = Bigmort
       ELSE
         mortdays = Smallmort
@@ -536,7 +527,7 @@ c generate phyto Temperature Function parameters
 c.......................................................
       phytoTempCoeff(np) = tempcoeff1
       phytoTempExp1(np) = tempcoeff3
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         phytoTempExp2(np) = tempcoeff2_big
       ELSE
         phytoTempExp2(np) = tempcoeff2_small
@@ -554,18 +545,18 @@ cswd    phytoTempOptimum(np) = 30.0 _d 0 - RandNo*28.0 _d 0
 c stoichiometric ratios for each functional group of phyto 
 c relative to phosphorus  - the base currency nutrient
 c set Si:P
-      IF(diacoc(np) .EQ. 1.0 _d 0)then
+      IF(diacoc(np) .EQ. 1)then
         R_SiC(np) =  val_R_SiC_diatom
       ELSE
         R_SiC(np) = 0.0 _d 0
       ENDIF
-      IF(diacoc(np) .EQ. 2.0 _d 0)then
+      IF(diacoc(np) .EQ. 2)then
         R_PICPOC(np) =  val_R_PICPOC
       ELSE
         R_PICPOC(np) = 0.0 _d 0
       ENDIF
 c set N:P and iron requirement according to diazotroph status
-      IF(diazotroph(np) .EQ. 1.0 _d 0)then
+      IF(diazo(np) .EQ. 1)then
         R_NC(np) = val_R_NC_diaz
         R_FeC(np) =  val_R_FeC_diaz
       ELSE
@@ -575,7 +566,7 @@ c set N:P and iron requirement according to diazotroph status
 c set C:P ratio
         R_PC(np) = val_R_PC
 c set sinking rates according to allometry
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
          wsink(np) = BigSink
       ELSE 
          wsink(np) = SmallSink
@@ -583,7 +574,7 @@ c set sinking rates according to allometry
       wswim(np) = 0.0 _d 0
 c half-saturation coeffs 
 
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
          ksatPO4(np) = BigPsat + RandNoKsat*BigPsatrange
       ELSE
 c          ksatPO4(np) = SmallPsat + RandNoKsat*SmallPsatrange
@@ -601,18 +592,18 @@ c            ksatPO4(np) = SmallPsat + RandNoKsat*SmallPsatrange
            ksatPO4(np) = ProcPsat + RandNoKsat*ProcPsatrange
          ENDIF
       ENDIF
-      IF (diacoc(np) .EQ. 2.0 _d 0) THEN
+      IF (diacoc(np) .EQ. 2) THEN
          ksatPO4(np) = CoccoPsat + RandNoKsat*CoccoPsatrange
       ENDIF
 #ifdef TWO_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
          ksatPO4(np) = BigPsat 
       ELSE
          ksatPO4(np) = SmallPsat
       ENDIF
 #endif
 #ifdef NINE_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
          ksatPO4(np) = BigPsat
       ELSE
          ksatPO4(np) = SmallPsat
@@ -620,7 +611,7 @@ c            ksatPO4(np) = SmallPsat + RandNoKsat*SmallPsatrange
       IF (nsource(np).EQ.2.or.nsource(np).EQ.1) then
          ksatPO4(np) = ProcPsat 
       ENDIF
-      IF (diacoc(np) .EQ. 2.0 _d 0) then
+      IF (diacoc(np) .EQ. 2) then
          ksatPO4(np) = ksatPO4(np)/0.8 _d 0 
       ENDIF
 #endif
@@ -644,7 +635,7 @@ c     0.35=Av High Light Adapted, 0.8=Av Low Light Adapted
 c     kinhPAR  {0.0 - 3.0}
 c     0.5 =Av High Light Adapted, 2.0=Av Low Light Adapted
 c High Light Groups for Large size:
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
          ksatPAR(np) = abs(Bigksatpar+Bigksatparstd*RandNoKsatPAR)
 
          kinhPAR(np) = abs(BigkinhPAR+BigkinhPARstd*RandNoKinhPAR)
@@ -656,7 +647,7 @@ c Low Light Groups for Small size:
          kinhPAR(np) = abs(smallkinhPAR+smallkinhPARstd*RandNoKinhPAR)
       ENDIF
 #ifdef TWO_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
          ksatPAR(np) = abs(Bigksatpar)
          kinhPAR(np) = abs(Bigkinhpar)
       ELSE
@@ -665,7 +656,7 @@ c Low Light Groups for Small size:
       ENDIF
 #endif
 #ifdef NINE_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
          ksatPAR(np) = abs(Bigksatpar)
          kinhPAR(np) = abs(BigkinhPAR)
       ELSE
@@ -683,27 +674,27 @@ c Low Light Groups for Small size:
 
 #ifdef GEIDER
 c big/small phyto growth rates..
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         growthdays = Biggrow +RandNoGrowGeider*Biggrowrange
       ELSE
         growthdays = Smallgrow +RandNoGrowGeider*Smallgrowrange
       ENDIF
 #ifdef TWO_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         growthdays = Biggrow 
       ELSE
         growthdays = Smallgrow 
       ENDIF
 #endif
 #ifdef NINE_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         growthdays = Biggrow
       ELSE
         growthdays = Smallgrow
       ENDIF
 #endif
 c but diazotrophs always slower due to energetics
-      IF(diazotroph(np) .EQ. 1.0 _d 0) then
+      IF(diazo(np) .EQ. 1) then
           growthdays = growthdays * diaz_growfac
       ENDIF
 c cocco have slower growth than other large
@@ -731,7 +722,7 @@ c only LL Pro are inhibited
        ENDIF
 #else
 c no inhibition
-       IF(physize(np) .EQ. 1.0 _d 0)then
+       IF(physize(np) .EQ. 1)then
          inhibcoef_geid(np) = 0. _d 0
        ELSE
          inhibcoef_geid(np) = 0. _d 0  !inhibcoef_geid_val
@@ -740,7 +731,7 @@ c no inhibition
 c
 
 c big/small phyto PI slope (chl specific)
-c        IF(physize(np) .EQ. 1.0 _d 0)then
+c        IF(physize(np) .EQ. 1)then
 c          alphachl(np) = Bigalphachl +Randno*Bigalphachlrange
 c        ELSE
 c          alphachl(np) = Smallalphachl +RandNo*Smallalphachlrange
@@ -748,20 +739,20 @@ c        ENDIF
 
 c ANNA gieder via mQyield instead of alpha
 c big/small phyto Maximum Quantum Yield
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         mQyield(np) = BigmQyield +RandNoYield*BigmQyieldrange
       ELSE
         mQyield(np) = SmallmQyield +RandNoYield*SmallmQyieldrange
       ENDIF
 #ifdef TWO_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         mQyield(np) = BigmQyield
       ELSE
         mQyield(np) = SmallmQyield
       ENDIF
 #endif
 #ifdef NINE_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         mQyield(np) = BigmQyield
       ELSE
         mQyield(np) = SmallmQyield
@@ -775,20 +766,20 @@ c ANNA value is mean of vals for big and small.
 #endif
 
 c big/small phyto C:Chl max
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         chl2cmax(np) = Bigchl2cmax +RandnoChl2C*Bigchl2cmaxrange
       ELSE
         chl2cmax(np) = Smallchl2cmax +RandNoChl2C*Smallchl2cmaxrange
       ENDIF
 #ifdef TWO_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         chl2cmax(np) = Bigchl2cmax 
       ELSE
         chl2cmax(np) = Smallchl2cmax 
       ENDIF
 #endif
 #ifdef NINE_SPECIES_SETUP
-      IF(physize(np) .EQ. 1.0 _d 0)then
+      IF(physize(np) .EQ. 1)then
         chl2cmax(np) = Bigchl2cmax
       ELSE
         chl2cmax(np) = Smallchl2cmax
@@ -797,62 +788,29 @@ c big/small phyto C:Chl max
 c ANNA chl2cmin added
 c       chl2cmin(np) = 0.003  _d 0 * 12. _d 0  ! mg Chl a/mmol C
 
-#ifdef ALLOW_RADTRANS
-      i = ap_type(np)
-      IF (1 .LE. i .AND. i .LE. nOpt) THEN
-       DO l = 1,nlam
-         aphy_chl(np,l) = aphy_chl_type(i,l)
-         aphy_chl_ps(np,l) = aphy_chl_ps_type(i,l)
-         bphy_chl(np,l) = bphy_chl_type(i,l)
-         bbphy_chl(np,l) = bbphy_chl_type(i,l)
-       ENDDO
-      ELSE
-       WRITE(msgBuf,'(2A,2I4)') 'GUD_GENERATE: ',
-     &  "invalid optical phyto type:",np,i
-       CALL PRINT_ERROR( msgBuf, myThid )
-       STOP 'ABNORMAL END: S/R GUD_GENERATE'
-      ENDIF
-
-      DO l = 1, nlam
-        alphachl(np,l) = mQyield(np) * aphy_chl_ps(np,l)
-      ENDDO
-      sm = 0.0 _d 0
-      DO l = 1, nlam
-        sm = sm + wb_width(l)*alphachl(np,l)
-      ENDDO
-      alpha_mean(np) = sm/wb_totalWidth
-
-      chl2cmin(np)=chl2cmax(np)/
-     &           (1+(chl2cmax(np)* alpha_mean(np) *2000. _d 0)/
-     &              (2*pcmax(np)))
-
-#else /* ALLOW_RADTRANS */
-      alphachl(np,1) = mQyield(np) * aphy_chl_ave
-      chl2cmin(np) = 0. _d 0
-#endif /* ALLOW_RADTRANS */
-
 #endif /* GEIDER */
 
+      print*,'nsource',np,nsource(np)
       IF (nsource(np) .EQ. 3) THEN
-        useNH4(np) = 1.0
-        useNO2(np) = 1.0
-        useNO3(np) = 1.0
-        combNO(np) = 1.0
+        useNH4(np) = 1
+        useNO2(np) = 1
+        useNO3(np) = 1
+        combNO(np) = 1
       ELSEIF (nsource(np) .EQ. 2) THEN
-        useNH4(np) = 1.0
-        useNO2(np) = 0.0
-        useNO3(np) = 0.0
-        combNO(np) = 0.0
+        useNH4(np) = 1
+        useNO2(np) = 0
+        useNO3(np) = 0
+        combNO(np) = 0
       ELSEIF (nsource(np) .EQ. 1) THEN
-        useNH4(np) = 1.0
-        useNO2(np) = 1.0
-        useNO3(np) = 0.0
-        combNO(np) = 0.0
+        useNH4(np) = 1
+        useNO2(np) = 1
+        useNO3(np) = 0
+        combNO(np) = 0
       ELSE
-        useNH4(np) = 0.0
-        useNO2(np) = 0.0
-        useNO3(np) = 0.0
-        combNO(np) = 0.0
+        useNH4(np) = 0
+        useNO2(np) = 0
+        useNO3(np) = 0
+        combNO(np) = 0
       ENDIF
 
       IF (diacoc(np) .NE. 1) THEN
@@ -868,60 +826,34 @@ C ======================================================================
 c     zooplankton
 C ======================================================================
 
-      IF ( iMaxPred-iMinPred .NE. 1 ) THEN
+      IF ( oldTwoGrazers ) THEN
+c assume zoo(1) = small, zoo(2) = big
+
+       IF ( iMaxPred-iMinPred .NE. 1 ) THEN
         WRITE(msgBuf,'(2A)') 'GUD_GENERATE: ',
-     &    'must have exactly 2 predators'
+     &    'must have exactly 2 predators when oldTwoGrazers=.TRUE.'
         CALL PRINT_ERROR( msgBuf , 1)
         STOP 'ABNORMAL END: S/R GUD_GENERATE'
-      ENDIF
-
-c assume zoo(1) = small, zoo(2) = big
-      physize(iMinPred) = 0.0 _d 0
-      physize(iMaxPred) = 1.0 _d 0
-      grazemax(iMinPred) = GrazeFast
-      grazemax(iMaxPred) = GrazeFast
-      ExportFrac(iMinPred) = ZooexfacSmall
-      ExportFrac(iMaxPred) = ZooexfacBig
-      mort(iMinPred) = ZoomortSmall
-      mort(iMaxPred) = ZoomortBig
-      mort2(iMinPred) = ZoomortSmall2
-      mort2(iMaxPred) = ZoomortBig2
-      ExportFracGraz(iMinPred) = ExGrazFracbig
-      ExportFracGraz(iMaxPred) = ExGrazFracsmall
-c
-      DO nz = iMinPred, iMaxPred
-        R_NC(nz) = val_R_NC_zoo
-        R_PC(nz) = val_R_PC_zoo
-        R_SiC(nz) = val_R_SiC_zoo
-        R_FeC(nz) = val_R_FeC_zoo
-        R_ChlC(nz) = val_R_ChlC_zoo
-        R_PICPOC(nz) = val_R_PICPOC_zoo
-
-        Xmin(nz) = 0.0 _d 0
-
-        kgrazesat(nz) = kgrazesat_val
-C zooplankton do have temperature-dependent mortality
-        mortTempFuncMin(nz) = 0.0 _d 0
-        mort2TempFuncMin(nz) = 0.0 _d 0
-
-        respiration(nz) = 0.0 _d 0
-        wsink(nz) = 0.0 _d 0
-        wswim(nz) = 0.0 _d 0
-
-c size of zooplankton
-        IF(physize(nz).EQ. 1.0 _d 0)then
-          dm = 300. _d 0  ! diameter (micrometer)
-        ELSE
-          dm = 30. _d 0  ! diameter (micrometer)
-        ENDIF
-c zooplankton volume in micrometers cubed
-        volp = 4. _d 0/3. _d 0 *PI*(dm/2. _d 0)**3 _d 0
-c
-c common block variables (in m and m3)
-        phyto_esd(nz) = dm* 1. _d -6
-        phyto_vol(nz) = volp* 1. _d -18
+       ENDIF
+       physize(iMinPred) = 0
+       physize(iMaxPred) = 1
+       grazemax(iMinPred) = GrazeFast
+       grazemax(iMaxPred) = GrazeFast
+       ExportFrac(iMinPred) = ZooexfacSmall
+       ExportFrac(iMaxPred) = ZooexfacBig
+       mort(iMinPred) = ZoomortSmall
+       mort(iMaxPred) = ZoomortBig
+       mort2(iMinPred) = ZoomortSmall2
+       mort2(iMaxPred) = ZoomortBig2
+       DO np = iMinPrey, iMaxPrey
+        ExportFracPreyPred(np,iMinPred) = ExGrazFracbig
+        ExportFracPreyPred(np,iMaxPred) = ExGrazFracsmall
+       ENDDO
+       dmzoo(iMinPred) = 30. _d 0   ! diameter (micrometer)
+       dmzoo(iMaxPred) = 300. _d 0  ! diameter (micrometer)
 c palatibity according to "allometry"
 c big grazers preferentially eat big phyto etc...
+       DO nz = iMinPred, iMaxPred
         DO np = iMinPrey, iMaxPrey
           IF (physize(nz).EQ.physize(np)) then
             palat(np,nz) = palathi
@@ -948,6 +880,53 @@ c other large phyto less palatible
           ENDIF
 c need something in here for tricho
         ENDDO
+       ENDDO
+
+c     not oldTwoGrazers
+      ELSE
+
+       DO nz = iMinPred, iMaxPred
+        grazemax(nz) = GrazeRate
+        ExportFrac(nz) = Zooexfac
+        mort(nz) = Zoomort
+        mort2(nz) = Zoomort2
+        dmzoo(nz) = ZooDM
+        DO np = iMinPrey, iMaxPrey
+         palat(np,nz) = val_palat
+         asseff(np,nz) = val_ass_eff
+         ExportFracPreyPred(np,nz) = ExGrazFrac
+        ENDDO
+       ENDDO
+
+c     oldTwoGrazers
+      ENDIF
+
+c
+      DO nz = iMinPred, iMaxPred
+        R_NC(nz) = val_R_NC_zoo
+        R_PC(nz) = val_R_PC_zoo
+        R_SiC(nz) = val_R_SiC_zoo
+        R_FeC(nz) = val_R_FeC_zoo
+        R_ChlC(nz) = val_R_ChlC_zoo
+        R_PICPOC(nz) = val_R_PICPOC_zoo
+
+        Xmin(nz) = 0.0 _d 0
+
+        kgrazesat(nz) = kgrazesat_val
+C zooplankton do have temperature-dependent mortality
+        mortTempFuncMin(nz) = 0.0 _d 0
+        mort2TempFuncMin(nz) = 0.0 _d 0
+
+        respiration(nz) = 0.0 _d 0
+        wsink(nz) = 0.0 _d 0
+        wswim(nz) = 0.0 _d 0
+
+c zooplankton volume in micrometers cubed
+        volp = 4. _d 0/3. _d 0 *PI*(dmzoo(nz)/2. _d 0)**3 _d 0
+c
+c common block variables (in m and m3)
+        phyto_esd(nz) = dmzoo(nz)* 1. _d -6
+        phyto_vol(nz) = volp* 1. _d -18
       ENDDO
 
 #endif /* ALLOW_GUD */

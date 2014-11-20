@@ -1,0 +1,48 @@
+{{ EDIT_THIS_FILE }}
+
+      NAMELIST/gud_exf_params/
+#ifdef ALLOW_RADTRANS
+C
+     &    OASIM_Edfile,
+     &    OASIM_Esfile,
+     &    OASIMstartdate1,
+     &    OASIMstartdate2,
+     &    OASIMperiod,
+     &    OASIMconst,
+     &    OASIM_exfremo_intercept,
+     &    OASIM_exfremo_slope,
+     &    OASIMmask,
+     &    gud_inscal_OASIM,
+#endif
+{% for i,(fld,pre) in enumerate(flds) %}C
+     &    {{pre}}file,
+     &    {{pre}}startdate1,
+     &    {{pre}}startdate2,
+     &    {{pre}}period,
+     &    {{pre}}const,
+     &    {{pre}}_exfremo_intercept,
+     &    {{pre}}_exfremo_slope,
+     &    {{pre}}mask,
+     &    gud_inscal_{{pre}}{{ ',\n' if i<len(flds)-1 else '' }}{% end %}
+
+#ifdef USE_EXF_INTERPOLATION
+      NAMELIST/gud_interp_params/
+#ifdef ALLOW_RADTRANS
+C
+     &    OASIM_lon0,
+     &    OASIM_lat0,
+     &    OASIM_nlon,
+     &    OASIM_nlat,
+     &    OASIM_lon_inc,
+     &    OASIM_interpMethod,
+     &    OASIM_lat_inc
+#endif
+{% for i,(fld,pre) in enumerate(flds) %}C
+     &    {{pre}}_lon0,
+     &    {{pre}}_lat0,
+     &    {{pre}}_nlon,
+     &    {{pre}}_nlat,
+     &    {{pre}}_lon_inc,
+     &    {{pre}}_interpMethod,
+     &    {{pre}}_lat_inc{{ ',\n' if i<len(flds)-1 else '' }}{% end %}
+#endif

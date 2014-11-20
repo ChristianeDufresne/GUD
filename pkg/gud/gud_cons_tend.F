@@ -81,13 +81,13 @@ c Phosphorus budget
           tmptotP=tmptotP+gPtr(i,j,k,bi,bj,iDOP)*vol    !DOP
           tmptotP=tmptotP+gPtr(i,j,k,bi,bj,iPOP)*vol   !POP
           DO np=1,nplank
-           IF (np .LE. npquota) THEN
+#ifdef PQUOTA
             iTr=ip+np-1
             tmptotP=tmptotP+gPtr(i,j,k,bi,bj,iTr)*vol  !Phy 
-           ELSE
+#else
             iTr=ic+np-1
             tmptotP=tmptotP+gPtr(i,j,k,bi,bj,iTr)*R_PC(np)*vol  !Phy 
-           ENDIF
+#endif
           ENDDO
 #ifdef ALLOW_CDOM
           tmptotP=tmptotP+gPtr(i,j,k,bi,bj,iCDOM)*R_PC_CDOM*vol     !CDOM
@@ -100,13 +100,13 @@ c Nitrogen budget
           tmptotN=tmptotN+gPtr(i,j,k,bi,bj,iDON)*vol    !DON
           tmptotN=tmptotN+gPtr(i,j,k,bi,bj,iPON)*vol   !PON
           DO np=1,nplank
-           IF (np .LE. nnquota) THEN
+#ifdef NQUOTA
             iTr=in+np-1
             tmptotN=tmptotN+gPtr(i,j,k,bi,bj,iTr)*vol  !Phy
-           ELSE
+#else
             iTr=ic+np-1
             tmptotN=tmptotN+gPtr(i,j,k,bi,bj,iTr)*R_NC(np)*vol  !Phy
-           ENDIF
+#endif
           ENDDO
 #ifdef ALLOW_CDOM
           tmptotN=tmptotN+gPtr(i,j,k,bi,bj,iCDOM)*R_NC_CDOM*vol  !CDOM
@@ -117,13 +117,13 @@ c Iron budget
           tmptotFe=tmptotFe+gPtr(i,j,k,bi,bj,iDOFe)*vol   !DOFe
           tmptotFe=tmptotFe+gPtr(i,j,k,bi,bj,iPOFe)*vol   !POFe
           DO np=1,nplank
-           IF (np .LE. nfequota) THEN
+#ifdef FEQUOTA
             iTr=ife+np-1
             tmptotFe=tmptotFe+gPtr(i,j,k,bi,bj,iTr)*vol  !Phy
-           ELSE
+#else
             iTr=ic+np-1
             tmptotFe=tmptotFe+gPtr(i,j,k,bi,bj,iTr)*R_FeC(np)*vol  !Phy
-           ENDIF
+#endif
           ENDDO
 #ifdef ALLOW_CDOM
           tmptotFe=tmptotFe+gPtr(i,j,k,bi,bj,iCDOM)*R_FeC_CDOM*vol  !CDOM
@@ -133,13 +133,13 @@ c Silica budget
           tmptotSi=tmptotSi+gPtr(i,j,k,bi,bj,iSiO2)*vol   !Si
           tmptotSi=tmptotSi+gPtr(i,j,k,bi,bj,iPOSi)*vol   !POSi
           DO np=1,nplank
-           IF (np .LE. nsiquota) THEN
+#ifdef SIQUOTA
             iTr=isi+np-1
             tmptotSi=tmptotSi+gPtr(i,j,k,bi,bj,iTr)*vol  !Phy
-           ELSE
+#else
             iTr=ic+np-1
             tmptotSi=tmptotSi+gPtr(i,j,k,bi,bj,iTr)*R_SiC(np)*vol  !Phy
-           ENDIF
+#endif
           ENDDO
 c------------------------------------------------------------
 #ifdef ALLOW_CARBON

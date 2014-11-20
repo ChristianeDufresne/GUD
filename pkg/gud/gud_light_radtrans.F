@@ -34,7 +34,8 @@ C#include "DYNVARS.h"
 #endif
 
 C !INPUT PARAMETERS: ===================================================
-C  myThid               :: thread number
+C  myTime :: time at end of (sub)timestep
+C  myThid :: thread number
       _RL myTime
       INTEGER bi, bj, myIter, myThid
 
@@ -50,7 +51,6 @@ C  i,j                  :: loop indices
 C  k                    :: vertical level
       INTEGER i,j,k,l,jp
       INTEGER iyr,imon,iday,isec,lp,wd,mydate(4)
-      _RL newtime
       _RL solz(sNx,sNy)
       _RL rmud
       _RL part
@@ -75,7 +75,7 @@ C
 
 C ======================================================================
 C get current date and time of day: iyr/imon/iday+isec
-      CALL CAL_GETDATE( myIter, newtime, mydate, mythid )
+      CALL CAL_GETDATE( myIter, mytime, mydate, mythid )
       CALL CAL_CONVDATE( mydate,iyr,imon,iday,isec,lp,wd,mythid )
 
       DO j=1,sNy

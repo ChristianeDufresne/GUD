@@ -6,6 +6,7 @@ gud_readtraits.F
 #include "EEPARAMS.h"
 #include "PARAMS.h"
 #include "GUD_SIZE.h"
+#include "GUD_PARAMS.h"
 #include "GUD_GENPARAMS.h"
 #include "GUD_TRAITPARAMS.h"
 
@@ -38,19 +39,16 @@ USENH4NO2NO3 = 3
 
 DIMENSION(nplank)
 
-physize(:)          = UNINIT_I
-diacoc(:)           = UNINIT_I
-diazotroph(:)       = UNINIT_I
-nsource(:)          = UNINIT_I
+diazo(:)            = UNINIT_I
 useNH4(:)           = UNINIT_I
 useNO2(:)           = UNINIT_I
 useNO3(:)           = UNINIT_I
 combNO(:)           = UNINIT_I
 ap_type(:)          = UNINIT_I
 
-Xmin(:)             = UNSET_RL
-amminhib(:)         = UNSET_RL
-acclimtimescl(:)    = UNSET_RL
+Xmin(:)             = UNINIT_RL
+amminhib(:)         = UNINIT_RL
+acclimtimescl(:)    = UNINIT_RL
 
 PCmax(:)            = UNINIT_RL
 mort(:)             = UNINIT_RL
@@ -87,19 +85,12 @@ kinhPAR(:)          = UNINIT_RL
 inhibcoef_geid(:)   = UNINIT_RL
 mQyield(:)          = UNINIT_RL
 chl2cmax(:)         = UNINIT_RL
-chl2cmin(:)         = UNINIT_RL
-alpha_mean(:)       = UNINIT_RL
 
-
-DIMENSION(nplank,nlam)
-
-alphachl(:,:) = UNINIT_RL
 
 
 DIMENSION(nplank)
 
 grazemax(:)       = UNINIT_RL
-ExportFracGraz(:) = UNINIT_RL
 kgrazesat(:)      = UNINIT_RL
 
 
@@ -107,6 +98,7 @@ DIMENSION(nplank,nplank)
 
 palat(:,:)  = UNINIT_RL
 asseff(:,:) = UNINIT_RL
+ExportFracPreyPred(:,:) = UNINIT_RL
 
 
 DIMENSION(nplank)
@@ -123,6 +115,7 @@ Qfemin(:)              = UNINIT_RL
 Vmax_NH4(:)            = UNINIT_RL
 Vmax_NO2(:)            = UNINIT_RL
 Vmax_NO3(:)            = UNINIT_RL
+Vmax_N(:)              = UNINIT_RL
 Vmax_PO4(:)            = UNINIT_RL
 Vmax_SiO2(:)           = UNINIT_RL
 Vmax_FeT(:)            = UNINIT_RL
@@ -158,7 +151,60 @@ bbphy_chl(:,:)         = UNINIT_RL
 ! dependent and constant (not read-in) parameters
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+DIMENSION(nplank,nlam)
+
+alphachl(:,:) = UNINIT_RL  ! mmol C s-1 (uEin/m-2/s)-1 (mg Chl)-1
+
 DIMENSION(nplank)
+
+alpha_mean(:)       = UNINIT_RL
+chl2cmin(:)         = UNINIT_RL
+
+LOCAL: INTEGER jp
+LOCAL: INTEGER jp2
+LOCAL: INTEGER l
+LOCAL: INTEGER iopt
+
+
+#ifdef ALLOW_RADTRANS
+CODE: DO jp = iMinPhoto, iMaxPhoto
+CODE:  print*,'ap_type',jp,ap_type(jp)
+CODE:  iopt = ap_type(jp)
+CODE:  IF (1 .LE. iopt .AND. iopt .LE. nOpt) THEN
+CODE:   DO l = 1, nlam
+CODE:    aphy_chl(jp,l) = aphy_chl_type(iopt,l)
+CODE:    aphy_chl_ps(jp,l) = aphy_chl_ps_type(iopt,l)
+CODE:    bphy_chl(jp,l) = bphy_chl_type(iopt,l)
+CODE:    bbphy_chl(jp,l) = bbphy_chl_type(iopt,l)
+CODE:    alphachl(jp,l) = mQyield(jp) * aphy_chl_ps(jp,l)
+CODE:   ENDDO
+CODE:  ELSE
+CODE:   WRITE(msgBuf,'(A,2I4)')'invalid optical phyto type:',jp,iopt
+CODE:   CALL PRINT_ERROR( msgBuf, myThid )
+CODE:   STOP 'ABNORMAL END: S/R GUD_READTRAITS'
+CODE:  ENDIF
+CODE:  alpha_mean(jp) = 0.0 _d 0
+CODE:  DO l = 1, nlam
+CODE:   alpha_mean(jp) = alpha_mean(jp) + wb_width(l)*alphachl(jp,l)
+CODE:  ENDDO
+CODE:  alpha_mean(jp) = alpha_mean(jp)/wb_totalWidth
+CODE: ENDDO
+#else
+CODE: DO jp = iMinPhoto, iMaxPhoto
+CODE:  alphachl(jp,1) = mQyield(jp) * aphy_chl_ave
+CODE:  alpha_mean(jp) = alphachl(jp,1)
+CODE: ENDDO
+#endif /* ALLOW_RADTRANS */
+
+#ifdef ALLOW_RADTRANS
+CODE: DO jp = 1, nplank
+CODE:  chl2cmin(jp)=chl2cmax(jp)/(1+(chl2cmax(jp)* alpha_mean(jp) *2000. _d 0)/(2*pcmax(jp)))
+CODE: ENDDO
+#else
+CODE: DO jp = iMinPhoto, iMaxPhoto
+CODE:  chl2cmin(jp) = 0. _d 0
+CODE: ENDDO
+#endif
 
 CODE: WHERE(ksatPAR*kinhPAR .GT. 0.0)
 normI(:)=1.0/(ksatPAR(:)/(ksatPAR(:)+kinhPAR(:))*EXP(kinhPAR(:)/ksatPAR(:)*LOG(kinhPAR(:)/(ksatPAR(:)+kinhPAR(:)))))
@@ -166,4 +212,102 @@ CODE: ELSEWHERE
 CODE: normI(:) = 1.0
 CODE: ENDWHERE
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! zero out unused trait entries, so they do not mess up the traits file
+CODE: DO jp=1,nplank
+#ifndef NQUOTA
+CODE:  Vmax_NH4(jp) = GUD_UNUSED
+CODE:  Vmax_NO2(jp) = GUD_UNUSED
+CODE:  Vmax_NO3(jp) = GUD_UNUSED
+CODE:  Vmax_N(jp) = GUD_UNUSED
+CODE:  Qnmax(jp) = GUD_UNUSED
+CODE:  Qnmin(jp) = GUD_UNUSED
+#endif
+#ifndef PQUOTA
+CODE:  Vmax_PO4(jp) = GUD_UNUSED
+CODE:  Qpmax(jp) = GUD_UNUSED
+CODE:  Qpmin(jp) = GUD_UNUSED
+#endif
+#ifndef SIQUOTA
+CODE:  Vmax_SiO2(jp) = GUD_UNUSED
+CODE:  Qsimax(jp) = GUD_UNUSED
+CODE:  Qsimin(jp) = GUD_UNUSED
+#endif
+#ifndef FEQUOTA
+CODE:  Vmax_FeT(jp) = GUD_UNUSED
+CODE:  Qfemax(jp) = GUD_UNUSED
+CODE:  Qfemin(jp) = GUD_UNUSED
+#endif
+#ifndef ALLOW_EXUDE
+CODE:  kexcC(jp) = GUD_UNUSED
+CODE:  kexcN(jp) = GUD_UNUSED
+CODE:  kexcP(jp) = GUD_UNUSED
+CODE:  kexcSi(jp) = GUD_UNUSED
+CODE:  kexcFe(jp) = GUD_UNUSED
+#endif
+#ifdef GEIDER
+CODE:  ksatpar(jp) = GUD_UNUSED
+CODE:  kinhpar(jp) = GUD_UNUSED
+CODE:  normI(jp) = GUD_UNUSED
+#else
+CODE:  inhibcoef_geid(jp) = GUD_UNUSED
+#endif
+#ifndef ALLOW_RADTRANS
+CODE:  ap_type(jp) = GUD_UNUSED
+#endif
+CODE:  IF (jp.LT.iMinPhoto .OR. jp.GT.iMaxPhoto) THEN
+CODE:   diazo(jp) = GUD_UNUSED
+CODE:   useNH4(jp) = GUD_UNUSED
+CODE:   useNO2(jp) = GUD_UNUSED
+CODE:   useNO3(jp) = GUD_UNUSED
+CODE:   combNO(jp) = GUD_UNUSED
+CODE:   ap_type(jp) = GUD_UNUSED
+CODE:   amminhib(jp) = GUD_UNUSED
+CODE:   acclimtimescl(jp) = GUD_UNUSED
+CODE:   PCmax(jp) = GUD_UNUSED
+
+CODE:   phytoTempCoeff(jp) = GUD_UNUSED
+CODE:   phytoTempExp1(jp) = GUD_UNUSED
+CODE:   phytoTempExp2(jp) = GUD_UNUSED
+CODE:   phytoTempOptimum(jp) = GUD_UNUSED
+CODE:   phytoDecayPower(jp) = GUD_UNUSED
+
+CODE:   Vmax_NH4(jp) = GUD_UNUSED
+CODE:   Vmax_NO2(jp) = GUD_UNUSED
+CODE:   Vmax_NO3(jp) = GUD_UNUSED
+CODE:   Vmax_PO4(jp) = GUD_UNUSED
+CODE:   Vmax_SiO2(jp) = GUD_UNUSED
+CODE:   Vmax_FeT(jp) = GUD_UNUSED
+
+CODE:   ksatNH4(jp) = GUD_UNUSED
+CODE:   ksatNO2(jp) = GUD_UNUSED
+CODE:   ksatNO3(jp) = GUD_UNUSED
+CODE:   ksatPO4(jp) = GUD_UNUSED
+CODE:   ksatSiO2(jp) = GUD_UNUSED
+CODE:   ksatFeT(jp) = GUD_UNUSED
+
+CODE:   ksatPAR(jp) = GUD_UNUSED
+CODE:   kinhPAR(jp) = GUD_UNUSED
+CODE:   inhibcoef_geid(jp) = GUD_UNUSED
+CODE:   mQyield(jp) = GUD_UNUSED
+CODE:   chl2cmax(jp) = GUD_UNUSED
+CODE:   chl2cmin(jp) = GUD_UNUSED
+CODE:   DO l=1,nlam
+CODE:    alphachl(jp,l) = GUD_UNUSED
+CODE:   ENDDO
+CODE:   alpha_mean(jp) = GUD_UNUSED
+CODE:   normI(jp) = GUD_UNUSED
+CODE:  ENDIF
+CODE:  IF (jp.LT.iMinPred .OR. jp.GT.iMaxPred) THEN
+CODE:   grazemax(jp) = GUD_UNUSED
+CODE:   kgrazesat(jp) = GUD_UNUSED
+CODE:  ENDIF
+CODE:  DO jp2=1,nplank
+CODE:   IF (jp .LT.iMinPred .OR. jp .GT.iMaxPred .OR. jp2.LT.iMinPrey .OR. jp2.GT.iMaxPrey) THEN
+CODE:     palat(jp2,jp) = GUD_UNUSED
+CODE:     asseff(jp2,jp) = GUD_UNUSED
+CODE:     ExportFracPreyPred(jp2,jp) = GUD_UNUSED
+CODE:   ENDIF
+CODE:  ENDDO
+CODE: ENDDO
 

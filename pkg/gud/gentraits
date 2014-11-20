@@ -116,8 +116,9 @@ with len(args) and open(args[0]) or sys.stdin as f:
                     tp = tp.strip()
                     name = name.strip()
                     lname = name.lower()
-                    print 'locals',name
-                    secs['locals'][lname] = (name,tp,args,dim,'')
+                    mysec = sec == 'dependent' and 'locals_read' or 'locals'
+                    print mysec, name
+                    secs.setdefault(mysec, OrderedDict())[lname] = (name,tp,args,dim,'')
                     continue
             else:
                 pre = ''
@@ -170,7 +171,7 @@ with open(headername, 'w') as f:
     f.write('#ifdef ALLOW_GUD\n')
     f.write('\n')
     for secname, sec in secs.items():
-        if secname != 'locals':
+        if secname not in ['locals', 'locals_read']:
             if heads[secname]:
                 f.write(''.join(heads[secname]))
             allvrs = []
@@ -259,7 +260,7 @@ if initname is not None:
             f.write(comment)
 
         for secname, sec in secs.items():
-            if secname not in ['parameters', 'dependent']:
+            if secname not in ['parameters', 'dependent', 'locals_read']:
                 f.write('C     {0}\n'.format(secname))
         #        for lname,(name,tp,args,dim,rhs) in sec.items():
         #            rhs = fltre.sub(r'\1 _d 0', rhs)
@@ -337,13 +338,19 @@ with open(readername, 'w') as f:
 
     f.write('#include "{0}"\n'.format(headername))
     f.write('\n')
+    f.write('      CHARACTER*(MAX_LEN_MBUF) msgBuf\n')
     f.write('      INTEGER iUnit,oUnit,myThid\n')
     f.write('\n')
     f.write('#ifdef ALLOW_GUD\n')
     f.write('\n')
 
     for secname, sec in secs.items():
-        if secname not in ['parameters', 'locals']:
+        if secname in ['locals_read']:
+            writedecls(f, sec)
+            f.write('\n')
+
+    for secname, sec in secs.items():
+        if secname not in ['parameters', 'locals', 'locals_read']:
             vrs = [ name for lname,(name,tp,args,dim,rhs) in sec.items()]
             if len(vrs):
                 f.write(''.join(heads[secname]))
@@ -365,7 +372,7 @@ with open(readername, 'w') as f:
         pad = 0
         writecode = (initname is None and secname not in ['parameters']
                     ) or secname in ['dependent']
-        readnml = secname not in ['parameters', 'locals', 'dependent']
+        readnml = secname not in ['parameters', 'locals', 'locals_read', 'dependent']
         if writecode or readnml:
             f.write('C     {0}\n'.format(secname))
     #        for lname,(name,tp,args,dim,rhs) in sec.items():
@@ -421,7 +428,7 @@ with open(readername, 'w') as f:
     f.write('C     log all parameters to a namelist file\n')
     f.write('      IF ( oUnit .GE. 0 ) THEN\n')
     for secname, sec in secs.items():
-        if len(sec) and secname not in ['locals', 'parameters']:
+        if len(sec) and secname not in ['locals', 'locals_read', 'parameters']:
             if heads[secname]:
                 f.write(''.join(heads[secname]))
             f.write('       WRITE(UNIT=oUnit, NML={0})\n'.format(secname))

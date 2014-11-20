@@ -1,0 +1,61 @@
+C $Header$
+C $Name$
+
+{{ EDIT_THIS_FILE }}
+
+#include "GUD_OPTIONS.h"
+#include "EXF_OPTIONS.h"
+
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+CBOP
+C     !ROUTINE: GUD_EXF_INIT_FIXED
+
+C     !INTERFACE:
+      SUBROUTINE GUD_EXF_INIT_FIXED( myThid )
+
+C     !DESCRIPTION:
+C     Initialize GUD constants for exf field loading
+
+C     !USES:
+      IMPLICIT NONE
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "PARAMS.h"
+#include "EXF_PARAM.h"
+#include "GUD_SIZE.h"
+#include "GUD_EXF.h"
+
+C     !INPUT PARAMETERS:
+      INTEGER myThid
+CEOP
+
+#ifdef ALLOW_GUD
+#ifdef ALLOW_EXF
+
+#ifdef ALLOW_RADTRANS
+      IF ( OASIM_Edfile(1) .NE. ' ' .AND. OASIMperiod .GT. 0. ) THEN
+# ifdef ALLOW_DEBUG
+       IF (debugMode) CALL DEBUG_CALL('GETFIELD_START OASIM',myThid)
+# endif
+       CALL EXF_GETFIELD_START( useGudYearlyFields,
+     I                          OASIMstartdate1, OASIMstartdate2,
+     O                          OASIMstartdate,
+     I                          myThid )
+      ENDIF
+#endif
+{% for fld,pre in flds %}
+      IF ( {{pre}}file .NE. ' ' .AND. {{pre}}period .GT. 0. ) THEN
+# ifdef ALLOW_DEBUG
+       IF (debugMode) CALL DEBUG_CALL('GETFIELD_START {{pre}}',myThid)
+# endif
+       CALL EXF_GETFIELD_START( useGudYearlyFields,
+     I                          {{pre}}startdate1, {{pre}}startdate2,
+     O                          {{pre}}startdate,
+     I                          myThid )
+      ENDIF
+{% end %}
+#endif /* ALLOW_EXF */
+#endif /* ALLOW_GUD */
+
+      RETURN
+      END

@@ -99,7 +99,6 @@ pkg/gud/gud_readtraitparams.F
 pkg/gud/GUD_TRAITS.h
 pkg/gud/gud_init_traits.F
 pkg/gud/gud_readtraits.F
-pkg/gud/gud_diagnostics_init.F
 pkg/gud/gud_check.F
 pkg/gud/GUD_EXF_NAMELIST.h
 pkg/gud/GUD_EXF.h

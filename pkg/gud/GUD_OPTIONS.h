@@ -63,8 +63,8 @@ C deprecated
 #define ALLOW_GUD_CONS
 
 #undef GUD_DEBUG
-#define iDEBUG 198
-#define jDEBUG 13
+
+#define GUD_UNUSED 0
 
 #endif /* ALLOW_GUD */
 #endif /* GUD_OPTIONS_H */

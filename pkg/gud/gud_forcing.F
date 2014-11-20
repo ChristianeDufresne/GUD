@@ -26,6 +26,7 @@ C !USES: ===============================================================
 #include "GCHEM.h"
 #include "GUD_SIZE.h"
 #include "GUD_INDICES.h"
+#include "GUD_DIAGS.h"
 #include "GUD_GENPARAMS.h"
 #include "GUD_TRAITS.h"
 #include "GUD_FIELDS.h"
@@ -49,10 +50,9 @@ C  k                    :: vertical level
       CHARACTER*8 diagname
       _RL PAR(sNx,sNy,Nr,nlam)
       _RL diags(sNx,sNy,Nr,gud_nDiag)
-      _RL flxCO2(1-OLx:sNx+OLx, 1-OLy:sNy+OLy)
-      _RL flxALK(1-OLx:sNx+OLx, 1-OLy:sNy+OLy)
-      _RL flxO2(1-OLx:sNx+OLx, 1-OLy:sNy+OLy)
-      _RL atten
+      _RL gDIC(1-OLx:sNx+OLx, 1-OLy:sNy+OLy)
+      _RL gALK(1-OLx:sNx+OLx, 1-OLy:sNy+OLy)
+      _RL gO2(1-OLx:sNx+OLx, 1-OLy:sNy+OLy)
       _RL freeFe(1-OLx:sNx+OLx, 1-OLy:sNy+OLy, Nr)
       _RL scv,scav_poc
       _RL flx
@@ -99,9 +99,12 @@ c      ENDIF
 C === dic ==============================================================
 #ifdef ALLOW_CARBON
 C carbon air-sea interaction
+       CALL TIMER_START('GUD_SURFFORCING [GUD_FORCING]',myThid)
        CALL GUD_SURFFORCING(
-     &                    bi,bj,imin,imax,jmin,jmax,
-     &                    myIter,myTime,myThid)
+     O                    gDIC, gALK, gO2,
+     I                    bi,bj,imin,imax,jmin,jmax,
+     I                    myIter,myTime,myThid)
+       CALL TIMER_STOP ('GUD_SURFFORCING [GUD_FORCING]',myThid)
 #endif
 
 C === iron =============================================================
@@ -113,6 +116,7 @@ C === iron =============================================================
       CALL TIMER_STOP ('GUD_FE_CHEM [GUD_FORCING]',myThid)
 
 C     iron dust input
+      CALL TIMER_START('GUD_FE_DUST [GUD_FORCING]',myThid)
       DO j=1,sNy
       DO i=1,sNx
       IF (hFacC(i,j,1,bi,bj) .NE. 0.) THEN
@@ -122,13 +126,15 @@ C     iron dust input
       ENDIF
       ENDDO
       ENDDO
+      CALL TIMER_STOP ('GUD_FE_DUST [GUD_FORCING]',myThid)
 
 C     scavenging
+      CALL TIMER_START('GUD_FE_SCAV [GUD_FORCING]',myThid)
       DO k=1,Nr
       DO j=1,sNy
       DO i=1,sNx
 #ifdef PART_SCAV
-        scav_poc = Ptracer(i,j,k,bi,bj,iPOP)/scav_R_POPPOC
+        scav_poc = MAX(0 _d 0, Ptracer(i,j,k,bi,bj,iPOP))/scav_R_POPPOC
         scv = scav_rat*scav_inter*(scav_poc**scav_exp)
 #else
         scv = scav
@@ -138,8 +144,10 @@ C     scavenging
       ENDDO
       ENDDO
       ENDDO
+      CALL TIMER_STOP ('GUD_FE_SCAV [GUD_FORCING]',myThid)
 
 C     iron sediment source (in bottom grid cell above kMaxFeSed)
+      CALL TIMER_START('GUD_FE_SED [GUD_FORCING]',myThid)
       DO k = kMinFeSed, kMaxFeSed
        kdn = MIN(Nr, k+1)
        DO j=1,sNy
@@ -148,7 +156,7 @@ C     iron sediment source (in bottom grid cell above kMaxFeSed)
      &       (hFacC(i,j,kdn,bi,bj) .EQ. 0. .OR. k .EQ. Nr)) THEN
 #ifdef IRON_SED_SOURCE_VARIABLE
           flx = fesedflux_pcm*wp_sink*R_CP_fesed*
-     &                        Ptracer(i,j,k-1,bi,bj,iPOP)
+     &            MAX(0 _d 0, Ptracer(i,j,k-1,bi,bj,iPOP))
 #else
           flx = fesedflux
 #endif
@@ -158,6 +166,7 @@ C     iron sediment source (in bottom grid cell above kMaxFeSed)
         ENDDO
        ENDDO
       ENDDO
+      CALL TIMER_STOP ('GUD_FE_SED [GUD_FORCING]',myThid)
 
 C === plankton =========================================================
       CALL TIMER_START('GUD_MODEL [GUD_FORCING]',myThid)
@@ -180,10 +189,14 @@ C === plankton =========================================================
 #ifdef GUD_DEBUG
      I                    myxgloballo+(bi-1)*sNx+i-1,
      I                    myygloballo+(bj-1)*sNy+j-1,
-     I                    k,
+     I                    k, dTsub(k),
 #endif
      I                    myTime, myIter, myThid )
         diags(i, j, k, :) = diagsl
+#ifdef ALLOW_GUD_CONS
+        GUD_Nfix(i,j,k,bi,bj) = diagsl(iNfix)
+        GUD_Ndenit(i,j,k,bi,bj) = diagsl(iDenitN)
+#endif
 #ifndef CHLQUOTA
 #ifdef ALLOW_RADTRANS
         chlPrev(i, j, k, bi, bj, :) = chlout
@@ -210,19 +223,11 @@ C === plankton =========================================================
      &         mortTempFunc, mort2TempFunc,
      &         uptakeTempFunc, myThid)
 #endif
-#ifdef GUD_GRAZING_MONOD_STYLE
-        CALL GUD_GRAZING_MONOD(ptr,
-     U                    gtr,
-     I                    grazTempFunc, reminTempFunc,
-     I                    mortTempFunc, mort2TempFunc,
-     I                    myTime, myIter, myThid )
-#else
         CALL GUD_GRAZING(ptr,
      U                    gtr,
      I                    grazTempFunc, reminTempFunc,
      I                    mortTempFunc, mort2TempFunc,
      I                    myTime, myIter, myThid )
-#endif
         gPtr(i, j, k, bi, bj, 1:nGud) = gtr(:)
       endif
       enddo
@@ -240,6 +245,7 @@ C === sinking ==========================================================
       CALL TIMER_STOP ('GUD_SINKING [GUD_FORCING]',myThid)
 
 C === apply tendencies to tracers ======================================
+      CALL TIMER_START('GUD_STEP [GUD_FORCING]',myThid)
       DO iTr=1,nGud
       DO k=1,Nr
       DO j=1,sNy
@@ -250,6 +256,7 @@ C === apply tendencies to tracers ======================================
       ENDDO
       ENDDO
       ENDDO
+      CALL TIMER_STOP ('GUD_STEP [GUD_FORCING]',myThid)
 
 C === iron =============================================================
 C     re-apply free iron limit to FeT
@@ -274,6 +281,14 @@ C === diagnostics ======================================================
      &          bi,bj,myThid)
        CALL DIAGNOSTICS_FILL(diags(1,1,1,iDenit),'Denit   ',0,Nr,3,
      &          bi,bj,myThid)
+#ifdef ALLOW_CARBON
+       CALL DIAGNOSTICS_FILL(pH,     'pH      ',0,Nr,1,bi,bj,myThid)
+       CALL DIAGNOSTICS_FILL(pCO2,   'pCO2    ',0,Nr,1,bi,bj,myThid)
+       CALL DIAGNOSTICS_FILL(FluxCO2,'fluxCO2 ',0,1,1,bi,bj,myThid)
+       CALL DIAGNOSTICS_FILL(gDIC,   'gDICsurf',0,1,2,bi,bj,myThid)
+       CALL DIAGNOSTICS_FILL(gALK,   'gALKsurf',0,1,2,bi,bj,myThid)
+       CALL DIAGNOSTICS_FILL(gO2,    'gO2surf ',0,1,2,bi,bj,myThid)
+#endif
        CALL TIMER_STOP ('DIAGS_FILL [GUD_FORCING]',myThid)
       ENDIF
 #endif

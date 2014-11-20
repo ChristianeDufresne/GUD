@@ -8,6 +8,7 @@ C !ROUTINE: GUD_SURFFORCING
 
 C !INTERFACE: ==========================================================
       SUBROUTINE GUD_SURFFORCING(
+     O           gDIC, gALK, gO2,
      I           bi,bj,imin,imax,jmin,jmax,
      I           myIter,myTime,myThid)
 
@@ -45,11 +46,19 @@ C  bi,bj                :: tile indices
       INTEGER myIter, myThid
       _RL myTime
 
+C !OUTPUT PARAMETERS: ==================================================
+C  gDIC :: DIC tendency due to air-sea exchange
+C  gALK :: ALK tendency due to air-sea exchange
+C  gO2  :: O2 tendency due to air-sea exchange
+      _RL  gDIC(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL  gALK(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL  gO2(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+
 #ifdef ALLOW_GUD
 #ifdef ALLOW_CARBON
 
 C !LOCAL VARIABLES: ====================================================
-      INTEGER i,j,k
+      INTEGER i,j,k,ks
       _RL co3dummy
 C Number of iterations for pCO2 solvers...
 C Solubility relation coefficients
@@ -83,13 +92,21 @@ C local variables for carbon chem
       _RL oCnew
 CEOP
 
-      k = 1
+      ks = 1
+
+      DO j=jmin,jmax
+       DO i=imin,imax
+         gDIC(i,j) = 0.0 _d 0
+         gALK(i,j) = 0.0 _d 0
+         gO2(i,j) = 0.0 _d 0
+       ENDDO
+      ENDDO
 
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 C Compute AtmosP and Kwexch0 which are used for flux of CO2 and O2
       DO j=jmin,jmax
        DO i=imin,imax
-        IF (maskC(i,j,1,bi,bj).NE.0. _d 0) THEN
+        IF (maskC(i,j,ks,bi,bj).NE.0. _d 0) THEN
 
 #ifdef USE_PLOAD
 C Convert anomalous pressure pLoad (in Pa) from atmospheric model
@@ -116,15 +133,16 @@ c flux of alkalinity
 #ifdef ALLOW_OLD_VIRTUALFLUX
       DO j=jmin,jmax
        DO i=imin,imax
-        IF (maskC(i,j,1,bi,bj).NE.0. _d 0) THEN
+        IF (maskC(i,j,ks,bi,bj).NE.0. _d 0) THEN
 c calculate virtual flux
 c EminusPforV = dS/dt*(1/Sglob)
 C NOTE: Be very careful with signs here!
 C Positive EminusPforV => loss of water to atmos and increase
 C in salinity. Thus, also increase in other surface tracers
 C (i.e. positive virtual flux into surface layer)
-         gPtr(i,j,k,bi,bj,iALK) = gPtr(i,j,k,bi,bj,iALK) +
-     &     recip_drF(k) * gsm_ALK * surfaceForcingS(i,j,bi,bj) / gsm_S
+         gALK(i,j) =
+     &     recip_drF(ks) * gsm_ALK * surfaceForcingS(i,j,bi,bj) / gsm_S
+         gPtr(i,j,ks,bi,bj,iALK) = gPtr(i,j,ks,bi,bj,iALK) + gALK(i,j)
         ENDIF
        ENDDO
       ENDDO
@@ -136,9 +154,9 @@ c flux of O2
 C calculate SCHMIDT NO. for O2
       DO j=jmin,jmax
        DO i=imin,imax
-        IF (maskC(i,j,k,bi,bj).NE.0.) THEN
-         ttemp = theta(i,j,k,bi,bj)
-         stemp = salt(i,j,k,bi,bj)
+        IF (maskC(i,j,ks,bi,bj).NE.0.) THEN
+         ttemp = theta(i,j,ks,bi,bj)
+         stemp = salt(i,j,ks,bi,bj)
 
          SchmidtNoO2(i,j) =
      &       sox1
@@ -179,16 +197,19 @@ c Convert from ml/l to mmol/m^3
 C Determine flux, inc. correction for local atmos surface pressure
          FluxO2(i,j,bi,bj) = Kwexch(i,j)*
      &                     (AtmosP(i,j,bi,bj)*O2sat(i,j)
-     &                      - pTracer(i,j,k,bi,bj,iO2))
+     &                      - pTracer(i,j,ks,bi,bj,iO2))
 
-
-         gPtr(i,j,k,bi,bj,iO2) = gPtr(i,j,k,bi,bj,iO2) +
-     &      recip_drF(k) * recip_hFacC(i,j,k,bi,bj) * FluxO2(i,j,bi,bj)
+         gO2(i,j) =
+     &      recip_drF(ks)*recip_hFacC(i,j,ks,bi,bj)*FluxO2(i,j,bi,bj)
+         gPtr(i,j,ks,bi,bj,iO2) = gPtr(i,j,ks,bi,bj,iO2) + gO2(i,j)
         ENDIF
        ENDDO
       ENDDO
 
 C ======================================================================
+      DO k=1,Nr
+C ======================================================================
+
 C determine inorganic carbon chem coefficients
       DO j=jmin,jmax
        DO i=imin,imax
@@ -200,7 +221,7 @@ c put bounds on tracers so pH solver doesn't blow up
 
       CALL GUD_CARBON_COEFFS(
      I                   surftemp,surfsalt,
-     I                   bi,bj,iMin,iMax,jMin,jMax,myThid)
+     I                   bi,bj,iMin,iMax,jMin,jMax,k,myThid)
 C====================================================================
 
 c pCO2 solver...
@@ -230,18 +251,20 @@ c put bounds on tracers so pH solver doesn't blow up
      I        ak0(i,j,bi,bj),  fugf(i,j,bi,bj),
      I        ff(i,j,bi,bj),
      I        bt(i,j,bi,bj), st(i,j,bi,bj), ft(i,j,bi,bj),
-     U        pH(i,j,bi,bj), pCO2(i,j,bi,bj), co3dummy,
+     U        pH(i,j,k,bi,bj), pCO2(i,j,k,bi,bj), co3dummy,
      I        i,j,k,bi,bj,myIter,myThid )
         ELSE
-         pCO2(i,j,bi,bj)=0. _d 0
+         pCO2(i,j,k,bi,bj)=0. _d 0
         ENDIF
        ENDDO
       ENDDO
 
+      IF (k .EQ. ks) THEN
+
       DO j=jmin,jmax
        DO i=imin,imax
-        IF ( maskC(i,j,k,bi,bj).NE.0. _d 0 ) THEN
-         ttemp = theta(i,j,k,bi,bj)
+        IF ( maskC(i,j,ks,bi,bj).NE.0. _d 0 ) THEN
+         ttemp = theta(i,j,ks,bi,bj)
 C calculate SCHMIDT NO. for CO2
          SchmidtNoDIC(i,j) =
      &      sca1 +
@@ -263,7 +286,7 @@ c Flux = kw*rho*(ff*pCO2atm-k0*FugFac*pCO2ocean)
          FluxCO2(i,j,bi,bj) =
      &          Kwexch(i,j)*(
      &            ff(i,j,bi,bj)*pCO2sat(i,j) -
-     &            pCO2(i,j,bi,bj)*fugf(i,j,bi,bj)*ak0(i,j,bi,bj) )
+     &            pCO2(i,j,ks,bi,bj)*fugf(i,j,bi,bj)*ak0(i,j,bi,bj) )
         ELSE
          FluxCO2(i,j,bi,bj) = 0. _d 0
         ENDIF
@@ -271,7 +294,7 @@ C convert flux (mol kg-1 m s-1) to (mmol m-2 s-1)
         FluxCO2(i,j,bi,bj) = FluxCO2(i,j,bi,bj)/m3perkg/ptr2mol
 
 #ifdef ALLOW_OLD_VIRTUALFLUX
-        IF (maskC(i,j,k,bi,bj).NE.0. _d 0) THEN
+        IF (maskC(i,j,ks,bi,bj).NE.0. _d 0) THEN
 c calculate virtual flux
 c EminusPforV = dS/dt*(1/Sglob)
 C NOTE: Be very careful with signs here!
@@ -294,27 +317,28 @@ c
 C update tendency
       DO j=jmin,jmax
        DO i=imin,imax
-        IF ( maskC(i,j,k,bi,bj).NE.0. _d 0 ) THEN
-         gPtr(i,j,k,bi,bj,iDIC) = gPtr(i,j,k,bi,bj,iDIC) +
-     &     recip_drF(k)*recip_hFacC(i,j,k,bi,bj)*
+        IF ( maskC(i,j,ks,bi,bj).NE.0. _d 0 ) THEN
+         gDIC(i,j) =
+     &     recip_drF(ks)*recip_hFacC(i,j,ks,bi,bj)*
      &              ( FluxCO2(i,j,bi,bj)
 #ifdef ALLOW_OLD_VIRTUALFLUX
      &              + VirtualFlux(i,j)
 #endif
      &              )
-         co3dummy = 
-     &     recip_drF(k)*recip_hFacC(i,j,k,bi,bj)*
-     &              ( FluxCO2(i,j,bi,bj)
-#ifdef ALLOW_OLD_VIRTUALFLUX
-     &              + VirtualFlux(i,j)
-#endif
-     &              )
+         gPtr(i,j,ks,bi,bj,iDIC) = gPtr(i,j,ks,bi,bj,iDIC) + gDIC(i,j)
         ENDIF
        ENDDO
       ENDDO
 
-#endif
-#endif
+C     k is at surface
+      ENDIF
+
+C === k ================================================================
+      ENDDO
+C ======================================================================
+
+#endif /* ALLOW_CARBON */
+#endif /* ALLOW_GUD */
 
       RETURN
       END

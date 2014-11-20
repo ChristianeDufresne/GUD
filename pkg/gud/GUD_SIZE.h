@@ -10,12 +10,19 @@ C #include GUD_SIZE.h
 
 C    !DESCRIPTION:
 C Contains dimensions and index ranges for gud model.
+C
+C right now, some bits of code assume that
+C
+C   iMinPhoto = 1
+C   iMinPrey = 1
+C   iMaxPred = nplank
+C   nChl = iMaxPhoto
 
       integer nplank, nGroup, nlam, nopt
       integer iMinPhoto, iMaxPhoto
       integer iMinPrey, iMaxPrey
       integer iMinPred, iMaxPred
-      integer nNQuota, nPQuota, nSiQuota, nFeQuota, nChl
+      integer nChl
       parameter(nplank=4)
       parameter(nGroup=5)
       parameter(nlam=1)
@@ -24,11 +31,6 @@ C Contains dimensions and index ranges for gud model.
       parameter(iMinPrey=1, iMaxPrey=iMaxPhoto)
       parameter(iMinPred=iMaxPhoto+1, iMaxPred=nplank)
       parameter(nPhoto=iMaxPhoto+1-iMinPhoto)
-C     to turn off nitrogen quota, set to zero
-      parameter(nNQuota=nplank)
-      parameter(nPQuota=nplank)
-      parameter(nSiQuota=nplank)
-      parameter(nFeQuota=nplank)
       parameter(nChl=iMaxPhoto)
 
 CEOP

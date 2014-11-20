@@ -78,46 +78,46 @@ c !LOCAL VARIABLES: ====================================================
       gTr(:,:,k  ,bi,bj,ic+j-1 )=gTr(:,:,k  ,bi,bj,ic+j-1 ) + flux/dzup
       gTr(:,:,k+1,bi,bj,ic+j-1 )=gTr(:,:,k+1,bi,bj,ic+j-1 ) - flux/dzdn
          ENDWHERE
-         IF (j .LE. nnquota) THEN
-           WHERE( dzdn.GT.0.0 )
+#ifdef NQUOTA
+         WHERE( dzdn.GT.0.0 )
       flux = wsink(j)*MAX(0.0, Ptr(:,:,k,bi,bj,in+j-1))
       gTr(:,:,k  ,bi,bj,in+j-1 )=gTr(:,:,k  ,bi,bj,in+j-1 ) - flux/dzup
       gTr(:,:,k+1,bi,bj,in+j-1 )=gTr(:,:,k+1,bi,bj,in+j-1 ) + flux/dzdn
       flux = wswim(j)*MAX(0.0, Ptr(:,:,k+1,bi,bj,in+j-1))
       gTr(:,:,k  ,bi,bj,in+j-1 )=gTr(:,:,k  ,bi,bj,in+j-1 ) + flux/dzup
       gTr(:,:,k+1,bi,bj,in+j-1 )=gTr(:,:,k+1,bi,bj,in+j-1 ) - flux/dzdn
-           ENDWHERE
-         ENDIF
-         IF (j .LE. npquota) THEN
-           WHERE( dzdn.GT.0.0 )
+         ENDWHERE
+#endif
+#ifdef PQUOTA
+         WHERE( dzdn.GT.0.0 )
       flux = wsink(j)*MAX(0.0, Ptr(:,:,k,bi,bj,ip+j-1))
       gTr(:,:,k  ,bi,bj,ip+j-1 )=gTr(:,:,k  ,bi,bj,ip+j-1 ) - flux/dzup
       gTr(:,:,k+1,bi,bj,ip+j-1 )=gTr(:,:,k+1,bi,bj,ip+j-1 ) + flux/dzdn
       flux = wswim(j)*MAX(0.0, Ptr(:,:,k+1,bi,bj,ip+j-1))
       gTr(:,:,k  ,bi,bj,ip+j-1 )=gTr(:,:,k  ,bi,bj,ip+j-1 ) + flux/dzup
       gTr(:,:,k+1,bi,bj,ip+j-1 )=gTr(:,:,k+1,bi,bj,ip+j-1 ) - flux/dzdn
-           ENDWHERE
-         ENDIF
-         IF (j .LE. nsiquota) THEN
-           WHERE( dzdn.GT.0.0 )
+         ENDWHERE
+#endif
+#ifdef SIQUOTA
+         WHERE( dzdn.GT.0.0 )
       flux = wsink(j)*MAX(0.0, Ptr(:,:,k,bi,bj,isi+j-1))
       gTr(:,:,k  ,bi,bj,isi+j-1)=gTr(:,:,k  ,bi,bj,isi+j-1) - flux/dzup
       gTr(:,:,k+1,bi,bj,isi+j-1)=gTr(:,:,k+1,bi,bj,isi+j-1) + flux/dzdn
       flux = wswim(j)*MAX(0.0, Ptr(:,:,k+1,bi,bj,isi+j-1))
       gTr(:,:,k  ,bi,bj,isi+j-1)=gTr(:,:,k  ,bi,bj,isi+j-1) + flux/dzup
       gTr(:,:,k+1,bi,bj,isi+j-1)=gTr(:,:,k+1,bi,bj,isi+j-1) - flux/dzdn
-           ENDWHERE
-         ENDIF
-         IF (j .LE. nfequota) THEN
-           WHERE( dzdn.GT.0.0 )
+         ENDWHERE
+#endif
+#ifdef FEQUOTA
+         WHERE( dzdn.GT.0.0 )
       flux = wsink(j)*MAX(0.0, Ptr(:,:,k,bi,bj,ife+j-1))
       gTr(:,:,k  ,bi,bj,ife+j-1)=gTr(:,:,k  ,bi,bj,ife+j-1) - flux/dzup
       gTr(:,:,k+1,bi,bj,ife+j-1)=gTr(:,:,k+1,bi,bj,ife+j-1) + flux/dzdn
       flux = wswim(j)*MAX(0.0, Ptr(:,:,k+1,bi,bj,ife+j-1))
       gTr(:,:,k  ,bi,bj,ife+j-1)=gTr(:,:,k  ,bi,bj,ife+j-1) + flux/dzup
       gTr(:,:,k+1,bi,bj,ife+j-1)=gTr(:,:,k+1,bi,bj,ife+j-1) - flux/dzdn
-           ENDWHERE
-         ENDIF
+         ENDWHERE
+#endif
          IF (j .LE. nChl) THEN
            WHERE( dzdn.GT.0.0 )
       flux = wsink(j)*MAX(0.0, Ptr(:,:,k,bi,bj,iChl+j-1))
