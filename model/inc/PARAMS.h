@@ -98,7 +98,7 @@ C     the_run_name    :: string identifying the name of the model "run"
      &                lambdaThetaFile, lambdaSaltFile,
      &                uVelInitFile, vVelInitFile, pSurfInitFile,
      &                pLoadFile, addMassFile,
-     &                eddyPsiXFile, eddyPsiYFile,
+     &                eddyPsiXFile, eddyPsiYFile, geothermalFile,
      &                the_run_name
       CHARACTER*(MAX_LEN_FNAM) buoyancyRelation
       CHARACTER*(6)  eosType
@@ -138,6 +138,7 @@ C     the_run_name    :: string identifying the name of the model "run"
       CHARACTER*(MAX_LEN_FNAM) addMassFile
       CHARACTER*(MAX_LEN_FNAM) eddyPsiXFile
       CHARACTER*(MAX_LEN_FNAM) eddyPsiYFile
+      CHARACTER*(MAX_LEN_FNAM) geothermalFile
       CHARACTER*(MAX_LEN_FNAM) lambdaThetaFile
       CHARACTER*(MAX_LEN_FNAM) lambdaSaltFile
       CHARACTER*(MAX_LEN_PREC/2) the_run_name
@@ -952,6 +953,7 @@ C Logical flags for selecting packages
       LOGICAL useZONAL_FILT
       LOGICAL useOPPS
       LOGICAL usePP81
+      LOGICAL useKL10
       LOGICAL useMY82
       LOGICAL useGGL90
       LOGICAL useKPP
@@ -967,6 +969,7 @@ C Logical flags for selecting packages
       LOGICAL useSMOOTH
       LOGICAL usePROFILES
       LOGICAL useECCO
+      LOGICAL useCTRL
       LOGICAL useSBO
       LOGICAL useFLT
       LOGICAL usePTRACERS
@@ -996,8 +999,8 @@ C Logical flags for selecting packages
       LOGICAL useMYPACKAGE
       COMMON /PARM_PACKAGES/
      &        useGAD, useOBCS, useSHAP_FILT, useZONAL_FILT,
-     &        useOPPS, usePP81, useMY82, useGGL90, useKPP,
-     &        useGMRedi, useBBL, useDOWN_SLOPE,
+     &        useOPPS, usePP81, useKL10, useMY82, useGGL90, useKPP,
+     &        useGMRedi, useBBL, useDOWN_SLOPE, useCTRL,
      &        useCAL, useEXF, useBulkForce, useEBM, useCheapAML,
      &        useGrdchk,useSMOOTH,usePROFILES,useECCO,useSBO, useFLT,
      &        usePTRACERS, useGCHEM, useRBCS, useOffLine, useMATRIX,

@@ -9,7 +9,7 @@ C $Name$
      I                    endofday,   endofmonth,   endofyear,
      O                    startofgen, endofgen,     ingen,
      O                    sum1gen,    genrec,
-     I                    mythid )
+     I                    myiter, mythid )
 
 c     ==================================================================
 c     SUBROUTINE cost_gencost_assignperiod
@@ -22,8 +22,9 @@ c     == global variables ==
 #include "EEPARAMS.h"
 #include "SIZE.h"
 #include "PARAMS.h"
-#include "optim.h"
-#include "ecco_cost.h"
+#ifdef ALLOW_ECCO
+# include "ecco.h"
+#endif
 
 c     == routine arguments ==
 
@@ -42,7 +43,7 @@ c     == routine arguments ==
       integer sum1gen(NGENCOST)
       integer genrec(NGENCOST)
 
-      integer mythid
+      integer myiter, mythid
 
 #ifdef ALLOW_GENCOST_CONTRIBUTION
 c     == local variables ==
@@ -52,7 +53,8 @@ c     == local variables ==
 c     == end of interface ==
 
       do k = 1, NGENCOST
-       if ( (using_gencost(k)).AND.( gencost_flag(k).GE.1 ) ) then
+       if ( (using_gencost(k)).AND.( (gencost_flag(k).GE.1).OR.
+     &         (gencost_avgperiod(k).NE.'     ') ) ) then
          if ( gencost_avgperiod(k) .EQ. 'day' .OR.
      &        gencost_avgperiod(k) .EQ. 'DAY' ) then
             startofgen(k) = startofday
@@ -74,6 +76,16 @@ c     == end of interface ==
             ingen(k)      = inyear
             sum1gen(k)    = sum1year
             genrec(k)     = yearrec
+         else if ( gencost_avgperiod(k) .EQ. 'step' .OR.
+     &        gencost_avgperiod(k) .EQ. 'STEP' ) then
+c the following is un-tested, but should work
+c with the revised logic in cost_averagesgeneric
+c (write everytime startofgen AND endofgen) 
+            startofgen(k) = .TRUE.
+            endofgen(k)   = .TRUE.
+            ingen(k)      = .TRUE.
+            sum1gen(k)    = 1
+            genrec(k)     = 1+ myiter - niter0
          else
             STOP 'gencost_avgperiod wrongly specified'
          end if

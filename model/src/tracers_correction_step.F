@@ -13,15 +13,6 @@ C     *==========================================================*
 C     | SUBROUTINE TRACERS_CORRECTION_STEP
 C     *==========================================================*
 C     |1rst Part : Update T,S.
-C     |
-C     | The arrays used for time stepping are cycled.
-C     | Tracers:
-C     |           T(n) = Gt(n)
-C     |
-C     |part1: update T,S
-C     |  T* (contained in gT) is copied to T (theta)
-C     |  S* (contained in gS) is copied to S (salt)
-C     |
 C     |part2: Adjustments & Diagnostics
 C     |   o Filter  T,S (Shapiro Filter, Zonal_Filter)
 C     |   o Convective Adjustment
@@ -36,12 +27,15 @@ C     == Global variables ===
 #include "EEPARAMS.h"
 #include "PARAMS.h"
 #include "DYNVARS.h"
+#ifdef ALLOW_GENERIC_ADVDIFF
+# include "GAD.h"
+#endif
 
 C     !INPUT/OUTPUT PARAMETERS:
 C     == Routine arguments ==
-C     myTime - Current time in simulation
-C     myIter - Current iteration number in simulation
-C     myThid - Thread number for this instance of the routine.
+C     myTime :: Current time in simulation
+C     myIter :: Current iteration number in simulation
+C     myThid :: my Thread Id number
       _RL myTime
       INTEGER myIter
       INTEGER myThid
@@ -51,41 +45,18 @@ C     !LOCAL VARIABLES:
 C     == Local variables
       INTEGER iMin,iMax
       INTEGER jMin,jMax
-      INTEGER bi,bj
-
+      INTEGER bi, bj
 CEOP
 
-      DO bj=myByLo(myThid),myByHi(myThid)
-       DO bi=myBxLo(myThid),myBxHi(myThid)
-
-C-      Update tracer fields:  T(n) = T**
-        IF (tempStepping)
-     &      CALL CYCLE_TRACER(
-     I           bi,bj,
-     U           theta,gT,
-     I           myTime,myIter,myThid )
-        IF (saltStepping)
-     &      CALL CYCLE_TRACER(
-     I           bi,bj,
-     U           salt,gS,
-     I           myTime,myIter,myThid )
-#ifdef ALLOW_PTRACERS
-#ifndef ALLOW_LONGSTEP
-C-      Update passive tracer fields:  T(n) = T**
-        IF (usePTRACERS)
-     &      CALL PTRACERS_CYCLE(bi,bj,myTime,myIter,myThid)
-#endif /* ! ALLOW_LONGSTEP */
-#endif /* ALLOW_PTRACERS */
-
 #ifdef ALLOW_NONHYDROSTATIC
-        IF ( implicitIntGravWave ) THEN
+      IF ( implicitIntGravWave ) THEN
+       DO bj=myByLo(myThid),myByHi(myThid)
+        DO bi=myBxLo(myThid),myBxHi(myThid)
           CALL TRACERS_IIGW_CORRECTION(bi,bj, myTime,myIter,myThid)
-        ENDIF
-#endif /* ALLOW_NONHYDROSTATIC */
-
-C--    End of 1rst bi,bj loop
+        ENDDO
        ENDDO
-      ENDDO
+      ENDIF
+#endif /* ALLOW_NONHYDROSTATIC */
 
 C--- 2nd Part : Adjustment.
 C

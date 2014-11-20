@@ -8,8 +8,10 @@ CG3D
 cost
 CTRL_SIZE
 CTRL_GENARR
+CTRL_OBCS
 ctrl_dummy
 ctrl
+ctrl_local_params
 ctrl_weights
 DIAGNOSTICS_SIZE
 DIAGNOSTICS

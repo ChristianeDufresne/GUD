@@ -17,16 +17,31 @@ fi
 # Note: added "ulimit -s unlimited" in file "~/.bashrc"
 # to pass big test (the 2 fizhi-cs-* test & adjoint tests) with MPI
 
-dNam='aces'
-TST_DIR="$HOME/test_$dNam"
-echo "start from TST_DIR='$TST_DIR' at: "`date`
-
 umask 0022
 #- to get case insensitive "ls" (and order of tested experiments)
 export LC_ALL="en_US.UTF-8"
+echo " running on: "`hostname`
 
-HERE=$TST_DIR/output
+dNam='aces'
+HERE="$HOME/test_$dNam"
+OUTP="$HERE/output"; SavD="$HERE/send"
+SEND="ssh geo $SavD/mpack"
+TST_DIR=$HERE
+
+if test -d $TST_DIR ; then
+  echo "start from TST_DIR='$TST_DIR' at: "`date`
+else
+# if test ! -d /scratch/jm_c ; then mkdir /scratch/jm_c ; fi
+  if test ! -d $TST_DIR ; then mkdir $TST_DIR ; fi
+  if test ! -d $TST_DIR ; then
+    echo "ERROR: Can't create directory \"$TST_DIR\""
+    exit 1
+  fi
+  echo "start in new dir TST_DIR='$TST_DIR' at: "`date`
+fi
+
 sfx='ifc'
+addExp=''
  module add mpich/intel
  module add netcdf/3.6.1/icc
  export MPI_INC_DIR='/usr/local/pkg/mpich/mpich-intel/include'
@@ -35,14 +50,13 @@ sfx='ifc'
  options="-j 2 -MPI 6 -mf $PBS_NODEFILE -devel"
  EXE="mpirun -machinefile TR_MFILE -v -np TR_NPROC ./mitgcmuv"
 
-#- keep a copy of MPI_MFILE:
-cp -p $PBS_NODEFILE $HERE"/mf_"$sfx
-
 checkOut=1 ; #options="$options -do"
 #options="$options -nc" ; checkOut=0
 #options="$options -q"  ; checkOut=0
 
-addExp=0
+#- keep a copy of MPI_MFILE:
+cp -p $PBS_NODEFILE $OUTP"/mf_"$sfx
+
 cvsArg="-d :pserver:cvsanon@mitgcm.org:/u/gcmpack"
 gcmDIR="MITgcm_$sfx"
 cd $TST_DIR
@@ -93,11 +107,11 @@ if [ $checkOut -eq 2 ] ; then
   fi
 # cvs co MITgcm
   cvs $cvsArg co -P -d $gcmDIR MITgcm > /dev/null 2>&1
-  if [ $addExp -ge 1 ]; then
-   echo " add dir: offline_cheapaml (from Contrib:verification_other)"
-   ( cd $gcmDIR/verification ; cvs $cvsArg co -P -d offline_cheapaml \
-                  MITgcm_contrib/verification_other/offline_cheapaml > /dev/null 2>&1 )
-  fi
+  for exp2add in $addExp ; do
+   echo " add dir: $exp2add (from Contrib:verification_other)"
+   ( cd $gcmDIR/verification ; cvs $cvsArg co -P -d $exp2add \
+                  MITgcm_contrib/verification_other/$exp2add > /dev/null 2>&1 )
+  done
   /usr/bin/find $gcmDIR -type d | xargs chmod g+rxs
   /usr/bin/find $gcmDIR -type f | xargs chmod g+r
 fi
@@ -111,9 +125,6 @@ else
   echo "no dir: $gcmDIR/verification => exit"
   exit
 fi
-
-SavD="$HOME/test_$dNam/send"
-SEND="ssh geo $SavD/mpack"
 
 echo ./testreport $options -of $OPTFILE -command \"$EXE\" -odir ${dNam}-$sfx \
   -send \"$SEND\" -sd $SavD -a jmc@mitgcm.org

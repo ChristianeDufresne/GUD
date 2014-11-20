@@ -23,9 +23,18 @@ c     == global variables ==
 #include "EEPARAMS.h"
 #include "SIZE.h"
 #include "PARAMS.h"
-#include "CTRL_SIZE.h"
-#include "ctrl.h"
-#include "CTRL_GENARR.h"
+#ifdef ALLOW_CTRL
+# include "CTRL_SIZE.h"
+# include "ctrl.h"
+# include "CTRL_GENARR.h"
+# include "CTRL_OBCS.h"
+# ifndef ECCO_CTRL_DEPRECATED
+#  include "ctrl_local_params.h"
+# endif
+#endif
+#ifdef ALLOW_AUTODIFF
+#include "AUTODIFF_PARAMS.h"
+#endif
 
 c     == routine arguments ==
 
@@ -52,7 +61,9 @@ c     == local variables ==
       character*(max_len_mbuf) msgbuf
 
       integer nwetc3d
-      integer iarr
+#if (defined (ALLOW_GENARR2D_CONTROL) || defined (ALLOW_GENARR3D_CONTROL) || defined (ALLOW_GENTIM2D_CONTROL))
+      integer iarr,jarr
+#endif
 
 c     == external ==
 
@@ -123,7 +134,7 @@ c--   Read the namelist input.
      &  xx_shifwflx_file,
      &  xx_shifwflx_remo_intercept, xx_shifwflx_remo_slope,
      &  xx_shifwflxstartdate1, xx_shifwflxstartdate2, xx_shifwflxperiod,
-     &  doInitXX, ctrlSmoothCorrel3D, ctrlSmoothCorrel2D,
+     &  doInitXX, ctrlSmoothCorrel3D, ctrlSmoothCorrel2D, ctrlUseGen,
      &  doPackDiag,
      &  doZscaleUnpack, doZscalePack,
      &  doMainUnpack, doMainPack,
@@ -142,11 +153,29 @@ cHFLUXM_CONTROL
       namelist /ctrl_nml_genarr/
      &  xx_genarr2d_file, xx_genarr3d_file, xx_gentim2d_file,
      &  xx_genarr2d_weight, xx_genarr3d_weight, xx_gentim2d_weight,
+     &  xx_genarr2d_bounds, xx_genarr3d_bounds,
+     &  genarr2dPrecond, genarr3dPrecond, gentim2dPrecond,
+     &  mult_gentim2d,mult_genarr2d,mult_genarr3d,
+     &  xx_genarr2d_preproc, xx_genarr2d_preproc_i,
+     &  xx_genarr2d_preproc_r, xx_genarr2d_preproc_c,
+     &  xx_genarr3d_preproc, xx_genarr3d_preproc_i,
+     &  xx_genarr3d_preproc_r, xx_genarr3d_preproc_c,
+     &  xx_gentim2d_preproc, xx_gentim2d_preproc_i,
+     &  xx_gentim2d_preproc_r, xx_gentim2d_preproc_c,
+     &  xx_gentim2d_period,
      &  xx_gentim2d_startdate1, xx_gentim2d_startdate2,
-     &  xx_gentim2d_startdate, xx_gentim2d_period,
-     &  xx_gentim2d_cumsum,xx_gentim2d_glosum,
-     &  genarr2dPrecond, gentim2dPrecond,mult_gentim2d
+     &  xx_gentim2d_cumsum,xx_gentim2d_glosum
 #endif
+
+      IF ( .NOT.useCTRL ) THEN
+C-    pkg CTRL is not used
+        _BEGIN_MASTER(myThid)
+C-    Track pkg activation status:
+C     print a (weak) warning if data.ctrl is found
+         CALL PACKAGES_UNUSED_MSG( 'useCTRL', ' ', ' ' )
+        _END_MASTER(myThid)
+        RETURN
+      ENDIF
 
       _BEGIN_MASTER( myThid )
 
@@ -161,6 +190,11 @@ c--     Set default values.
         ctrlSmoothCorrel2D  = .TRUE.
 #else
         ctrlSmoothCorrel2D  = .FALSE.
+#endif
+#if (defined (ALLOW_GENARR2D_CONTROL) || defined (ALLOW_GENARR3D_CONTROL) || defined (ALLOW_GENTIM2D_CONTROL))
+        ctrlUseGen          = .TRUE.
+#else
+        ctrlUseGen          = .FALSE.
 #endif
 #ifdef ALLOW_ADMTLM
         doAdmTlm            = .TRUE.
@@ -195,6 +229,16 @@ c
          write(xx_genarr2d_file(iarr)(15:MAX_LEN_FNAM),'(a)') ' '
          write(xx_genarr2d_weight(iarr)(1:MAX_LEN_FNAM),'(a)') ' '
          genarr2dPrecond(iarr) = 1. _d 0
+         mult_genarr2d(iarr)         = 0. _d 0
+         do jarr = 1, 5
+           xx_genarr2d_bounds(jarr,iarr) = 0. _d 0
+         enddo
+         do jarr=1,maxCtrlProc
+          xx_genarr2d_preproc(jarr,iarr)   = ' '
+          xx_genarr2d_preproc_c(jarr,iarr) = ' '
+          xx_genarr2d_preproc_i(jarr,iarr) = 0
+          xx_genarr2d_preproc_r(jarr,iarr) = 0. _d 0
+         enddo
         enddo
 c
         do iarr = 1, maxCtrlArr3D
@@ -202,6 +246,17 @@ c
      &        'xx_genarr3d_', iarr
          write(xx_genarr3d_file(iarr)(15:MAX_LEN_FNAM),'(a)') ' '
          write(xx_genarr3d_weight(iarr)(1:MAX_LEN_FNAM),'(a)') ' '
+         genarr3dPrecond(iarr) = 1. _d 0
+         mult_genarr3d(iarr)         = 0. _d 0
+         do jarr = 1, 5
+           xx_genarr3d_bounds(jarr,iarr) = 0. _d 0
+         enddo
+         do jarr=1,maxCtrlProc
+          xx_genarr3d_preproc(jarr,iarr)   = ' '
+          xx_genarr3d_preproc_c(jarr,iarr) = ' '
+          xx_genarr3d_preproc_i(jarr,iarr) = 0
+          xx_genarr3d_preproc_r(jarr,iarr) = 0. _d 0
+         enddo
         enddo
 c
         do iarr = 1, maxCtrlTim2D
@@ -214,8 +269,14 @@ c
          xx_gentim2d_period(iarr)     = 0. _d 0
          xx_gentim2d_cumsum(iarr)     = .FALSE.
          xx_gentim2d_glosum(iarr)     = .FALSE.
-         gentim2dPrecond(iarr)        = 1. _d 0
+         do jarr=1,maxCtrlProc
+          xx_gentim2d_preproc(jarr,iarr)   = ' '
+          xx_gentim2d_preproc_c(jarr,iarr) = ' '
+          xx_gentim2d_preproc_i(jarr,iarr) = 0
+          xx_gentim2d_preproc_r(jarr,iarr) = 0. _d 0
+         enddo
          mult_gentim2d(iarr)          = 0. _d 0
+         gentim2dPrecond(iarr)        = 1. _d 0
         enddo
 #endif
 c
@@ -443,6 +504,13 @@ c--     Next, read the cost data file.
      &                  SQUEEZE_RIGHT , 1)
 
         CLOSE( iUnit )
+
+#ifdef ALLOW_AUTODIFF
+c allow for switching off correl2d in adjoint
+      useSmoothCorrel2DinFwdMode = ctrlSmoothCorrel2D
+      useSmoothCorrel2DinAdMode =
+     &         useSmoothCorrel2DinAdMode .AND. ctrlSmoothCorrel2D
+#endif
 
       _END_MASTER( myThid )
 

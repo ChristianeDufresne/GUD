@@ -32,10 +32,6 @@ C     !INPUT PARAMETERS:
 CEOP
 
 #ifdef ALLOW_PTRACERS
-C     !FUNCTIONS
-      LOGICAL  GAD_VALID_ADVSCHEME
-      EXTERNAL GAD_VALID_ADVSCHEME
-
 C     !LOCAL VARIABLES:
 C     k,iTracer  :: loop indices
 C     iUnit      :: unit number for I/O
@@ -43,7 +39,6 @@ C     msgBuf     :: message buffer
       INTEGER k, iTracer
       INTEGER iUnit
       INTEGER ic
-      LOGICAL validNum
       CHARACTER*(MAX_LEN_MBUF) msgBuf
       _RL PTRACERS_diffKr(PTRACERS_num)
       _RL tauTr1ClimRelax
@@ -55,6 +50,7 @@ C     tauTr1ClimRelax :: old parameter (will be removed 1 day)
      &     tauTr1ClimRelax,
      &     PTRACERS_numInUse,
      &     PTRACERS_Iter0,
+     &     PTRACERS_doAB_onGpTr,
      &     PTRACERS_addSrelax2EmP,
      &     PTRACERS_startStepFwd,
      &     PTRACERS_resetFreq,
@@ -83,6 +79,18 @@ C     tauTr1ClimRelax :: old parameter (will be removed 1 day)
      &     PTRACERS_monitor_mnc,
      &     PTRACERS_pickup_write_mnc,
      &     PTRACERS_pickup_read_mnc
+
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+
+      IF ( .NOT.usePTRACERS ) THEN
+C-    pkg PTRACERS is not used
+        _BEGIN_MASTER(myThid)
+C-    Track pkg activation status:
+C     print a (weak) warning if data.ptracers is found
+         CALL PACKAGES_UNUSED_MSG( 'usePTRACERS', ' ', ' ' )
+        _END_MASTER(myThid)
+        RETURN
+      ENDIF
 
       _BEGIN_MASTER(myThid)
 
@@ -121,6 +129,7 @@ C     Set defaults values for parameters in PTRACERS.h
           PTRACERS_units(iTracer)(ic:ic) = ' '
         ENDDO
       ENDDO
+      PTRACERS_doAB_onGpTr      = doAB_onGtGs
       PTRACERS_addSrelax2EmP    = .FALSE.
       PTRACERS_useRecords       = .FALSE.
 #ifdef ALLOW_MNC
@@ -210,7 +219,7 @@ C     Set flag to check when each tracer starts
         IF ( PTRACERS_startStepFwd(iTracer) .NE. baseTime )
      &    PTRACERS_startAllTrc = .FALSE.
       ENDDO
-#ifdef ALLOW_AUTODIFF_TAMC
+#ifdef ALLOW_AUTODIFF
       IF ( .NOT.PTRACERS_startAllTrc ) THEN
         WRITE(msgBuf,'(A)')
      &   'PTRACERS_READPARMS: Compiling AD code does not allow'
@@ -220,21 +229,7 @@ C     Set flag to check when each tracer starts
         CALL PRINT_ERROR( msgBuf, myThid )
         STOP 'ABNORMAL END: S/R PTRACERS_READPARMS'
       ENDIF
-#endif /* ALLOW_AUTODIFF_TAMC */
-
-C     Check for valid advection-scheme number
-      DO iTracer=1,PTRACERS_numInUse
-        validNum = GAD_VALID_ADVSCHEME( PTRACERS_advScheme(iTracer) )
-        IF ( .NOT.validNum ) THEN
-         WRITE(msgBuf,'(2A,I6)') 'PTRACERS_READPARMS: ',
-     &   'invalid advection scheme number=',PTRACERS_advScheme(iTracer)
-         CALL PRINT_ERROR( msgBuf, myThid )
-         WRITE(msgBuf,'(2A,I6)') 'PTRACERS_READPARMS: ',
-     &   'for tracer #', iTracer
-         CALL PRINT_ERROR( msgBuf, myThid )
-         STOP 'ABNORMAL END: S/R PTRACERS_READPARMS'
-        ENDIF
-      ENDDO
+#endif /* ALLOW_AUTODIFF */
 
 C     Whether to compute linear surface correction (set by other packages)
       PTRACERS_calcSurfCor = .FALSE.

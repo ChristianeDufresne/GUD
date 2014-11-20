@@ -39,6 +39,7 @@ c     == global variables ==
 
 #include "EEPARAMS.h"
 #include "SIZE.h"
+#ifdef ALLOW_SSH_COST_CONTRIBUTION
 #include "PARAMS.h"
 
 #include "ecco_cost.h"
@@ -53,6 +54,7 @@ c     == global variables ==
 # endif
 # include "sphere.h"
 #endif
+#endif
 
 c     == routine arguments ==
 
@@ -60,6 +62,8 @@ c     == routine arguments ==
       _RL     offset
       _RL     costmean
       integer mythid
+
+#ifdef ALLOW_SSH_COST_CONTRIBUTION
 
 c     == local variables ==
 
@@ -295,6 +299,8 @@ cph(
 cph)
 
 #endif /* else ALLOW_EGM96_ERROR_COV */
+
+#endif /* ALLOW_SSH_COST_CONTRIBUTION */
 
       return
       end

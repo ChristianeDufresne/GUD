@@ -78,8 +78,14 @@ C     *vec_lat_inc         :: vector y-grid increments for *vec
       INTEGER myIter
       INTEGER myThid
 
+C     == Functions ==
+      INTEGER  ILNBLNK
+      EXTERNAL ILNBLNK
+
 C     == local variables ==
 #ifdef USE_EXF_INTERPOLATION
+C     msgBuf     :: Informational/error message buffer
+      CHARACTER*(MAX_LEN_MBUF) msgBuf
       CHARACTER*(128) uvecfile0, uvecfile1
       CHARACTER*(128) vvecfile0, vvecfile1
       LOGICAL first, changed
@@ -101,13 +107,48 @@ C     == end of interface ==
      &     uvecfile.NE.' ' .AND. vvecfile.NE.' ' .AND.
      &     (usingCurvilinearGrid .OR. rotateGrid .OR. uvInterp) ) THEN
 
+        IF ( uvecperiod .EQ. -12. ) THEN
+C-    genperiod=-12 means input file contains 12 monthly means
+C     records, corresponding to Jan. (rec=1) through Dec. (rec=12)
+          CALL cal_GetMonthsRec(
+     O             fac, first, changed,
+     O             count0, count1,
+     I             myTime, myIter, myThid )
+
+        ELSEIF ( uvecperiod .LE. 0. ) THEN
+          j = ILNBLNK(uvecfile)
+          WRITE(msgBuf,'(A,1PE16.8,2A)')
+     &        'EXF_SET_UV: Invalid uvecperiod=', uvecperiod,
+     &        ' for file: ', uvecfile(1:j)
+          CALL PRINT_ERROR( msgBuf, myThid )
+          STOP 'ABNORMAL END: S/R EXF_SET_UV'
+        ELSE
 C-    get record numbers and interpolation factor
-        CALL exf_GetFFieldRec(
-     I           uvecstartdate, uvecperiod,
-     I           useExfYearlyFields,
-     O           fac, first, changed,
-     O           count0, count1, year0, year1,
-     I           myTime, myIter, myThid )
+          CALL exf_GetFFieldRec(
+     I             uvecstartdate, uvecperiod,
+     I             useExfYearlyFields,
+     O             fac, first, changed,
+     O             count0, count1, year0, year1,
+     I             myTime, myIter, myThid )
+        ENDIF
+        IF ( exf_debugLev.GE.debLevD ) THEN
+          _BEGIN_MASTER( myThid )
+           i = ILNBLNK(uvecfile)
+           j = ILNBLNK(vvecfile)
+           WRITE(msgBuf,'(5A)') ' EXF_SET_UV: ',
+     &       'processing: ', uvecfile(1:i), ' & ', vvecfile(1:j)
+           CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                         SQUEEZE_RIGHT, myThid )
+           WRITE(msgBuf,'(2A,I10,2I7)') ' EXF_SET_UV:  ',
+     &       ' myIter, count0, count1:', myIter, count0, count1
+           CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                         SQUEEZE_RIGHT, myThid )
+           WRITE(msgBuf,'(2A,2(L2,2X),E16.9)') ' EXF_SET_UV:  ',
+     &       ' first, changed, fac:  ', first, changed, fac
+           CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                         SQUEEZE_RIGHT, myThid )
+          _END_MASTER( myThid )
+        ENDIF
 
         IF ( first ) THEN
 C--   Load and interpolate a new reccord (= 1rst one of this run)
@@ -122,6 +163,22 @@ C--   Load and interpolate a new reccord (= 1rst one of this run)
      I         vvecfile,
      O         vvecfile0,
      I         myTime, myIter, myThid )
+          IF ( exf_debugLev.GE.debLevC ) THEN
+            _BEGIN_MASTER(myThid)
+            j = ILNBLNK(uvecfile0)
+            WRITE(msgBuf,'(A,I10,A,I6,2A)')
+     &        ' EXF_SET_UV: it=', myIter, ' loading rec=', count0,
+     &        ' from: ', uvecfile0(1:j)
+            CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                          SQUEEZE_RIGHT, myThid )
+            j = ILNBLNK(vvecfile0)
+            WRITE(msgBuf,'(A,I10,A,I6,2A)')
+     &        ' EXF_SET_UV: it=', myIter, ' loading rec=', count0,
+     &        ' from: ', vvecfile0(1:j)
+            CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                            SQUEEZE_RIGHT, myThid )
+            _END_MASTER(myThid)
+          ENDIF
 
           IF ( uvInterp ) THEN
 C-    vector interpolation to (xC,yC) locations
@@ -232,6 +289,22 @@ C--   Load and interpolate a new reccord
      I         vvecfile,
      O         vvecfile1,
      I         myTime, myIter, myThid )
+          IF ( exf_debugLev.GE.debLevC ) THEN
+            _BEGIN_MASTER(myThid)
+            j = ILNBLNK(uvecfile1)
+            WRITE(msgBuf,'(A,I10,A,I6,2A)')
+     &        ' EXF_SET_UV: it=', myIter, ' loading rec=', count1,
+     &        ' from: ', uvecfile1(1:j)
+            CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                            SQUEEZE_RIGHT, myThid )
+            j = ILNBLNK(vvecfile1)
+            WRITE(msgBuf,'(A,I10,A,I6,2A)')
+     &        ' EXF_SET_UV: it=', myIter, ' loading rec=', count1,
+     &        ' from: ', vvecfile1(1:j)
+            CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                            SQUEEZE_RIGHT, myThid )
+            _END_MASTER(myThid)
+          ENDIF
 
           IF ( uvInterp ) THEN
 C-    vector interpolation to (xC,yC) locations

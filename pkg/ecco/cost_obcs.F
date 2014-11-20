@@ -2,6 +2,9 @@ C $Header$
 C $Name$
 
 #include "ECCO_OPTIONS.h"
+#ifdef ALLOW_CTRL
+# include "CTRL_OPTIONS.h"
+#endif
 
 CBOP
 C     !ROUTINE: COST_OBCS
@@ -30,8 +33,12 @@ c     == global variables ==
 #include "SIZE.h"
 #include "EEPARAMS.h"
 
-#include "cal.h"
-#include "ctrl.h"
+#ifdef ALLOW_CAL
+# include "cal.h"
+#endif
+#ifdef ALLOW_CTRL
+# include "ctrl.h"
+#endif
 
 C     !INPUT/OUTPUT PARAMETERS:
 c     == routine arguments ==
@@ -39,6 +46,8 @@ c     == routine arguments ==
       integer myiter
       _RL     mytime
       integer mythid
+
+#if (defined (ALLOW_CTRL) && defined (ALLOW_OBCS))
 
 C     !LOCAL VARIABLES:
 c     == local variables ==
@@ -89,5 +98,7 @@ cgg   East boundary contribution to cost function.
       call cost_obcsvol ( myiter,mytime,
      &                    startrec, endrec, mythid)
 #endif
+
+#endif /* ALLOW_CTRL and ALLOW_OBCS */
 
       end

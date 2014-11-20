@@ -21,7 +21,80 @@ C     | in at build time.
 C     *==========================================================*
 C     \ev
 
-C     !USES:
+C     !CALLING SEQUENCE:
+C     PACKAGES_CHECK
+C       |
+C       |-- OBCS_CHECK
+C       |
+C       |-- OPPS_CHECK
+C       |
+C       |-- PP81_CHECK
+C       |
+C       |-- KL10_CHECK
+C       |
+C       |-- MY82_CHECK
+C       |
+C       |-- GGL90_CHECK
+C       |
+C       |-- KPP_CHECK
+C       |
+C       |-- GMREDI_CHECK
+C       |
+C       |-- BBL_CHECK
+C       |
+C       |-- EXF_CHECK
+C       |
+C       |-- PTRACERS_CHECK
+C       |
+C       |-- GCHEM_CHECK
+C       |
+C       |-- OFFLINE_CHECK
+C       |
+C       |-- SEAICE_CHECK
+C       |
+C       |-- SHELFICE_CHECK
+C       |
+C       |-- STREAMICE_CHECK
+C       |
+C       |-- ICEFRONT_CHECK
+C       |
+C       |-- THSICE_CHECK
+C       |
+C       |-- LAND_CHECK
+C       |
+C       |-- ATM_PHYS_CHECK
+C       |
+C       |-- AUTODIFF_CHECK
+C       |
+C       |-- CTRL_CHECK
+C       |
+C       |-- COST_CHECK
+C       |
+C       |-- GRDCHK_CHECK
+C       |
+C       |-- SBO_CHECK
+C       |
+C       |-- ECCO_CHECK
+C       |
+C       |-- DIAGNOSTICS_CHECK
+C       |
+C       |-- REGRID_CHECK
+C       |
+C       |-- LAYERS_CHECK
+C       |
+C       |-- NEST_CHILD_CHECK
+C       |
+C       |-- NEST_PARENT_CHECK
+C       |
+C       |-- OASIS_CHECK
+C       |
+C       |-- RUNCLOCK_CHECK
+C       |
+C       |-- MYPACKAGE_CHECK
+C       |
+C       |-- GAD_CHECK
+
+      !USES:
       IMPLICIT NONE
 C     === Global variables ===
 #include "SIZE.h"
@@ -154,6 +227,12 @@ C---  Continue with standard packages (with standard usePKG flag)
       IF (usePP81) CALL PACKAGES_ERROR_MSG('PP81',' ',myThid)
 #endif
 
+#ifdef ALLOW_KL10
+      IF (useKL10) CALL KL10_CHECK( myThid )
+#else
+      IF (useKL10) CALL PACKAGES_ERROR_MSG('KL10',' ',myThid)
+#endif
+
 #ifdef ALLOW_MY82
       IF (useMY82) CALL MY82_CHECK( myThid )
 #else
@@ -282,7 +361,9 @@ C---  Continue with standard packages (with standard usePKG flag)
       IF (useThSIce) CALL PACKAGES_ERROR_MSG('ThSIce',' ',myThid)
 #endif
 
-#ifndef ALLOW_LAND
+#ifdef ALLOW_LAND
+      IF (useLand) CALL LAND_CHECK( myThid )
+#else
       IF (useLand) CALL PACKAGES_ERROR_MSG('Land',' ',myThid)
 #endif
 
@@ -313,7 +394,7 @@ C---  Continue with standard packages (with standard usePKG flag)
 #endif
 
 #ifdef ALLOW_CTRL
-      CALL CTRL_CHECK( myThid )
+      IF (useCTRL) CALL CTRL_CHECK( myThid )
 #endif
 
 #ifdef ALLOW_COST
@@ -321,7 +402,9 @@ C---  Continue with standard packages (with standard usePKG flag)
 #endif
 
 #ifdef ALLOW_GRDCHK
-      IF (useGRDCHK) CALL GRDCHK_CHECK( myThid )
+      IF (useGrdChk) CALL GRDCHK_CHECK( myThid )
+#else
+      IF (useGrdChk) CALL PACKAGES_ERROR_MSG('GrdChk',' ',myThid)
 #endif
 
 #ifndef ALLOW_SMOOTH
@@ -339,7 +422,7 @@ C---  Continue with standard packages (with standard usePKG flag)
 #endif
 
 #ifdef ALLOW_ECCO
-      CALL ECCO_CHECK( myThid )
+      IF (useECCO) CALL ECCO_CHECK( myThid )
 #endif
 
 #ifdef ALLOW_DIAGNOSTICS

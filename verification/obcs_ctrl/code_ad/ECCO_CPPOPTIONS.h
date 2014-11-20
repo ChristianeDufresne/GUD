@@ -16,6 +16,9 @@ C ********************************************************************
 C ***                         ECCO Package                         ***
 C ********************************************************************
 
+C allow use of legacy ecco/ctrl codes
+#define ECCO_CTRL_DEPRECATED
+
 cph#define  ALLOW_ECCO_FORWARD_RUN
 #define  ALLOW_ECCO_OPTIMIZATION
 
@@ -120,11 +123,6 @@ c       >>> Make sure that ALLOW_OBCS is defined
 # endif
 CMM
 # undef ALLOW_IESTAU_COST_CONTRIBUTION
-c       >>> Sea-ice volume
-# undef ALLOW_COST_ICE
-
-c       >>> Sea-ice misfit to obs
-# undef ALLOW_SEAICE_COST_SMR_AREA
 
 C ********************************************************************
 C ***               Control vector Package                         ***

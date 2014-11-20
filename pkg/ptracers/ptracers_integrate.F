@@ -2,6 +2,9 @@ C $Header$
 C $Name$
 
 #include "PTRACERS_OPTIONS.h"
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
 
 CBOP
 C !ROUTINE: PTRACERS_INTEGRATE
@@ -14,8 +17,9 @@ C !INTERFACE: ==========================================================
      I                    myTime, myIter, myThid )
 
 C !DESCRIPTION:
-C     Calculates tendency for passive tracers and integrates forward
-C     in time.
+C     Calculates tendency for passive tracers and integrates forward in
+C     time. The tracer array is updated here while adjustments (filters,
+C     conv.adjustment) are applied later, in S/R TRACERS_CORRECTION_STEP
 
 C !USES: ===============================================================
 #include "PTRACERS_MOD.h"
@@ -59,6 +63,13 @@ C !OUTPUT PARAMETERS: ==================================================
 C  none
 
 #ifdef ALLOW_PTRACERS
+#ifdef ALLOW_DIAGNOSTICS
+C     !FUNCTIONS:
+      LOGICAL  DIAGNOSTICS_IS_ON
+      EXTERNAL DIAGNOSTICS_IS_ON
+      CHARACTER*4 GAD_DIAG_SUFX
+      EXTERNAL    GAD_DIAG_SUFX
+#endif /* ALLOW_DIAGNOSTICS */
 
 C !LOCAL VARIABLES: ====================================================
 C  iTracer          :: tracer index
@@ -78,6 +89,9 @@ C  rTransKp         :: vertical volume transport at interface k+1
 C  fZon             :: passive tracer zonal flux
 C  fMer             :: passive tracer meridional flux
 C  fVer             :: passive tracer vertical flux
+C  gTracer          :: passive tracer tendency
+C  gTrForc          :: passive tracer forcing tendency
+C  gTr_AB           :: Adams-Bashforth tracer tendency increment
       INTEGER iTracer
       INTEGER iMin,iMax,jMin,jMax
       INTEGER i, j, k
@@ -93,6 +107,8 @@ C  fVer             :: passive tracer vertical flux
       _RL fZon    (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL fMer    (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL fVer    (1-OLx:sNx+OLx,1-OLy:sNy+OLy,2)
+      _RL gTracer (1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr)
+      _RL gTrForc (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL gTr_AB  (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       LOGICAL calcAdvection
       INTEGER iterNb
@@ -100,9 +116,7 @@ C  fVer             :: passive tracer vertical flux
 #ifdef ALLOW_DIAGNOSTICS
       CHARACTER*8 diagName
       CHARACTER*4 diagSufx
-C-    Functions:
-      CHARACTER*4 GAD_DIAG_SUFX
-      EXTERNAL    GAD_DIAG_SUFX
+      LOGICAL diagForcing, diagAB_tend
 #endif /* ALLOW_DIAGNOSTICS */
 CEOP
 
@@ -117,25 +131,46 @@ C-    Compute iter at beginning of ptracer time step
       IF (staggerTimeStep) iterNb = myIter - 1
 #endif
 
+C-    Loop ranges for daughter routines
+c     iMin = 1
+c     iMax = sNx
+c     jMin = 1
+c     jMax = sNy
+C     Regarding model dynamics, only needs to get correct tracer tendency
+C     (gTracer) in tile interior (1:sNx,1:sNy);
+C     However, for some diagnostics, we may want to get valid tendency
+C     extended over 1 point in tile halo region (0:sNx+1,0:sNy=1).
+      iMin = 0
+      iMax = sNx+1
+      jMin = 0
+      jMax = sNy+1
+
 C--   Loop over tracers
       DO iTracer=1,PTRACERS_numInUse
-
-C-    Initialise tracer tendency to zero
-       DO k=1,Nr
-        DO j=1-OLy,sNy+OLy
-         DO i=1-OLx,sNx+OLx
-           gPTr(i,j,k,bi,bj,iTracer) = 0. _d 0
-         ENDDO
-        ENDDO
-       ENDDO
        IF ( PTRACERS_StepFwd(iTracer) ) THEN
         GAD_TR = GAD_TR1 + iTracer - 1
 
-C-    Loop ranges for daughter routines
-        iMin = 1-OLx+2
-        iMax = sNx+OLx-1
-        jMin = 1-OLy+2
-        jMax = sNy+OLy-1
+C-    Initialise tracer tendency to zero
+        DO k=1,Nr
+         DO j=1-OLy,sNy+OLy
+          DO i=1-OLx,sNx+OLx
+           gTracer(i,j,k) = 0. _d 0
+          ENDDO
+         ENDDO
+        ENDDO
+
+#ifdef ALLOW_DIAGNOSTICS
+        diagForcing = .FALSE.
+        diagAB_tend = .FALSE.
+        IF ( useDiagnostics ) THEN
+          diagSufx = GAD_DIAG_SUFX( GAD_TR, myThid )
+          diagName = 'Forc'//diagSufx
+          diagForcing = DIAGNOSTICS_IS_ON( diagName, myThid )
+          diagName = 'AB_g'//diagSufx
+          IF ( PTRACERS_AdamsBashGtr(iTracer) )
+     &    diagAB_tend = DIAGNOSTICS_IS_ON( diagName, myThid )
+        ENDIF
+#endif
 
 #ifdef ALLOW_AUTODIFF_TAMC
           act0 = iTracer - 1
@@ -153,6 +188,17 @@ C-    Loop ranges for daughter routines
      &                      + act3*max0*max1*max2
      &                      + act4*max0*max1*max2*max3
 #endif /* ALLOW_AUTODIFF_TAMC */
+
+C-    Apply AB on Tracer :
+        IF ( PTRACERS_AdamsBash_Tr(iTracer) ) THEN
+C     compute pTr^n+1/2 (stored in gpTrNm1) extrapolating pTr forward in time
+          CALL ADAMS_BASHFORTH2(
+     I                      bi, bj, 0, Nr,
+     I                      pTracer(1-OLx,1-OLy,1,bi,bj,iTracer),
+     U                      gpTrNm1(1-OLx,1-OLy,1,bi,bj,iTracer),
+     O                      gTr_AB,
+     I                      PTRACERS_startAB(iTracer), iterNb, myThid )
+        ENDIF
 
         DO j=1-OLy,sNy+OLy
          DO i=1-OLx,sNx+OLx
@@ -189,16 +235,15 @@ CADJ &      = comlev1_bibj_ptracers, key=iptrkey, byte=isbyte
          IF (debugMode) CALL DEBUG_CALL('GAD_SOM_ADVECT',myThid)
 # endif
           CALL GAD_SOM_ADVECT(
-     I                       PTRACERS_ImplVertAdv(iTracer),
-     I                       PTRACERS_advScheme(iTracer),
-     I                       PTRACERS_advScheme(iTracer),
-     I                       GAD_TR1+iTracer-1,
-     I                       PTRACERS_dTLev,
-     I                       uFld, vFld, wFld,
-     I                       pTracer(1-OLx,1-OLy,1,1,1,iTracer),
-     U                       _Ptracers_som(:,:,:,:,:,:,iTracer),
-     O                       gPtr(1-OLx,1-OLy,1,1,1,iTracer),
-     I                       bi, bj, myTime, myIter, myThid )
+     I                        PTRACERS_ImplVertAdv(iTracer),
+     I                        PTRACERS_advScheme(iTracer),
+     I                        PTRACERS_advScheme(iTracer),
+     I                        GAD_TR,
+     I                        PTRACERS_dTLev, uFld, vFld, wFld,
+     I                        pTracer(1-OLx,1-OLy,1,1,1,iTracer),
+     U                        _Ptracers_som(:,:,:,:,:,:,iTracer),
+     O                        gTracer,
+     I                        bi, bj, myTime, myIter, myThid )
         ELSEIF ( PTRACERS_MultiDimAdv(iTracer) ) THEN
 #else /* PTRACERS_ALLOW_DYN_STATE */
         IF ( PTRACERS_MultiDimAdv(iTracer) ) THEN
@@ -210,11 +255,10 @@ CADJ &      = comlev1_bibj_ptracers, key=iptrkey, byte=isbyte
      I                        PTRACERS_ImplVertAdv(iTracer),
      I                        PTRACERS_advScheme(iTracer),
      I                        PTRACERS_advScheme(iTracer),
-     I                        GAD_TR1+iTracer-1,
-     I                        PTRACERS_dTLev,
-     I                        uFld, vFld, wFld,
+     I                        GAD_TR,
+     I                        PTRACERS_dTLev, uFld, vFld, wFld,
      I                        pTracer(1-OLx,1-OLy,1,1,1,iTracer),
-     O                        gPtr(1-OLx,1-OLy,1,1,1,iTracer),
+     O                        gTracer,
      I                        bi, bj, myTime, myIter, myThid )
         ENDIF
 #endif /* DISABLE_MULTIDIM_ADVECTION */
@@ -233,7 +277,7 @@ C-    Start vertical index (k) loop (Nr:1)
 #ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE fVer(:,:,:) = comlev1_bibj_k_ptracers,
 CADJ &     key = kkey, byte = isbyte, kind = isbyte
-CADJ STORE gPtr(:,:,k,bi,bj,iTracer) = comlev1_bibj_k_ptracers,
+CADJ STORE gTracer(:,:,k) = comlev1_bibj_k_ptracers,
 CADJ &     key = kkey, byte = isbyte, kind = isbyte
 CADJ STORE gpTrNm1(:,:,k,bi,bj,iTracer) = comlev1_bibj_k_ptracers,
 CADJ &     key = kkey, byte = isbyte, kind = isbyte
@@ -245,7 +289,25 @@ CADJ &     key = kkey, byte = isbyte, kind = isbyte
      O                maskUp, xA, yA,
      I                k, bi, bj, myThid )
 
-C-    Calculate active tracer tendencies (gPtr) due to internal processes
+C--   Collect forcing term in local array gTrForc:
+          DO j=1-OLy,sNy+OLy
+           DO i=1-OLx,sNx+OLx
+            gTrForc(i,j) = 0. _d 0
+           ENDDO
+          ENDDO
+          CALL PTRACERS_APPLY_FORCING(
+     U                    gTrForc,
+     I                    surfaceForcingPTr(1-OLx,1-OLy,bi,bj,iTracer),
+     I                    iMin,iMax,jMin,jMax, k, bi, bj,
+     I                    iTracer, myTime, myIter, myThid )
+#ifdef ALLOW_DIAGNOSTICS
+          IF ( diagForcing ) THEN
+            diagName = 'Forc'//diagSufx
+            CALL DIAGNOSTICS_FILL(gTrForc,diagName,k,1,2,bi,bj,myThid)
+          ENDIF
+#endif /* ALLOW_DIAGNOSTICS */
+
+C-    Calculate active tracer tendencies (gTracer) due to internal processes
 C      (advection, [explicit] diffusion, parameterizations,...)
           CALL GAD_CALC_RHS(
      I             bi,bj, iMin,iMax,jMin,jMax, k,kM1, kUp,kDown,
@@ -255,79 +317,72 @@ C      (advection, [explicit] diffusion, parameterizations,...)
      I             PTRACERS_diffKh(iTracer),
      I             PTRACERS_diffK4(iTracer),
      I             KappaRk(1-OLx,1-OLy,k), dummy,
-     I             gpTrNm1(1-OLx,1-OLy,1,1,1,iTracer),
-     I             pTracer(1-OLx,1-OLy,1,1,1,iTracer),
+     I             pTracer(1-OLx,1-OLy,1,bi,bj,iTracer),
+     I             gpTrNm1(1-OLx,1-OLy,1,bi,bj,iTracer),
      I             PTRACERS_dTLev, GAD_TR,
      I             PTRACERS_advScheme(iTracer),
      I             PTRACERS_advScheme(iTracer),
      I             calcAdvection, PTRACERS_ImplVertAdv(iTracer),
-     I             .FALSE., .FALSE.,
+     I             PTRACERS_AdamsBash_Tr(iTracer), .FALSE.,
      I             PTRACERS_useGMRedi(iTracer),
      I             PTRACERS_useKPP(iTracer),
      O             fZon, fMer,
-     U             fVer, gPtr(1-OLx,1-OLy,1,1,1,iTracer),
+     U             fVer, gTracer,
      I             myTime, myIter, myThid )
 
-C-    External forcing term(s)
-          IF ( tracForcingOutAB.NE.1 )
-     &      CALL PTRACERS_FORCING(
-     I                    bi,bj,iMin,iMax,jMin,jMax,k,iTracer,
-     U                    gPtr(1-OLx,1-OLy,1,1,1,iTracer),
-     I                    surfaceForcingPTr(1-OLx,1-OLy,1,1,iTracer),
-     I                    myIter, myTime, myThid )
+C-    External forcing term(s) inside Adams-Bashforth:
+          IF ( tracForcingOutAB.NE.1 ) THEN
+            DO j=1-OLy,sNy+OLy
+             DO i=1-OLx,sNx+OLx
+              gTracer(i,j,k) = gTracer(i,j,k) + gTrForc(i,j)
+             ENDDO
+            ENDDO
+          ENDIF
 
 C-    If using Adams-Bashforth II, then extrapolate tendencies
-C     gPtr is now the tracer tendency for explicit advection/diffusion
+C     gTracer is now the tracer tendency for explicit advection/diffusion
 
 C     If matrix is being computed, skip call to S/R ADAMS_BASHFORTH2 to
-C     prevent gPtr from being replaced by the average of gPtr and gpTrNm1.
+C     prevent gTracer from being replaced by the average of gTracer and gpTrNm1.
           IF ( .NOT.useMATRIX .AND.
      &         PTRACERS_AdamsBashGtr(iTracer) ) THEN
-
            CALL ADAMS_BASHFORTH2(
      I                      bi, bj, k, Nr,
-     U                      gPtr(1-OLx,1-OLy,1,1,1,iTracer),
-     U                      gpTrNm1(1-OLx,1-OLy,1,1,1,iTracer),
-     U                      gTr_AB,
+     U                      gTracer,
+     U                      gpTrNm1(1-OLx,1-OLy,1,bi,bj,iTracer),
+     O                      gTr_AB,
      I                      PTRACERS_startAB(iTracer), iterNb, myThid )
 #ifdef ALLOW_DIAGNOSTICS
-           IF ( useDiagnostics ) THEN
-             diagSufx = GAD_DIAG_SUFX( GAD_TR, myThid )
+           IF ( diagAB_tend ) THEN
              diagName = 'AB_g'//diagSufx
              CALL DIAGNOSTICS_FILL(gTr_AB,diagName,k,1,2,bi,bj,myThid)
            ENDIF
 #endif /* ALLOW_DIAGNOSTICS */
           ENDIF
 
-C-    External forcing term(s)
-          IF ( tracForcingOutAB.EQ.1 )
-     &      CALL PTRACERS_FORCING(
-     I                    bi,bj,iMin,iMax,jMin,jMax,k,iTracer,
-     U                    gPtr(1-OLx,1-OLy,1,1,1,iTracer),
-     I                    surfaceForcingPTr(1-OLx,1-OLy,1,1,iTracer),
-     I                    myIter, myTime, myThid )
+C-    External forcing term(s) outside Adams-Bashforth:
+          IF ( tracForcingOutAB.EQ.1 ) THEN
+            DO j=1-OLy,sNy+OLy
+             DO i=1-OLx,sNx+OLx
+              gTracer(i,j,k) = gTracer(i,j,k) + gTrForc(i,j)
+             ENDDO
+            ENDDO
+          ENDIF
 
 #ifdef NONLIN_FRSURF
 C-    Account for change in level thickness
           IF (nonlinFreeSurf.GT.0) THEN
            CALL FREESURF_RESCALE_G(
-     I                             bi,bj,k,
-     U                             gPtr(1-OLx,1-OLy,1,1,1,iTracer),
-     I                             myThid )
+     I                           bi, bj, k,
+     U                           gTracer,
+     I                           myThid )
            IF ( PTRACERS_AdamsBashGtr(iTracer) )
      &     CALL FREESURF_RESCALE_G(
-     I                             bi,bj,k,
-     U                             gpTrNm1(1-OLx,1-OLy,1,1,1,iTracer),
-     I                             myThid )
+     I                           bi, bj, k,
+     U                           gpTrNm1(1-OLx,1-OLy,1,bi,bj,iTracer),
+     I                           myThid )
           ENDIF
 #endif /* NONLIN_FRSURF */
-
-C-    Integrate forward in time, storing in gPtr:  G=T+dt*G
-          CALL TIMESTEP_TRACER(
-     I                         bi, bj, k, PTRACERS_dTLev(k),
-     I                         pTracer(1-OLx,1-OLy,1,1,1,iTracer),
-     U                         gPtr(1-OLx,1-OLy,1,1,1,iTracer),
-     I                         myIter, myThid )
 
 C-    end of vertical index (k) loop (Nr:1)
         ENDDO
@@ -337,41 +392,45 @@ C-    end of vertical index (k) loop (Nr:1)
           IF ( usingPCoords ) THEN
             CALL DWNSLP_APPLY(
      I                  GAD_TR, bi, bj, kSurfC,
-     I                  recip_drF, recip_hFacC, recip_rA,
-     I                  PTRACERS_dTLev,
-     I                  pTracer(1-OLx,1-OLy,1,1,1,iTracer),
-     O                  gPtr(1-OLx,1-OLy,1,1,1,iTracer),
-     I                  myTime, myIter, myThid )
+     I                  pTracer(1-OLx,1-OLy,1,bi,bj,iTracer),
+     U                  gTracer,
+     I                  recip_hFac, recip_rA, recip_drF,
+     I                  PTRACERS_dTLev, myTime, myIter, myThid )
           ELSE
             CALL DWNSLP_APPLY(
      I                  GAD_TR, bi, bj, kLowC,
-     I                  recip_drF, recip_hFacC, recip_rA,
-     I                  PTRACERS_dTLev,
-     I                  pTracer(1-OLx,1-OLy,1,1,1,iTracer),
-     O                  gPtr(1-OLx,1-OLy,1,1,1,iTracer),
-     I                  myTime, myIter, myThid )
+     I                  pTracer(1-OLx,1-OLy,1,bi,bj,iTracer),
+     U                  gTracer,
+     I                  recip_hFac, recip_rA, recip_drF,
+     I                  PTRACERS_dTLev, myTime, myIter, myThid )
           ENDIF
         ENDIF
 #endif /* ALLOW_DOWN_SLOPE */
 
-C       All explicit advection/diffusion/sources should now be
-C       done. The updated tracer field is in gPtr.
+C-    Integrate forward in time, storing in gTracer:  gTr <= pTr + dt*gTr
+        CALL TIMESTEP_TRACER(
+     I                bi, bj, PTRACERS_dTLev,
+     I                pTracer(1-OLx,1-OLy,1,bi,bj,iTracer),
+     U                gTracer,
+     I                myTime, myIter, myThid )
+
+C     All explicit advection/diffusion/sources should now be
+C     done. The updated tracer field is in gTracer.
 #ifdef ALLOW_MATRIX
-C       Accumalate explicit tendency and also reset gPtr to initial
+C       Accumalate explicit tendency and also reset gTracer to initial
 C       tracer field for implicit matrix calculation
-        IF ( useMATRIX ) CALL MATRIX_STORE_TENDENCY_EXP(
-     I                               iTracer, bi, bj,
-     I                               myTime, myIter, myThid )
+        IF ( useMATRIX ) THEN
+          CALL MATRIX_STORE_TENDENCY_EXP(
+     I                      iTracer, bi, bj,
+     U                      gTracer,
+     I                      myTime, myIter, myThid )
+        ENDIF
 #endif /* ALLOW_MATRIX */
 
-C--     Vertical advection & diffusion (implicit) for passive tracers
-        iMin = 0
-        iMax = sNx+1
-        jMin = 0
-        jMax = sNy+1
+C--   Vertical advection & diffusion (implicit) for passive tracers
 
 #ifdef ALLOW_AUTODIFF_TAMC
-CADJ STORE gPtr(:,:,:,bi,bj,iTracer) = comlev1_bibj_ptracers,
+CADJ STORE gTracer(:,:,:) = comlev1_bibj_ptracers,
 CADJ &     key=iptrkey, byte=isbyte
 #endif /* ALLOW_AUTODIFF_TAMC */
 
@@ -381,8 +440,8 @@ CADJ &     key=iptrkey, byte=isbyte
      I         PTRACERS_ImplVertAdv(iTracer),
      I         PTRACERS_advScheme(iTracer), GAD_TR,
      I         PTRACERS_dTLev, kappaRk, recip_hFac, wFld,
-     I         pTracer(1-OLx,1-OLy,1,1,1,iTracer),
-     U         gPtr(1-OLx,1-OLy,1,1,1,iTracer),
+     I         pTracer(1-OLx,1-OLy,1,bi,bj,iTracer),
+     U         gTracer,
      I         bi, bj, myTime, myIter, myThid )
 
         ELSEIF ( implicitDiffusion ) THEN
@@ -392,16 +451,31 @@ CADJ &     key=iptrkey, byte=isbyte
           CALL IMPLDIFF(
      I         bi, bj, iMin, iMax, jMin, jMax,
      I         GAD_TR, kappaRk, recip_hFac,
-     U         gPtr(1-OLx,1-OLy,1,1,1,iTracer),
+     U         gTracer,
      I         myThid )
         ENDIF
 
+        IF ( PTRACERS_AdamsBash_Tr(iTracer) ) THEN
+C--   Save current tracer field (for AB on tracer) and then update tracer
+          CALL CYCLE_AB_TRACER(
+     I               bi, bj, gTracer,
+     U               pTracer(1-OLx,1-OLy,1,bi,bj,iTracer),
+     O               gpTrNm1(1-OLx,1-OLy,1,bi,bj,iTracer),
+     I               myTime, myIter, myThid )
+        ELSE
+C--   Update tracer fields:  pTr(n) = pTr**
+          CALL CYCLE_TRACER(
+     I               bi, bj,
+     O               pTracer(1-OLx,1-OLy,1,bi,bj,iTracer),
+     I               gTracer, myTime, myIter, myThid )
+        ENDIF
+
 #ifdef ALLOW_OBCS
-C--     Apply open boundary conditions for each passive tracer
+C--   Apply open boundary conditions for each passive tracer
         IF ( useOBCS ) THEN
           CALL OBCS_APPLY_PTRACER(
      I         bi, bj, 0, iTracer,
-     U         gPtr(1-OLx,1-OLy,1,bi,bj,iTracer),
+     U         pTracer(1-OLx,1-OLy,1,bi,bj,iTracer),
      I         myThid )
         ENDIF
 #endif /* ALLOW_OBCS */

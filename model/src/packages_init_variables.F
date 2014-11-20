@@ -35,6 +35,8 @@ C       |-- CD_CODE_INI_VARS
 C       |
 C       |-- PP81_INIT_VARIA
 C       |
+C       |-- KL10_INIT_VARIA
+C       |
 C       |-- MY82_INIT_VARIA
 C       |
 C       |-- GGL90_INIT_VARIA
@@ -54,10 +56,6 @@ C       |
 C       |-- EBM_INI_VARS
 C       |
 C       |-- CHEAPAML_INIT_VARIA
-C       |
-C       |-- SMOOTH_INIT_VARIA
-C       |
-C       |-- PROFILES_INIT_VARIA
 C       |
 C       |-- FLT_INIT_VARIA
 C       |
@@ -104,9 +102,10 @@ C       |-- CPL_INI_VARS
 C       |
 C       |-- MYPACKAGE_INIT_VARIA
 C       |
+C       |-- SMOOTH_INIT_VARIA
+C       |-- PROFILES_INIT_VARIA
+C       |-- ECCO_INIT_VARIA
 C       |-- CTRL_INIT_VARIABLES
-C       |-- CTRL_MAP_INI_ECCO
-C       |-- CTRL_MAP_INI
 C       |
 C       |-- OBCS_INIT_VARIABLES
 
@@ -182,6 +181,16 @@ C--   Initialize PP81 vertical mixing scheme.
        CALL PP81_INIT_VARIA( myThid )
       ENDIF
 #endif /* ALLOW_PP81 */
+
+#ifdef ALLOW_KL10
+C--   Initialize KL10 vertical mixing scheme.
+      IF (useKL10) THEN
+# ifdef ALLOW_DEBUG
+       IF (debugMode) CALL DEBUG_CALL('KL10_INIT_VARIA',myThid)
+# endif
+       CALL KL10_INIT_VARIA( myThid )
+      ENDIF
+#endif /* ALLOW_KL10 */
 
 #ifdef ALLOW_MY82
 C--   Initialize MY82 vertical mixing scheme.
@@ -261,17 +270,6 @@ CADJ STORE theta = tapelev_init, key = 1
         CALL CHEAPAML_INIT_VARIA( myThid )
       ENDIF
 #endif /* ALLOW_CHEAPAML */
-
-#ifdef ALLOW_SMOOTH
-      CALL SMOOTH_INIT_VARIA(myThid)
-#endif /* ALLOW_SMOOTH */
-
-#ifdef ALLOW_PROFILES
-C--   Initialise Profiles cost function.
-      IF (usePROFILES) THEN
-        CALL PROFILES_INIT_VARIA( myThid )
-      ENDIF
-#endif /* ALLOW_PROFILES */
 
 #ifdef ALLOW_FLT
 C--   Initialise float position
@@ -355,12 +353,12 @@ C--   Initialize SEAICE model.
 #endif /* ALLOW_SHELFICE */
 
 #ifdef ALLOW_STREAMICE
-cph      IF (useStreamIce) THEN
+      IF (useStreamIce) THEN
 # ifdef ALLOW_DEBUG
        IF (debugMode) CALL DEBUG_CALL('STREAMICE_INIT_VARIA',myThid)
 # endif
        CALL STREAMICE_INIT_VARIA( myThid )
-cph      ENDIF
+      ENDIF
 #endif /* ALLOW_STREAMICE */
 
 #ifdef ALLOW_ICEFRONT
@@ -475,20 +473,32 @@ CADJ STORE diffkr = tapelev_init, key = 1
 # endif
 #endif /* ALLOW_AUTODIFF_TAMC */
 
-#ifdef ALLOW_AUTODIFF
-C--   Initialise auxiliary xx_ fields
-      IF (debugMode) CALL DEBUG_CALL('CTRL_INIT_VARIABLES',myThid)
-      CALL CTRL_INIT_VARIABLES ( myThid )
-C--   Map the control variables onto the model state.
-C-    Needs to be called after few {PKG}_init_varia (e.g., PTRACERS_INIT_VARIA)
-# ifdef ALLOW_ECCO
-      IF (debugMode) CALL DEBUG_CALL('CTRL_MAP_INI_ECCO',myThid)
-      CALL CTRL_MAP_INI_ECCO( myThid )
-# else
-      IF (debugMode) CALL DEBUG_CALL('CTRL_MAP_INI',myThid)
-      CALL CTRL_MAP_INI( myThid )
+C--   Initialise pkg/smooth
+#ifdef ALLOW_SMOOTH
+      CALL SMOOTH_INIT_VARIA(myThid)
+#endif /* ALLOW_SMOOTH */
+
+C--   Initialise pkg/profiles
+#ifdef ALLOW_PROFILES
+      IF (usePROFILES) THEN
+        CALL PROFILES_INIT_VARIA( myThid )
+      ENDIF
+#endif /* ALLOW_PROFILES */
+
+C--   Initialise pkg/ecco (and related pkgs components)
+#ifdef ALLOW_ECCO
+      IF ( useECCO ) CALL ECCO_INIT_VARIA( myThid )
+#endif
+
+C--   Initialise pkg/ctl (and related pkgs components)
+#ifdef ALLOW_CTRL
+      IF (useCTRL) THEN
+# ifdef ALLOW_DEBUG
+        IF (debugMode) CALL DEBUG_CALL('CTRL_INIT_VARIABLES',myThid)
 # endif
-#endif /* ALLOW_AUTODIFF */
+        CALL CTRL_INIT_VARIABLES ( myThid )
+      ENDIF
+#endif /* ALLOW_CTRL */
 
 #ifdef ALLOW_OBCS
 C--   put this call in last position (needs to come after few {PKG}_init_varia)

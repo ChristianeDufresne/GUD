@@ -8,6 +8,7 @@ C $Name$
      I          xx_gen_file, xx_genstartdate, xx_genperiod,
      I          genmask, genfld, xx_gen0, xx_gen1, xx_gen_dummy,
      I          xx_gen_remo_intercept, xx_gen_remo_slope,
+     I          genweight,
      I          mytime, myiter, mythid
      &                     )
 
@@ -37,6 +38,10 @@ c     == global variables ==
 #ifdef ALLOW_EXF
 # include "EXF_FIELDS.h"
 #endif
+#ifndef ECCO_CTRL_DEPRECATED
+      character*(MAX_LEN_FNAM) xx_tauu_file
+      character*(MAX_LEN_FNAM) xx_tauv_file
+#endif
 
 c     == routine arguments ==
 
@@ -51,6 +56,7 @@ c     == routine arguments ==
       _RL     xx_gen_dummy
       _RL     xx_gen_remo_intercept
       _RL     xx_gen_remo_slope
+      _RL     genweight(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
 
       _RL     mytime
       integer myiter
@@ -100,10 +106,16 @@ c--   Now, read the control vector.
       doglobalread = .false.
       ladinit      = .false.
 
-      if (optimcycle .ge. 0) then
+      if ( (optimcycle .ge. 0).AND.(.NOT.ctrlUseGen) ) then
         ilgen=ilnblnk( xx_gen_file )
         write(fnamegen(1:80),'(2a,i10.10)')
      &       xx_gen_file(1:ilgen), '.', optimcycle
+      endif
+
+      if ( (optimcycle .ge. 0).AND.ctrlUseGen ) then
+        ilgen=ilnblnk( xx_gen_file )
+        write(fnamegen(1:80),'(2a,i10.10)')
+     &    xx_gen_file(1:ilgen),'.effective.',optimcycle
       endif
 
 c--   Get the counters, flags, and the interpolation factor.
@@ -114,26 +126,25 @@ c--   Get the counters, flags, and the interpolation factor.
      I                       mytime, myiter, mythid )
 
       if ( genfirst ) then
+cc#ifdef ALLOW_OPENAD
+cc        call oad_active_read_xy( fnamegen, xx_gen1, gencount0,
+cc     &                       doglobalread, ladinit, optimcycle,
+cc     &                       mythid, xx_gen_dummy )
+cc#else
         call active_read_xy( fnamegen, xx_gen1, gencount0,
      &                       doglobalread, ladinit, optimcycle,
      &                       mythid, xx_gen_dummy )
+cc#endif /* ALLOW_OPENAD */
+
+#ifdef ECCO_CTRL_DEPRECATED
 #ifdef ALLOW_CTRL_SMOOTH
         if ( xx_gen_file .EQ. xx_tauu_file .OR.
      &       xx_gen_file .EQ. xx_tauv_file )
      &     call ctrl_smooth(xx_gen1,genmask,myThid)
 #endif
+#endif
 
 #ifdef ALLOW_SMOOTH
-      IF ( ctrlSmoothCorrel2D ) THEN
-      IF ( useSMOOTH ) THEN
-      call smooth_correl2D(xx_gen1,genmask,1,mythid)
-      call smooth_correl2Dw(xx_gen1,genmask,xx_gen_file,mythid)
-      ENDIF
-      write(fnamegeneric(1:80),'(2a,i10.10)')
-     & xx_gen_file(1:ilgen),'.effective.',optimcycle
-      call mdswritefield(fnamegeneric,ctrlprec,.FALSE.,'RL',
-     & 1, xx_gen1, gencount0, optimcycle, mythid)
-      ENDIF
 #ifdef ALLOW_SMOOTH_CTRL2D
       if (useSMOOTH) call smooth2D(xx_gen1,genmask,1,mythid)
       write(fnamegeneric(1:80),'(2a,i10.10)')
@@ -148,26 +159,24 @@ c--   Get the counters, flags, and the interpolation factor.
       if (( genfirst ) .or. ( genchanged )) then
         call CTRL_SWAPFFIELDS( xx_gen0, xx_gen1, mythid )
 
+cc#ifdef ALLOW_OPENAD
+cc        call oad_active_read_xy( fnamegen, xx_gen1 , gencount1,
+cc     &                       doglobalread, ladinit, optimcycle,
+cc     &                       mythid, xx_gen_dummy )
+cc#else
         call active_read_xy( fnamegen, xx_gen1 , gencount1,
      &                       doglobalread, ladinit, optimcycle,
      &                       mythid, xx_gen_dummy )
+cc#endif /* ALLOW_OPENAD */
+#ifdef ECCO_CTRL_DEPRECATED
 #ifdef ALLOW_CTRL_SMOOTH
         if ( xx_gen_file .EQ. xx_tauu_file .OR.
      &       xx_gen_file .EQ. xx_tauv_file )
      &     call ctrl_smooth(xx_gen1,genmask,myThid)
 #endif
+#endif
 
 #ifdef ALLOW_SMOOTH
-      IF ( ctrlSmoothCorrel2D ) THEN
-      IF ( useSMOOTH ) THEN
-      call smooth_correl2D(xx_gen1,genmask,1,mythid)
-      call smooth_correl2Dw(xx_gen1,genmask,xx_gen_file,mythid)
-      ENDIF
-      write(fnamegeneric(1:80),'(2a,i10.10)')
-     & xx_gen_file(1:ilgen),'.effective.',optimcycle
-      call mdswritefield(fnamegeneric,ctrlprec,.FALSE.,'RL',
-     & 1, xx_gen1, gencount1, optimcycle, mythid)
-      ENDIF
 #ifdef ALLOW_SMOOTH_CTRL2D
       if (useSMOOTH) call smooth2D(xx_gen1,genmask,1,mythid)
       write(fnamegeneric(1:80),'(2a,i10.10)')
@@ -183,6 +192,12 @@ c--   Add control to model variable.
 cph(
 cph this flag ported from the SIO code
 cph Initial wind stress adjustments are too vigorous.
+
+#ifndef ECCO_CTRL_DEPRECATED
+      xx_tauu_file       = 'xx_tauu'
+      xx_tauv_file       = 'xx_tauv'
+#endif
+
       if ( gencount0 .LE. 2 .AND.
      &     ( xx_gen_file .EQ. xx_tauu_file .OR.
      &       xx_gen_file .EQ. xx_tauv_file ) .AND.
@@ -197,6 +212,7 @@ cph Initial wind stress adjustments are too vigorous.
       else
          gensign = 1.
       endif
+
 c
 cph since the above is ECCO specific, we undo it here:
 cph      doCtrlUpdate = .TRUE.

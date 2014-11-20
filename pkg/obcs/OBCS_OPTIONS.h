@@ -28,7 +28,7 @@ C from a file
 C Enable OB conditions following Stevens (1990)
 #undef ALLOW_OBCS_STEVENS
 
-C This includes hooks to sponge layer treatment of uvel, vvel
+C Allow sponge layer treatment of open boundary conditions
 #undef ALLOW_OBCS_SPONGE
 
 C Include hooks to sponge layer treatment of pkg/seaice variables

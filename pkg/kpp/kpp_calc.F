@@ -2,6 +2,12 @@ C $Header$
 C $Name$
 
 #include "KPP_OPTIONS.h"
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
+#ifdef ALLOW_SALT_PLUME
+# include "SALT_PLUME_OPTIONS.h"
+#endif
 
 CBOP
 C !ROUTINE: KPP_CALC
@@ -115,7 +121,6 @@ C !USES: ===============================================================
 #ifdef ALLOW_AUTODIFF_TAMC
 # include "tamc.h"
 # include "tamc_keys.h"
-#else /* ALLOW_AUTODIFF_TAMC */
 #endif /* ALLOW_AUTODIFF_TAMC */
 
       EXTERNAL DIFFERENT_MULTIPLE
@@ -149,10 +154,11 @@ c     imin, imax, jmin, jmax  - array computation indices
 
 c Local arrays and variables
 c     work?  (nx,ny)       - horizontal working arrays
+c     temp?  (nx,ny,Nr)    - 3d working arrays
 c     ustar  (nx,ny)       - surface friction velocity                  (m/s)
 c     bo     (nx,ny)       - surface turbulent buoyancy forcing     (m^2/s^3)
 c     bosol  (nx,ny)       - surface radiative buoyancy forcing     (m^2/s^3)
-c     boplume(nx,ny)       - surface haline buoyancy forcing        (m^2/s^3)
+c     boplume(nx,ny,Nrp1)  - surface haline buoyancy forcing        (m^2/s^3)
 c     shsq   (nx,ny,Nr)    - local velocity shear squared
 c                            at interfaces for ri_iwmix             (m^2/s^2)
 c     dVsq   (nx,ny,Nr)    - velocity shear re surface squared
@@ -179,7 +185,13 @@ c     vRef   (nx,ny)       - Reference meridional velocity              (m/s)
       _RL bo    ( 1-OLx:sNx+OLx, 1-OLy:sNy+OLy                )
       _RL bosol ( 1-OLx:sNx+OLx, 1-OLy:sNy+OLy                )
 #ifdef ALLOW_SALT_PLUME
-      _RL boplume ( 1-OLx:sNx+OLx, 1-OLy:sNy+OLy              )
+      _RL temp1   ( 1-OLx:sNx+OLx, 1-OLy:sNy+OLy, Nr          )
+      _RL temp2   ( 1-OLx:sNx+OLx, 1-OLy:sNy+OLy, Nr          )
+      _RL boplume ( 1-OLx:sNx+OLx, 1-OLy:sNy+OLy, Nrp1        )
+#ifdef SALT_PLUME_SPLIT_BASIN
+      _RL lon ( 1-OLx:sNx+OLx, 1-OLy:sNy+OLy                  )
+      _RL lat ( 1-OLx:sNx+OLx, 1-OLy:sNy+OLy                  )
+#endif /* SALT_PLUME_SPLIT_BASIN */
 #endif /* ALLOW_SALT_PLUME */
       _RL shsq  ( 1-OLx:sNx+OLx, 1-OLy:sNy+OLy, Nr            )
       _RL dVsq  ( 1-OLx:sNx+OLx, 1-OLy:sNy+OLy, Nr            )
@@ -205,6 +217,7 @@ cph)
 #ifdef KPP_ESTIMATE_UREF
       _RL tempvar1, dBdz1, dBdz2, ustarX, ustarY
 #endif
+CEOP
 
 #ifdef ALLOW_AUTODIFF_TAMC
           act1 = bi - myBxLo(myThid)
@@ -217,8 +230,9 @@ cph)
           ikppkey = (act1 + 1) + act2*max1
      &                      + act3*max1*max2
      &                      + act4*max1*max2*max3
+#else /* ALLOW_AUTODIFF_TAMC */
+          ikppkey = 0
 #endif /* ALLOW_AUTODIFF_TAMC */
-CEOP
 
 c     Check to see if new vertical mixing coefficient should be computed now?
       IF ( DIFFERENT_MULTIPLE(kpp_freq,myTime,deltaTClock)
@@ -342,12 +356,14 @@ c     so that the subroutine "bldepth" works correctly
 
 cph(
 cph  this avoids a single or double recomp./call of statekpp
-CADJ store work2              = comlev1_kpp, key = ikppkey
+#ifdef ALLOW_AUTODIFF_TAMC
+CADJ STORE work2              = comlev1_kpp, key = ikppkey
 #ifdef KPP_AUTODIFF_EXCESSIVE_STORE
-CADJ store dbloc, Ritop, ghat = comlev1_kpp, key = ikppkey
-CADJ store vddiff             = comlev1_kpp, key = ikppkey
-CADJ store TTALPHA, SSBETA    = comlev1_kpp, key = ikppkey
+CADJ STORE dbloc, Ritop, ghat = comlev1_kpp, key = ikppkey
+CADJ STORE vddiff             = comlev1_kpp, key = ikppkey
+CADJ STORE TTALPHA, SSBETA    = comlev1_kpp, key = ikppkey
 #endif
+#endif /* ALLOW_AUTODIFF_TAMC */
 cph)
 
 CML#ifdef ALLOW_SHELFICE
@@ -378,6 +394,8 @@ c     bo    = - g * ( alpha*surfaceForcingT +
 c                     beta *surfaceForcingS ) / rho            (m^2/s^3)
 c     bosol = - g * alpha * Qsw * drF(1) / rho                 (m^2/s^3)
 c     boplume = g * (beta * saltPlumeFlux/rhoConst ) /rho      (m^2/s^3)
+c             = g * (beta * SPforcingS   /rhoConst ) /rho
+c              +g * (alpha* SPforcingT   / ??
 c------------------------------------------------------------------------
 c     velocity shear
 c     --------------
@@ -391,12 +409,32 @@ c     dVsq in the subroutine that does the surface related stuff
 c     (admittedly this is a bit messy)
 c------------------------------------------------------------------------
 
+#ifdef ALLOW_SALT_PLUME
+      DO j=jMin,jMax
+       DO i=iMin,iMax
+#ifndef SALT_PLUME_VOLUME
+        temp1(i,j,1) = saltPlumeFlux(i,j,bi,bj)
+        temp2(i,j,1) = 0. _d 0
+        DO k=2,Nr
+         temp1(i,j,k) = 0. _d 0
+         temp2(i,j,k) = 0. _d 0
+        ENDDO
+#else /* def SALT_PLUME_VOLUME */
+        DO k=1,Nr
+         temp1(i,j,k) = SPforcingS(i,j,k,bi,bj)
+         temp2(i,j,k) = SPforcingT(i,j,k,bi,bj)
+        ENDDO
+#endif /* SALT_PLUME_VOLUME */
+       ENDDO
+      ENDDO
+#endif /* ALLOW_SALT_PLUME */
+
       CALL KPP_FORCING_SURF(
      I     work2, surfaceForcingU, surfaceForcingV,
      I     surfaceForcingT, surfaceForcingS, surfaceForcingTice,
      I     Qsw,
 #ifdef ALLOW_SALT_PLUME
-     I     saltPlumeFlux,
+     I     temp1, temp2,
 #endif /* ALLOW_SALT_PLUME */
      I     ttalpha, ssbeta,
      O     ustar, bo, bosol,
@@ -407,7 +445,9 @@ c------------------------------------------------------------------------
      I     ikppkey, iMin, iMax, jMin, jMax, bi, bj, myTime, myThid )
 
 CMLcph(
-CMLCADJ store ustar = comlev1_kpp, key = ikppkey
+CML#ifdef ALLOW_AUTODIFF_TAMC
+CMLCADJ STORE ustar = comlev1_kpp, key = ikppkey
+CML#endif
 CMLcph)
 
 c initialize arrays to zero
@@ -461,9 +501,11 @@ c     shsq computation
       ENDDO
 
 cph(
+#ifdef ALLOW_AUTODIFF_TAMC
 #ifdef KPP_AUTODIFF_EXCESSIVE_STORE
-CADJ store dvsq, shsq = comlev1_kpp, key = ikppkey
+CADJ STORE dvsq, shsq = comlev1_kpp, key = ikppkey
 #endif
+#endif /* ALLOW_AUTODIFF_TAMC */
 cph)
 
 c-----------------------------------------------------------------------
@@ -473,14 +515,14 @@ c-----------------------------------------------------------------------
 c     precompute background vertical diffusivities, which are needed for
 c     matching diffusivities at bottom of KPP PBL
       CALL CALC_3D_DIFFUSIVITY(
-     I        bi,bj,1-Olx,sNx+OLx,1-Oly,sNy+OLy,
+     I        bi,bj,1-OLx,sNx+OLx,1-OLy,sNy+OLy,
      I        GAD_SALINITY, .FALSE., .FALSE.,
-     O        KPPdiffKzS(1-Olx,1-Oly,1,bi,bj),
+     O        KPPdiffKzS(1-OLx,1-OLy,1,bi,bj),
      I        myThid)
       CALL CALC_3D_DIFFUSIVITY(
-     I        bi,bj,1-Olx,sNx+OLx,1-Oly,sNy+OLy,
+     I        bi,bj,1-OLx,sNx+OLx,1-OLy,sNy+OLy,
      I        GAD_TEMPERATURE, .FALSE., .FALSE.,
-     O        KPPdiffKzT(1-Olx,1-Oly,1,bi,bj),
+     O        KPPdiffKzT(1-OLx,1-OLy,1,bi,bj),
      I        myThid)
 #ifndef EXCLUDE_KPP_DOUBLEDIFF
       IF ( KPPuseDoubleDiff ) THEN
@@ -490,9 +532,9 @@ C     them right after Ri_iwmix within kppmix, but ttalpha, ssbeta, theta
 C     and salt are not passed to kppmix and are thus not available there.
        CALL KPP_DOUBLEDIFF(
      I      TTALPHA, SSBETA,
-     U      KPPdiffKzT(1-Olx,1-Oly,1,bi,bj),
-     U      KPPdiffKzS(1-Olx,1-Oly,1,bi,bj),
-     I      ikppkey,1-Olx,sNx+OLx,1-Oly,sNy+OLy,bi,bj,myThid)
+     U      KPPdiffKzT(1-OLx,1-OLy,1,bi,bj),
+     U      KPPdiffKzS(1-OLx,1-OLy,1,bi,bj),
+     I      ikppkey,1-OLx,sNx+OLx,1-OLy,sNy+OLy,bi,bj,myThid)
       ENDIF
 #endif /* ndef EXCLUDE_KPP_DOUBLEDIFF */
 
@@ -504,19 +546,22 @@ C     and salt are not passed to kppmix and are thus not available there.
       ENDDO
       CALL KPPMIX (
      I       work1, shsq, dVsq, ustar
-     I     , maskC(1-Olx,1-Oly,1,bi,bj)
+     I     , maskC(1-OLx,1-OLy,1,bi,bj)
      I     , bo, bosol
 #ifdef ALLOW_SALT_PLUME
-     I     , boplume, SaltPlumeDepth(1-Olx,1-Oly,bi,bj)
+     I     , boplume, SaltPlumeDepth(1-OLx,1-OLy,bi,bj)
+#ifdef SALT_PLUME_SPLIT_BASIN
+     I     , XC(1-OLx,1-OLy,bi,bj), YC(1-OLx,1-OLy,bi,bj)
+#endif /* SALT_PLUME_SPLIT_BASIN */
 #endif /* ALLOW_SALT_PLUME */
      I     , dbloc, Ritop, work2
-     I     , KPPdiffKzS(1-Olx,1-Oly,1,bi,bj)
-     I     , KPPdiffKzT(1-Olx,1-Oly,1,bi,bj)
+     I     , KPPdiffKzS(1-OLx,1-OLy,1,bi,bj)
+     I     , KPPdiffKzT(1-OLx,1-OLy,1,bi,bj)
      I     , ikppkey
      O     , vddiff
      U     , ghat
      O     , hbl
-     I     , bi, bj, mytime, myIter, mythid )
+     I     , bi, bj, myTime, myIter, myThid )
 
 c-----------------------------------------------------------------------
 c     zero out land values and transfer to global variables
@@ -572,7 +617,9 @@ c     horizontal smoothing of vertical diffusivity
 
 cph(
 cph  crucial: this avoids full recomp./call of kppmix
-CADJ store KPPhbl = comlev1_kpp, key = ikppkey
+#ifdef ALLOW_AUTODIFF_TAMC
+CADJ STORE KPPhbl = comlev1_kpp, key = ikppkey
+#endif /* ALLOW_AUTODIFF_TAMC */
 cph)
 
 C     Compute fraction of solar short-wave flux penetrating to
@@ -596,14 +643,22 @@ C     the bottom of the mixing layer.
 C     Compute fraction of saltplume (flux) penetrating to
 C     the bottom of the mixing layer.
       IF ( useSALT_PLUME ) THEN
+#ifndef SALT_PLUME_VOLUME
         DO j=1-OLy,sNy+OLy
            DO i=1-OLx,sNx+OLx
               work2(i,j) = SaltPlumeDepth(i,j,bi,bj)
               worka(i,j) = KPPhbl(i,j,bi,bj)
+#ifdef SALT_PLUME_SPLIT_BASIN
+              lon(i,j) = XC(i,j,bi,bj)
+              lat(i,j) = YC(i,j,bi,bj)
+#endif /* SALT_PLUME_SPLIT_BASIN */
            ENDDO
         ENDDO
         CALL SALT_PLUME_FRAC(
      I       (sNx+2*OLx)*(sNy+2*OLy), minusone, work2,
+#ifdef SALT_PLUME_SPLIT_BASIN
+     I       lon,lat,
+#endif /* SALT_PLUME_SPLIT_BASIN */
      U       worka,
      I       myTime, myIter, myThid )
         DO j=1-OLy,sNy+OLy
@@ -611,6 +666,13 @@ C     the bottom of the mixing layer.
               KPPplumefrac(i,j,bi,bj) = 1. _d 0 - worka(i,j)
            ENDDO
         ENDDO
+#else /* SALT_PLUME_VOLUME */
+        DO j=1-OLy,sNy+OLy
+           DO i=1-OLx,sNx+OLx
+              KPPplumefrac(i,j,bi,bj) = 0. _d 0
+           ENDDO
+        ENDDO
+#endif /* SALT_PLUME_VOLUME */
       ENDIF
 #endif /* ALLOW_SALT_PLUME */
 
@@ -674,14 +736,14 @@ c Local constants
       ENDDO
 
       CALL CALC_3D_DIFFUSIVITY(
-     I     bi,bj,1-Olx,sNx+OLx,1-Oly,sNy+OLy,
+     I     bi,bj,1-OLx,sNx+OLx,1-OLy,sNy+OLy,
      I     GAD_SALINITY, .FALSE., .FALSE.,
-     O     KPPdiffKzS(1-Olx,1-Oly,1,bi,bj),
+     O     KPPdiffKzS(1-OLx,1-OLy,1,bi,bj),
      I     myThid)
       CALL CALC_3D_DIFFUSIVITY(
-     I     bi,bj,1-Olx,sNx+OLx,1-Oly,sNy+OLy,
+     I     bi,bj,1-OLx,sNx+OLx,1-OLy,sNy+OLy,
      I     GAD_TEMPERATURE, .FALSE., .FALSE.,
-     O     KPPdiffKzT(1-Olx,1-Oly,1,bi,bj),
+     O     KPPdiffKzT(1-OLx,1-OLy,1,bi,bj),
      I     myThid)
 
 #endif

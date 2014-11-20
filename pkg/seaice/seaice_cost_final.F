@@ -2,6 +2,12 @@ C $Header$
 C $Name$
 
 #include "SEAICE_OPTIONS.h"
+#ifdef ALLOW_COST
+#include "COST_OPTIONS.h"
+#endif
+#ifdef ALLOW_CTRL
+#include "CTRL_OPTIONS.h"
+#endif
 
 CBOP
 C     !ROUTINE: SEAICE_COST_FINAL
@@ -22,17 +28,20 @@ C     == global variables ==
 #include "PARAMS.h"
 #include "SEAICE_SIZE.h"
 #include "SEAICE_PARAMS.h"
-#ifdef ALLOW_COST
 #include "SEAICE_COST.h"
-#include "cost.h"
-#include "ctrl.h"
-#include "optim.h"
+#ifdef ALLOW_COST
+# include "cost.h"
+#endif
+#ifdef ALLOW_CTRL
+# include "ctrl.h"
+# include "optim.h"
 #endif
 
 C     !INPUT/OUTPUT PARAMETERS:
       INTEGER myThid
 
 #ifdef ALLOW_COST
+#if (defined(ALLOW_SEAICE_COST_SMR_AREA) || defined(ALLOW_COST_ICE))
 C     ! FUNCTIONS:
       LOGICAL  MASTER_CPU_THREAD
       EXTERNAL MASTER_CPU_THREAD
@@ -121,6 +130,7 @@ C--   Each process has calculated the global part for itself.
 
       ENDIF
 
+#endif /* ALLOW_SEAICE_COST_SMR_AREA */
 #endif /* ALLOW_COST */
 
       RETURN

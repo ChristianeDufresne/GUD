@@ -2,6 +2,9 @@ C $Header$
 C $Name$
 
 #include "SEAICE_OPTIONS.h"
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
 
 CBOP
 C !ROUTINE: SEAICE_ADVDIFF
@@ -209,7 +212,7 @@ C-    Calculate "volume transports" through tracer cell faces.
 C--   Effective Thickness (Volume)
         IF ( SEAICEadvHeff ) THEN
 #ifdef SEAICE_ITD
-        DO it=1,nITD
+        DO it=1,SEAICE_multDim
          DO j=1-OLy,sNy+OLy
           DO i=1-OLx,sNx+OLx
            HEFF(i,j,bi,bj)=HEFFITD(i,j,it,bi,bj)
@@ -252,7 +255,7 @@ C     now do the "explicit" time step
 C--   Fractional area
         IF ( SEAICEadvArea ) THEN
 #ifdef SEAICE_ITD
-        DO it=1,nITD
+        DO it=1,SEAICE_multDim
          DO j=1-OLy,sNy+OLy
           DO i=1-OLx,sNx+OLx
            AREA(i,j,bi,bj)=AREAITD(i,j,it,bi,bj)
@@ -319,7 +322,7 @@ C     now do the "explicit" time step
 C--   Effective Snow Thickness (Volume)
         IF ( SEAICEadvSnow ) THEN
 #ifdef SEAICE_ITD
-        DO it=1,nITD
+        DO it=1,SEAICE_multDim
          DO j=1-OLy,sNy+OLy
           DO i=1-OLx,sNx+OLx
            HSNOW(i,j,bi,bj)=HSNOWITD(i,j,it,bi,bj)
@@ -549,7 +552,7 @@ C--   if not multiDimAdvection
 CADJ STORE heff = comlev1, key = ikey_dynamics, kind=isbyte
 #endif
 #ifdef SEAICE_ITD
-        DO it=1,nITD
+        DO it=1,SEAICE_multDim
          DO bj=myByLo(myThid),myByHi(myThid)
           DO bi=myBxLo(myThid),myBxHi(myThid)
            DO j=1-OLy,sNy+OLy
@@ -592,7 +595,7 @@ C-    Add tendency due to diffusion
 CADJ STORE area = comlev1, key = ikey_dynamics, kind=isbyte
 #endif
 #ifdef SEAICE_ITD
-        DO it=1,nITD
+        DO it=1,SEAICE_multDim
          DO bj=myByLo(myThid),myByHi(myThid)
           DO bi=myBxLo(myThid),myBxHi(myThid)
            DO j=1-OLy,sNy+OLy
@@ -650,7 +653,7 @@ C-    Add tendency due to diffusion
 CADJ STORE hsnow = comlev1, key = ikey_dynamics, kind=isbyte
 #endif
 #ifdef SEAICE_ITD
-        DO it=1,nITD
+        DO it=1,SEAICE_multDim
          DO bj=myByLo(myThid),myByHi(myThid)
           DO bi=myBxLo(myThid),myBxHi(myThid)
            DO j=1-OLy,sNy+OLy

@@ -14,33 +14,9 @@ c     ==================================================================
 c     HEADER AVERAGES
 c     ==================================================================
 
-c     Averaging counters:
-c     ===================
-c
-c     sum1day - counter for the daily averaging
-c     sum1mon - counter for the monthly averaging
-c     dayrec  - number of averaged surface pressure records.
-c     monrec  - number of averaged theta and salinity records.
+#include "ecco.h"
 
-      common /average_i/
-     &                   sum1day,sum1mon,sum1year,
-     &                   dayrec,monrec,yearrec
-      integer sum1day
-      integer sum1mon
-      integer sum1year
-      integer dayrec
-      integer monrec
-      integer yearrec
-
-c     Number of sshv4cost Cost terms:
-c     =============================
-      INTEGER NSSHV4COST
-      PARAMETER ( NSSHV4COST=5 )
-
-c     Number of User Cost terms:
-c     =============================
-      INTEGER NUSERCOST
-      PARAMETER ( NUSERCOST=10 )
+#ifdef ECCO_CTRL_DEPRECATED
 
 c     Number of days: (hard-coded to set up some vector dimensions
 c     =============================
@@ -48,76 +24,24 @@ c     22 years: 8050
       INTEGER maxNumDays
       PARAMETER ( maxNumDays = 8050 )
 
-c     Number of Generic Cost terms:
+c     Number of levels
+c     ================
+      common /ecco_cost_i/
+     &                nnztbar,
+     &                nnzsbar
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+     &               ,nnzsigmaRbar
+#endif
+      integer nnztbar
+      integer nnzsbar
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      integer nnzsigmaRbar
+#endif
+
+c     Number of sshv4cost Cost terms:
 c     =============================
-      INTEGER NGENCOST
-      PARAMETER ( NGENCOST=20 )
-
-#ifdef ALLOW_GENCOST_CONTRIBUTION
-c     objf_gencost - gencost user defined contribution
-      common /ecco_gencost_ctrl/
-     &       xx_genbar_dummy
-      _RL  xx_genbar_dummy(NGENCOST)
-
-      common /ecco_gencost_r_1/
-     &       objf_gencost, num_gencost, mult_gencost,
-     &       gencost_barfld, gencost_modfld, gencost_weight,
-     &       gencost_spmin, gencost_spmax, gencost_spzero
-      _RL  objf_gencost(nsx,nsy,NGENCOST)
-      _RL  num_gencost(nsx,nsy,NGENCOST)
-      _RL  mult_gencost(NGENCOST)
-      _RL  gencost_spmin(NGENCOST)
-      _RL  gencost_spmax(NGENCOST)
-      _RL  gencost_spzero(NGENCOST)
-      _RL  gencost_barfld(1-olx:snx+olx,1-oly:sny+oly,
-     &       nsx,nsy,NGENCOST)
-      _RL  gencost_modfld(1-olx:snx+olx,1-oly:sny+oly,
-     &       nsx,nsy,NGENCOST)
-      _RL  gencost_weight(1-olx:snx+olx,1-oly:sny+oly,
-     &       nsx,nsy,NGENCOST)
-
-      common /ecco_gencost_r_2/
-     &       gencost_period
-      _RL     gencost_period(NGENCOST)
-
-      common /ecco_gencost_i_1/
-     &       gencost_nrec, gencost_flag
-#ifdef ALLOW_SMOOTH
-     &       , gencost_smooth2Ddiffnbt
-#endif /* ALLOW_SMOOTH */
-      integer gencost_nrec(NGENCOST)
-      integer gencost_flag(NGENCOST)
-#ifdef ALLOW_SMOOTH
-      integer  gencost_smooth2Ddiffnbt(NGENCOST)
-#endif /* ALLOW_SMOOTH */
-
-      common /ecco_gencost_l_1/
-#ifdef ALLOW_GENCOST_TIMEVARY_WEIGHT
-     &       gencost_timevaryweight,
-#endif /* ALLOW_GENCOST_TIMEVARY_WEIGHT */
-     &       using_gencost
-      LOGICAL using_gencost(NGENCOST)
-#ifdef ALLOW_GENCOST_TIMEVARY_WEIGHT
-      LOGICAL gencost_timevaryweight(NGENCOST)
-#endif /* ALLOW_GENCOST_TIMEVARY_WEIGHT */
-
-      common /ecco_gencost_c/
-     &       gencost_name,
-     &       gencost_scalefile,
-     &       gencost_errfile,
-     &       gencost_datafile,
-     &       gencost_barfile,
-     &       gencost_avgperiod,
-     &       gencost_mask
-      character*(MAX_LEN_FNAM) gencost_name(NGENCOST)
-      character*(MAX_LEN_FNAM) gencost_scalefile(NGENCOST)
-      character*(MAX_LEN_FNAM) gencost_errfile(NGENCOST)
-      character*(MAX_LEN_FNAM) gencost_datafile(NGENCOST)
-      character*(MAX_LEN_FNAM) gencost_barfile(NGENCOST)
-      character*(5)            gencost_avgperiod(NGENCOST)
-      character*(1)            gencost_mask(NGENCOST)
-
-#endif /* ALLOW_GENCOST_CONTRIBUTION */
+      INTEGER NSSHV4COST
+      PARAMETER ( NSSHV4COST=5 )
 
 c     Averaged Fields:
 c     ================
@@ -128,6 +52,9 @@ c             intantaneous temperatures.
 c     sbar  - contains the averaged salinity field after the call
 c             to subroutine POST_MONTHLY. Before, it accumulates the
 c             intantaneous salinities.
+c     sigmaRbar - contains the averaged sigmaR field after the call
+c             to subroutine POST_MONTHLY. Before, it accumulates the
+c             intantaneous sigmaR.
 c     psbar - contains the averaged surface pressure field after the call
 c             to subroutine POST_DAILY. Before, it accumulates the
 c             intantaneous surface pressure field.
@@ -153,6 +80,10 @@ c             intantaneous field.
       common /averages_r/
      &                    tbar,
      &                    sbar,
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+     &                    sigmaRbar,
+     &                    sigmaRfield,
+#endif
      &                    sstbar,
      &                    psbar,
      &                    bpbar,
@@ -171,14 +102,16 @@ c             intantaneous field.
      &                    Tfmean,
      &                    sbar_gen,
      &                    tbar_gen,
-     &                    VOLsumGlob_0,
-     &                    VOLsumGlob,
-     &                    RHOsumGlob_0,
-     &                    RHOsumGlob,
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+     &                    sigmaRbar_gen,
+#endif
      &                    wfmean
 
-      _RL VOLsumGlob_0, VOLsumGlob, RHOsumGlob_0, RHOsumGlob
-
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      _RL sigmaRfield    (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+      _RL sigmaRbar      (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+      _RL sigmaRbar_gen  (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+#endif
 #if (defined (ALLOW_THETA_COST_CONTRIBUTION) || \
      defined (ALLOW_CTDT_COST_CONTRIBUTION) || \
      defined (ALLOW_XBT_COST_CONTRIBUTION) || \
@@ -301,6 +234,9 @@ cph#ifdef ALLOW_SEAICE_COST_AREASST
       common /averages_c/
      &                    tbarfile,
      &                    sbarfile,
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+     &                    sigmaRbarfile,
+#endif
      &                    sstbarfile,
      &                    psbarfile,
      &                    bpbarfile,
@@ -315,6 +251,9 @@ cph#ifdef ALLOW_SEAICE_COST_AREASST
      &                    costTranspDataFile
       character*(MAX_LEN_FNAM) tbarfile
       character*(MAX_LEN_FNAM) sbarfile
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      character*(MAX_LEN_FNAM) sigmaRbarfile
+#endif
       character*(MAX_LEN_FNAM) sstbarfile
       character*(MAX_LEN_FNAM) psbarfile
       character*(MAX_LEN_FNAM) bpbarfile
@@ -337,15 +276,6 @@ cph#ifdef ALLOW_SEAICE_COST_AREASST
       _RL transpobs(maxNumDays)
       _RL wtransp(maxNumDays)
 #endif
-
-c     file precision and field type
-
-      common /prec_type_cost/
-     &                        cost_iprec,
-     &                        cost_yftype
-
-      integer cost_iprec
-      character*(2) cost_yftype
 
 c     ==================================================================
 c     END OF HEADER AVERAGES
@@ -399,6 +329,7 @@ c     objf_ers   - Residual sea surface height contribution from T/P
 c     objf_gfo   - Residual sea surface height contribution from T/P
 c     objf_temp  - Temperature contribution.
 c     objf_salt  - Salinity contribution.
+c     objf_sigmaR  - sigmaR contribution.
 c     objf_temp0 - Initial conditions Temperature contribution.
 c     objf_salt0 - Initial conditions Salinity contribution.
 c     objf_sst   - Sea surface temperature contribution.
@@ -435,6 +366,9 @@ c                  function contributions.
      &     objf_hmean,
      &     objf_h, objf_tp, objf_ers, objf_gfo,
      &     objf_sshv4cost,
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+     &     objf_sigmaR,
+#endif
      &     objf_temp,      objf_salt,
      &     objf_temp0,     objf_salt0,
      &     objf_temp0smoo, objf_salt0smoo,
@@ -460,10 +394,7 @@ c                  function contributions.
      &     objf_runoff,     objf_runoffm,     objf_runoffsmoo,
      &     objf_uwind,      objf_uwindm,      objf_uwindsmoo,
      &     objf_vwind,      objf_vwindm,      objf_vwindsmoo,
-     &     objf_obcsn, objf_obcss, objf_obcsw, objf_obcse,
-     &     objf_obcsvol,
      &     objf_curmtr,
-     &     objf_ageos,
      &     objf_kapgm,
      &     objf_kapredi,
      &     objf_diffkr,
@@ -492,6 +423,9 @@ c                  function contributions.
       _RL  objf_ers  (nsx,nsy)
       _RL  objf_gfo  (nsx,nsy)
       _RL  objf_sshv4cost(NSSHV4COST,nsx,nsy)
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      _RL  objf_sigmaR(nsx,nsy)
+#endif
       _RL  objf_temp (nsx,nsy)
       _RL  objf_salt (nsx,nsy)
       _RL  objf_temp0(nsx,nsy)
@@ -561,13 +495,7 @@ c                  function contributions.
       _RL  objf_runoffsmoo(nsx,nsy)
       _RL  objf_uwindsmoo(nsx,nsy)
       _RL  objf_vwindsmoo(nsx,nsy)
-      _RL  objf_obcsn(nsx,nsy)
-      _RL  objf_obcss(nsx,nsy)
-      _RL  objf_obcsw(nsx,nsy)
-      _RL  objf_obcse(nsx,nsy)
-      _RL  objf_obcsvol
       _RL  objf_curmtr(nsx,nsy)
-      _RL  objf_ageos(nsx,nsy)
       _RL  objf_kapgm(nsx,nsy)
       _RL  objf_kapredi(nsx,nsy)
       _RL  objf_diffkr(nsx,nsy)
@@ -594,6 +522,9 @@ c                  function contributions.
      &                num_ers,
      &                num_gfo,
      &                num_sshv4cost,
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+     &                num_sigmaR,
+#endif
      &                num_temp,
      &                num_salt,
      &                num_temp0,
@@ -648,13 +579,7 @@ c                  function contributions.
      &                num_runoffm,
      &                num_uwindm,
      &                num_vwindm,
-     &                num_obcsn,
-     &                num_obcss,
-     &                num_obcsw,
-     &                num_obcse,
-     &                num_obcsvol,
      &                num_curmtr,
-     &                num_ageos,
      &                num_kapgm,
      &                num_kapredi,
      &                num_diffkr,
@@ -680,6 +605,9 @@ c                  function contributions.
       _RL  num_ers  (nsx,nsy)
       _RL  num_gfo  (nsx,nsy)
       _RL  num_sshv4cost(NSSHV4COST,nsx,nsy)
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      _RL  num_sigmaR (nsx,nsy)
+#endif
       _RL  num_temp (nsx,nsy)
       _RL  num_salt (nsx,nsy)
       _RL  num_temp0(nsx,nsy)
@@ -734,13 +662,7 @@ c                  function contributions.
       _RL  num_runoffm(nsx,nsy)
       _RL  num_uwindm(nsx,nsy)
       _RL  num_vwindm(nsx,nsy)
-      _RL  num_obcsn(nsx,nsy)
-      _RL  num_obcss(nsx,nsy)
-      _RL  num_obcsw(nsx,nsy)
-      _RL  num_obcse(nsx,nsy)
-      _RL  num_obcsvol
       _RL  num_curmtr(nsx,nsy)
-      _RL  num_ageos(nsx,nsy)
       _RL  num_kapgm(nsx,nsy)
       _RL  num_kapredi(nsx,nsy)
       _RL  num_diffkr(nsx,nsy)
@@ -763,6 +685,9 @@ c                  function contributions.
      &                    mult_ers,
      &                    mult_gfo,
      &                    mult_sshv4cost,
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+     &                    mult_sigmaR,
+#endif
      &                    mult_temp,
      &                    mult_salt,
      &                    mult_temp0,
@@ -802,13 +727,7 @@ c                  function contributions.
      &                    mult_runoff,
      &                    mult_uwind,
      &                    mult_vwind,
-     &                    mult_obcsn,
-     &                    mult_obcss,
-     &                    mult_obcsw,
-     &                    mult_obcse,
-     &                    mult_obcsvol,
      &                    mult_curmtr,
-     &                    mult_ageos,
      &                    mult_kapgm,
      &                    mult_kapredi,
      &                    mult_diffkr,
@@ -830,6 +749,9 @@ c                  function contributions.
       _RL  mult_ers
       _RL  mult_gfo
       _RL  mult_sshv4cost(NSSHV4COST)
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      _RL  mult_sigmaR
+#endif
       _RL  mult_temp
       _RL  mult_salt
       _RL  mult_temp0
@@ -869,13 +791,7 @@ c                  function contributions.
       _RL  mult_runoff
       _RL  mult_uwind
       _RL  mult_vwind
-      _RL  mult_obcsn
-      _RL  mult_obcss
-      _RL  mult_obcsw
-      _RL  mult_obcse
-      _RL  mult_obcsvol
       _RL  mult_curmtr
-      _RL  mult_ageos
       _RL  mult_kapgm
       _RL  mult_kapredi
       _RL  mult_diffkr
@@ -885,29 +801,6 @@ c                  function contributions.
       _RL  mult_smooth_ic
       _RL  mult_smooth_bc
       _RL  mult_transp
-
-c     Record counters relevant for the cost function evaluation.
-c     ==========================================================
-c
-c     nyearsrec - number of yearly records that will be generated by
-c                 the current model integration.
-c     nmonsrec  - number of monthly records that will be generated by
-c                 the current model integration.
-c     ndaysrec  - number of  daily  records that will be generated by
-c                 the current model integration.
-
-      common /ecco_cost_i/
-     &                nyearsrec,
-     &                nmonsrec,
-     &                ndaysrec,
-     &                nnztbar,
-     &                nnzsbar
-      integer nyearsrec
-      integer nmonsrec
-      integer ndaysrec
-      integer nnztbar
-      integer nnzsbar
-
 
 c     Data files for the weights used in the cost function:
 c     =====================================================
@@ -929,6 +822,7 @@ c     ctds_errfile          - CTD salinity error.
 c     drift_errfile         - drifter error.
 c     salterrfile           - representation error due unresolved eddies
 c     temperrfile           - representation error due unresolved eddies
+c     sigmaRerrfile         - representation error due unresolved eddies
 c     velerrfile            - representation error
 
       common /ecco_cost_c/
@@ -956,6 +850,9 @@ c     velerrfile            - representation error
      &                drift_errfile,
      &                udrifterrfile,
      &                vdrifterrfile,
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+     &                sigmaRerrfile,
+#endif
      &                salterrfile,
      &                temperrfile,
      &                velerrfile,
@@ -1012,6 +909,9 @@ c     velerrfile            - representation error
       character*(MAX_LEN_FNAM) drift_errfile
       character*(MAX_LEN_FNAM) udrifterrfile
       character*(MAX_LEN_FNAM) vdrifterrfile
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      character*(MAX_LEN_FNAM) sigmaRerrfile
+#endif
       character*(MAX_LEN_FNAM) salterrfile
       character*(MAX_LEN_FNAM) temperrfile
       character*(MAX_LEN_FNAM) velerrfile
@@ -1062,6 +962,8 @@ c     wsst       - weight for sea surface temperature.
 c     wsss       - weight for sea surface salinity.
 c     wsalt      - weight for salinity.
 c     wsalt2     - representation error due to unresolved eddies
+c     wsigmaR    - weight for sigmaR
+c     wsigmaR2   - representation error due to unresolved eddies
 c     wtp        - weight for TOPEX/POSEIDON data.
 c     wers       - weight for ERS data.
 c     wp         - weight for geoid.
@@ -1072,8 +974,6 @@ c     wvdrift    - weight for mean meridional velocity from drifters.
 c     wetan      - weight for etan0
 
       common /ecco_cost_weights_r/
-     &                      frame,
-     &                      cosphi,
      &                      whflux,wsflux,wtauu,wtauv,
      &                      watemp,waqh,wprecip,wsnowprecip,
      &                      wswflux,wswdown,wlwflux,wlwdown,
@@ -1081,6 +981,9 @@ c     wetan      - weight for etan0
      &                      wbottomdrag,
      &                      wuwind,wvwind,
      &                      wscatx,wscaty,
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+     &                      wsigmaR,wsigmaR2,wsigmaRLev,
+#endif
      &                      wtheta,wtheta2,wthetaLev,
      &                      wsalt,wsalt2,wsaltLev,
      &                      wdiffkr,wdiffkr2,wdiffkrFld,
@@ -1098,8 +1001,6 @@ c     wetan      - weight for etan0
      &                      wcurrentLev,wbaro,wetan,
      &                      wuvel,wvvel
 
-      _RL frame   (1-olx:snx+olx,1-oly:sny+oly           )
-      _RL cosphi  (1-olx:snx+olx,1-oly:sny+oly,   nsx,nsy)
       _RL whflux  (1-olx:snx+olx,1-oly:sny+oly,   nsx,nsy)
       _RL whfluxm (1-olx:snx+olx,1-oly:sny+oly,   nsx,nsy)
       _RL whfluxmm(1-olx:snx+olx,1-oly:sny+oly)
@@ -1132,6 +1033,11 @@ c     wetan      - weight for etan0
       _RL wsalt2  (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
       _RL wthetaLev (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
       _RL wsaltLev  (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      _RL wsigmaR   (                            nr,nsx,nsy)
+      _RL wsigmaR2  (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+      _RL wsigmaRLev(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+#endif
       _RL wuvel   (                            nr,nsx,nsy)
       _RL wvvel   (                            nr,nsx,nsy)
       _RL wsst    (1-olx:snx+olx,1-oly:sny+oly,   nsx,nsy)
@@ -1237,39 +1143,10 @@ c
       _RL wtauu2  (1-olx:snx+olx,1-oly:sny+oly,   nsx,nsy)
       _RL wtauv2  (1-olx:snx+olx,1-oly:sny+oly,   nsx,nsy)
 
-#if (defined (ALLOW_OBCSN_COST_CONTRIBUTION) || \
-     defined (ALLOW_OBCSN_CONTROL))
-      common /ecco_cost_weights_obcsn/
-     &                      wobcsn, wobcsnLev
-      _RL wobcsn     (                      nr,nobcs)
-      _RL wobcsnLev  (1-olx:snx+olx,nr,nsx,nsy,nobcs)
-#endif
-#if (defined (ALLOW_OBCSS_COST_CONTRIBUTION) || \
-     defined (ALLOW_OBCSS_CONTROL))
-      common /ecco_cost_weights_obcss/
-     &                      wobcss, wobcssLev
-      _RL wobcss     (                      nr,nobcs)
-      _RL wobcssLev  (1-olx:snx+olx,nr,nsx,nsy,nobcs)
-#endif
-#if (defined (ALLOW_OBCSW_COST_CONTRIBUTION) || \
-     defined (ALLOW_OBCSW_CONTROL))
-      common /ecco_cost_weights_obcsw/
-     &                      wobcsw, wobcswLev
-      _RL wobcsw     (                      nr,nobcs)
-      _RL wobcswLev  (1-oly:sny+oly,nr,nsx,nsy,nobcs)
-#endif
-#if (defined (ALLOW_OBCSE_COST_CONTRIBUTION) || \
-     defined (ALLOW_OBCSE_CONTROL))
-      common /ecco_cost_weights_obcse/
-     &                      wobcse, wobcseLev
-      _RL wobcse     (                      nr,nobcs)
-      _RL wobcseLev  (1-oly:sny+oly,nr,nsx,nsy,nobcs)
-#endif
-
-
 c     Arrays that contain observations for the model-data comparison:
 c     ===============================================================
 c
+c     sigmaRdat  - reference sigmaR data.
 c     tdat       - reference temperature data.
 c     scatxdat   - reference zonal wind stress.
 c     scatydat   - reference meridional wind stress.
@@ -1301,6 +1178,9 @@ c     udriftdat  - drifters zonal velocities
 c     vdriftdat  - drifters meridional velocities
 
       common /ecco_cost_data_r/
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+     &                     sigmaRdat,
+#endif
      &                     tdat,
      &                     scatxdat,
      &                     scatydat,
@@ -1334,6 +1214,9 @@ c     vdriftdat  - drifters meridional velocities
      &                     curmtruobs,
      &                     curmtrvobs
 
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      _RL sigmaRdat (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+#endif
       _RL tdat      (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
       _RL scatxdat  (1-olx:snx+olx,1-oly:sny+oly,   nsx,nsy)
       _RL scatydat  (1-olx:snx+olx,1-oly:sny+oly,   nsx,nsy)
@@ -1371,6 +1254,7 @@ c     vdriftdat  - drifters meridional velocities
 c     Files that contain obervations:
 c     ===============================
 c
+C     sigmaRdatfile - reference data file for sigmaR
 c     tdatfile      - reference data file for temperature.
 c     sdatfile      - reference data file for salinity.
 c     scatxdatfile  - reference data file for zonal wind stress.
@@ -1392,6 +1276,9 @@ c     ARGOsfile     - reference data file for ARGO
 c     driftfile     - reference data file for drifter mean velocities
 
       common /ecco_cost_data_c/
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+     &                     sigmaRdatfile,
+#endif
      &                     tdatfile,
      &                     sdatfile,
      &                     scatxdatfile,
@@ -1418,6 +1305,9 @@ c     driftfile     - reference data file for drifter mean velocities
      &                     curmtrufile,
      &                     curmtrvfile
 
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      character*(MAX_LEN_FNAM) sigmaRdatfile
+#endif
       character*(MAX_LEN_FNAM) tdatfile
       character*(MAX_LEN_FNAM) sdatfile
       character*(MAX_LEN_FNAM) scatxdatfile
@@ -1444,30 +1334,6 @@ c     driftfile     - reference data file for drifter mean velocities
       character*(MAX_LEN_FNAM) vdriftfile
       character*(MAX_LEN_FNAM) curmtrufile
       character*(MAX_LEN_FNAM) curmtrvfile
-
-
-c     Flags used in the model-data comparison:
-c     ========================================
-c
-c     using_ers - flag that indicates the use of ERS data
-
-      common /ecco_cost_data_flags/
-     &                         using_topex,
-     &                         using_ers,
-     &                         using_gfo,
-     &                         using_cost_altim,
-     &                         using_cost_bp,
-     &                         using_cost_sst,
-     &                         using_cost_scat,
-     &                         using_cost_seaice
-      logical using_topex
-      logical using_ers
-      logical using_gfo
-      logical using_cost_altim
-      logical using_cost_bp
-      logical using_cost_sst
-      logical using_cost_scat
-      logical using_cost_seaice
 
 c     Calendar information for the observations:
 c     ==========================================
@@ -1605,6 +1471,8 @@ cgf factor to convert sshv4cost_errfile in m
       character*(MAX_LEN_FNAM) tpTimeMaskFile
       character*(MAX_LEN_FNAM) ersTimeMaskFile
       character*(MAX_LEN_FNAM) gfoTimeMaskFile
+
+#endif /* ECCO_CTRL_DEPRECATED */
 
 c     ==================================================================
 c     END OF HEADER COST

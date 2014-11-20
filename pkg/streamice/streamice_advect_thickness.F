@@ -2,6 +2,9 @@ C $Header$
 C $Name$
 
 #include "STREAMICE_OPTIONS.h"
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
@@ -26,6 +29,9 @@ C     === Global variables ===
 #ifdef ALLOW_AUTODIFF_TAMC
 # include "tamc.h"
 #endif
+#ifdef ALLOW_SHELFICE
+# include "SHELFICE.h"
+#endif
 
       INTEGER myThid, myIter
       _RL time_step
@@ -35,7 +41,7 @@ C     === Global variables ===
       INTEGER i, j, bi, bj, Gi, Gj
       _RL thick_bd, uflux, vflux, max_icfl, loc_icfl
       _RL time_step_full, time_step_rem
-      _RL sec_per_year, time_step_loc, MR, SMB, TMB
+      _RL sec_per_year, time_step_loc, MR, SMB, TMB, irho
       _RL BCVALX(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL BCVALY(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RS BCMASKX(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
@@ -72,7 +78,6 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
           hflux_y_SI (i,j,bi,bj) = 0. _d 0
           h_after_uflux_SI(i,j,bi,bj) = H_streamice(i,j,bi,bj)
           h_after_vflux_SI(i,j,bi,bj) = H_streamice(i,j,bi,bj)
-
 
           IF (STREAMICE_ufacemask(i,j,bi,bj).eq.3.0) THEN
            BCMASKX(i,j,bi,bj) = 3.0
@@ -122,8 +127,6 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
             vtrans(i,j,bi,bj) = -1.0
            ENDIF
 
-
-
            vtrans(i,j,bi,bj) = 1.0
           ELSEIF (.not.(
      &     STREAMICE_hmask(i,j,bi,bj).eq.1.0.OR.
@@ -137,7 +140,6 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
            vtrans(i,j,bi,bj) =  .5 * (
      &      v_streamice(i,j,bi,bj)+v_streamice(i+1,j,bi,bj))
           ENDIF
-
 
          ENDDO
         ENDDO
@@ -153,7 +155,7 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
       _EXCH_XY_RL(h_after_uflux_SI,myThid)
       _EXCH_XY_RL(h_after_vflux_SI,myThid)
 
-#ifndef ALLOW_AUTODIFF_TAMC
+#ifndef ALLOW_AUTODIFF
 
       max_icfl = 1.e-20
 
@@ -177,15 +179,14 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
 
       CALL GLOBAL_MAX_R8 (max_icfl, myThid)
 
-#endif
-
+#endif /* ALLOW_AUTODIFF */
 
 #ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
 CADJ STORE H_streamice  = comlev1, key=ikey_dynamics
 #endif
 
-#ifndef ALLOW_AUTODIFF_TAMC
+#ifndef ALLOW_AUTODIFF
       do while (time_step_rem .gt. 1.e-15)
        time_step_loc = min (
      &  streamice_cfl_factor / max_icfl,
@@ -193,7 +194,7 @@ CADJ STORE H_streamice  = comlev1, key=ikey_dynamics
        if (time_step_loc .lt. time_step_full) then
         PRINT *, "TAKING PARTIAL TIME STEP", time_step_loc
        endif
-#endif
+#endif /* ALLOW_AUTODIFF */
 
       CALL STREAMICE_ADV_FLUX_FL_X ( myThid ,
      I   utrans ,
@@ -202,8 +203,6 @@ CADJ STORE H_streamice  = comlev1, key=ikey_dynamics
      I   BCVALX,
      O   hflux_x_SI,
      I   time_step_loc )
-
-
 
       DO bj=myByLo(myThid),myByHi(myThid)
        DO bi=myBxLo(myThid),myBxHi(myThid)
@@ -231,7 +230,6 @@ CADJ STORE H_streamice  = comlev1, key=ikey_dynamics
        ENDDO
       ENDDO
 
-
 #ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
 #endif
@@ -248,7 +246,6 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
      I   BCVALY,
      O   hflux_y_SI,
      I   time_step_loc )
-
 
       DO bj=myByLo(myThid),myByHi(myThid)
        DO bi=myBxLo(myThid),myBxHi(myThid)
@@ -298,7 +295,6 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
      &  hflux_x_SI, hflux_y_SI )
       endif
 
-
 #ifdef ALLOW_STREAMICE_2DTRACER
       CALL STREAMICE_ADVECT_2DTRACER(
      &  myThid,
@@ -310,15 +306,14 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
      &  BCMASKy )
 #endif
 
-#ifndef ALLOW_AUTODIFF_TAMC
+#ifndef ALLOW_AUTODIFF
       time_step_rem = time_step_rem - time_step_loc
       enddo
-#endif
-
-
+#endif /* ALLOW_AUTODIFF */
 
 ! NOW WE APPLY MELT RATES !!
 ! THIS MAY BE MOVED TO A SEPARATE SUBROUTINE
+      irho = 1./streamice_density
 
       DO bj=myByLo(myThid),myByHi(myThid)
        DO bi=myBxLo(myThid),myBxHi(myThid)
@@ -328,23 +323,34 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
           Gj = (myYGlobalLo-1)+(bj-1)*sNy+j
           IF (STREAMICE_hmask(i,j,bi,bj).eq.1.0 .or.
      &       STREAMICE_hmask(i,j,bi,bj).eq.2.0) THEN
-             MR = (1.-float_frac_streamice(i,j,bi,bj)) *
+
+           IF (STREAMICE_allow_cpl) THEN
+#ifdef ALLOW_SHELFICE
+            MR = -1. * (1.-float_frac_streamice(i,j,bi,bj)) *
+     &        shelfIceFreshWaterFlux(I,J,bi,bj) * irho *
+     &        sec_per_year
+
+#else
+            STOP 'SHELFICE IS NOT ENABLED'
+#endif
+           ELSE
+              MR = (1.-float_frac_streamice(i,j,bi,bj)) *
      &             (BDOT_STREAMICE(i,j,bi,bj) +
      &              BDOT_pert(i,j,bi,bj))
-             SMB = ADOT_STREAMICE(i,j,bi,bj)
-             TMB = SMB - MR
+           ENDIF
 
-             IF ((TMB.lt.0.0) .and.
+           SMB = ADOT_STREAMICE(i,j,bi,bj)
+           TMB = SMB - MR
+           IF ((TMB.lt.0.0) .and.
      &         (MR * time_step_loc .gt.
      &          H_streamice (i,j,bi,bj))) THEN
                 H_streamice (i,j,bi,bj) = 0. _d 0
                 STREAMICE_hmask(i,j,bi,bj) = 0.0
                PRINT *, "GOT HERE melted away! ", i,j
-             ELSE
+           ELSE
                H_streamice (i,j,bi,bj) =
      &          H_streamice (i,j,bi,bj) + TMB * time_step_loc
-             ENDIF
-
+           ENDIF
 
           ENDIF
          ENDDO
@@ -354,10 +360,10 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
 
       _EXCH_XY_RL(H_streamice,myThid)
 
-
       WRITE(msgBuf,'(A)') 'END STREAMICE_ADVECT_THICKNESS'
        CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &                     SQUEEZE_RIGHT , 1)
 
 #endif
+      RETURN
       END

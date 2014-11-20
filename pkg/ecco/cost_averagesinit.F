@@ -2,6 +2,12 @@ C $Header$
 C $Name$
 
 #include "ECCO_OPTIONS.h"
+#ifdef ALLOW_SEAICE
+# include "SEAICE_OPTIONS.h"
+#endif
+#ifdef ALLOW_CTRL
+# include "CTRL_OPTIONS.h"
+#endif
 
       subroutine cost_averagesinit( mythid )
 
@@ -32,9 +38,11 @@ c     == global variables ==
 #include "SIZE.h"
 
 #include "ecco_cost.h"
-#include "CTRL_SIZE.h"
-#include "ctrl.h"
-#include "ctrl_dummy.h"
+#ifdef ALLOW_CTRL
+# include "CTRL_SIZE.h"
+# include "ctrl.h"
+# include "ctrl_dummy.h"
+#endif
 #ifdef ALLOW_SEAICE
 # include "SEAICE_COST.h"
 #endif
@@ -46,7 +54,7 @@ c     == routine arguments ==
 c     == local variables ==
 
       integer bi,bj
-      integer i,j,k
+      integer i,j,k,kk
       integer itlo,ithi
       integer jtlo,jthi
       integer jmin,jmax
@@ -76,8 +84,20 @@ c--   Set the loop ranges.
                 gencost_modfld(i,j,bi,bj,k) = 0. _d 0
               enddo
             enddo
-            xx_genbar_dummy(k) = 0. _d 0
+            gencost_dummy(k) = 0. _d 0
           enddo
+#ifdef ALLOW_GENCOST3D
+          do  kk=1,NGENCOST3D
+            do j = jmin,jmax
+              do i = imin,imax
+                do k = 1,nr
+                gencost_bar3d(i,j,k,bi,bj,kk) = 0. _d 0
+                gencost_mod3d(i,j,k,bi,bj,kk) = 0. _d 0
+                enddo
+              enddo
+            enddo
+          enddo
+#endif
 #endif
 
 #ifdef ALLOW_SSH_COST_CONTRIBUTION
@@ -110,6 +130,19 @@ c--       Initialize roundtrip travel time average
             enddo
           enddo
           xx_iestaubar_mean_dummy = 0. _d 0
+#endif
+
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+c--       Initialise sigmaR average (3d).
+          do k = 1,nr
+            do j = jmin,jmax
+              do i =  imin,imax
+                sigmaRbar(i,j,k,bi,bj) = 0. _d 0
+              enddo
+            enddo
+          enddo
+          xx_sigmaRbar_mean_dummy = 0. _d 0
+          nnzsigmaRbar = nr
 #endif
 
 #if (defined (ALLOW_THETA_COST_CONTRIBUTION) || \

@@ -2,6 +2,9 @@ C $Header$
 C $Name$
 
 #include "SALT_PLUME_OPTIONS.h"
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
 
 CBOP
 C     !ROUTINE: SALT_PLUME_CALC_DEPTH
@@ -187,10 +190,10 @@ C Make sure that the deepest SaltPlumeDepth is bottom topography:
          ENDDO
       ENDDO
 
-#ifdef ALLOW_DIAGNOSTICS
-      IF ( useDiagnostics )
-     &      CALL SALT_PLUME_DIAGNOSTICS_FILL(bi,bj,myThid)
-#endif /* ALLOW_DIAGNOSTICS */
+C#ifdef ALLOW_DIAGNOSTICS
+C      IF ( useDiagnostics )
+C     &      CALL SALT_PLUME_DIAGNOSTICS_FILL(bi,bj,myThid)
+C#endif /* ALLOW_DIAGNOSTICS */
 
 #endif /* ALLOW_SALT_PLUME */
 

@@ -17,6 +17,7 @@ CBOP
      I                               A_vv,       ! section of matrix that multiplies v and projects on v
      I                               tolerance, 
      O                               iters,
+     I                               maxIter,
      I                               myThid )
 C     /============================================================\
 C     | SUBROUTINE                                                 |   
@@ -50,6 +51,7 @@ C     cg_Uin, cg_Vin - input and output velocities
 C     cg_Bu, cg_Bv - driving stress
       INTEGER myThid
       INTEGER iters
+      INTEGER maxIter
       _RL tolerance
       _RL cg_Uin (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL cg_Vin (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
@@ -111,14 +113,15 @@ C     LOCAL VARIABLES
      I         A_vu,       ! section of matrix that multiplies u and projects on v
      I         A_vv,       ! section of matrix that multiplies v and projects on v
      I         tolerance,
-     O         iters,
+     I         iters,
+     O         maxiter,
      I         myThid )
 
 
 #else  /* ALLOW_PETSC */
 
 
-      iters = streamice_max_cg_iter
+      iters = maxIter
       conv_flag = 0
 
 
@@ -190,8 +193,6 @@ C     FIND INITIAL RESIDUAL, and initialize r
        ENDDO
       ENDDO
 
-      
-
       DO bj = myByLo(myThid), myByHi(myThid)
        DO bi = myBxLo(myThid), myBxHi(myThid)
         DO j=1,sNy
@@ -205,8 +206,20 @@ C     FIND INITIAL RESIDUAL, and initialize r
        ENDDO
       ENDDO
 
+
       CALL GLOBAL_SUM_TILE_RL( dot_p1_tile, dot_p1, myThid ) 
       resid_0 = sqrt(dot_p1)
+
+      DO bj = myByLo(myThid), myByHi(myThid)
+       DO bi = myBxLo(myThid), myBxHi(myThid)
+
+       WRITE(msgBuf,'(A,I1,I1,E14.7)') 'CONJ GRAD INIT RESID LOCAL, ',
+     &         bi,bj, dot_p1_tile(bi,bj)
+       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                     SQUEEZE_RIGHT , 1)
+
+       enddo
+      enddo
 
       WRITE(msgBuf,'(A,E14.7)') 'CONJ GRAD INIT RESID, ',
      &         resid_0
@@ -263,7 +276,7 @@ c  ! initially, b-grid data is valid up to 3 halo nodes out -- right? (check for
 !       IF(STREAMICE_construct_matrix) CALL STREAMICE_CG_MAKE_A(myThid)
 
 
-      do iter = 1, streamice_max_cg_iter
+      do iter = 1, maxIter
        if (resid .gt. tolerance*resid_0) then
 
 c      to avoid using "exit"
@@ -487,7 +500,7 @@ c      to avoid using "exit"
 c     to avoid using "exit"
 c     if iters has reached max_iters there is no convergence
       
-      IF (iters .lt. streamice_max_cg_iter) THEN
+      IF (iters .lt. maxIter) THEN
        conv_flag = 1
       ENDIF
 

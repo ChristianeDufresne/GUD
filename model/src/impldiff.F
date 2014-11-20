@@ -56,7 +56,7 @@ C     gTracer    :: future tracer field
       INTEGER tracerId
       _RL KappaRX(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr)
       _RS recip_hFac(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr)
-      _RL gTracer(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
+      _RL gTracer(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr)
       INTEGER myThid
 
 C     !LOCAL VARIABLES:
@@ -252,7 +252,7 @@ CADJ loop = sequential
       DO j=jMin,jMax
        DO i=iMin,iMax
 #endif
-        locTr(i,j,1) = gTracer(i,j,1,bi,bj)*bet(i,j,1)
+        locTr(i,j,1) = gTracer(i,j,1)*bet(i,j,1)
        ENDDO
       ENDDO
       DO k=2,Nr
@@ -264,7 +264,7 @@ CADJ loop = sequential
         DO i=iMin,iMax
 #endif
          locTr(i,j,k) = bet(i,j,k)*
-     &        (gTracer(i,j,k,bi,bj) - a(i,j,k)*locTr(i,j,k-1))
+     &        (gTracer(i,j,k) - a(i,j,k)*locTr(i,j,k-1))
         ENDDO
        ENDDO
       ENDDO
@@ -292,7 +292,7 @@ CADJ loop = sequential
         DO j=jMin,jMax
          DO i=iMin,iMax
 #endif
-          gTracer(i,j,k,bi,bj) = locTr(i,j,k)
+          gTracer(i,j,k) = locTr(i,j,k)
          ENDDO
         ENDDO
        ENDDO
@@ -335,7 +335,7 @@ C         otherwise counter is not incremented !!
                df(i,j) =
      &             -rA(i,j,bi,bj)*deepFac2F(k)*rhoFacF(k)
      &            * KappaRX(i,j,k)*recip_drC(k)*rkSign
-     &            * (gTracer(i,j,k,bi,bj) - gTracer(i,j,k-1,bi,bj))
+     &            * (gTracer(i,j,k) - gTracer(i,j,k-1))
      &            * maskC(i,j,k,bi,bj)
      &            * maskC(i,j,k-1,bi,bj)
              ENDDO
@@ -351,7 +351,7 @@ C         otherwise counter is not incremented !!
                df(i,j) =
      &             -rAw(i,j,bi,bj)*deepFac2F(k)*rhoFacF(k)
      &            * KappaRX(i,j,k)*recip_drC(k)*rkSign
-     &            * (gTracer(i,j,k,bi,bj) - gTracer(i,j,k-1,bi,bj))
+     &            * (gTracer(i,j,k) - gTracer(i,j,k-1))
      &            * _maskW(i,j,k,bi,bj)
      &            * _maskW(i,j,k-1,bi,bj)
              ENDDO
@@ -367,13 +367,19 @@ C         otherwise counter is not incremented !!
                df(i,j) =
      &             -rAs(i,j,bi,bj)*deepFac2F(k)*rhoFacF(k)
      &            * KappaRX(i,j,k)*recip_drC(k)*rkSign
-     &            * (gTracer(i,j,k,bi,bj) - gTracer(i,j,k-1,bi,bj))
+     &            * (gTracer(i,j,k) - gTracer(i,j,k-1))
      &            * _maskS(i,j,k,bi,bj)
      &            * _maskS(i,j,k-1,bi,bj)
              ENDDO
             ENDDO
           ENDIF
           CALL DIAGNOSTICS_FILL(df,diagName, k,1, 2,bi,bj, myThid)
+#ifdef ALLOW_LAYERS
+          IF ( useLayers ) THEN
+           CALL LAYERS_FILL_DFR( df, tracerId,
+     &                           k, 1, 2,bi,bj, myThid )
+          ENDIF
+#endif /* ALLOW_LAYERS */
          ENDDO
         ENDIF
       ENDIF

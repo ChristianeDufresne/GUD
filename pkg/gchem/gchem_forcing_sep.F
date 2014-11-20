@@ -12,7 +12,6 @@ C $Name$
 #include "GUD_OPTIONS.h"
 #endif
 
-
 CBOP
 C !ROUTINE: GCHEM_FORCING_SEP
 C !INTERFACE: ==========================================================
@@ -67,8 +66,10 @@ C  k                    :: vertical level
       INTEGER bi,bj,iMin,iMax,jMin,jMax,isub,iTracer
       INTEGER k
       _RL midTime
-#ifdef ALLOW_DIAGNOSTICS
+#if (defined ALLOW_OBCS) || (defined ALLOW_DIAGNOSTICS)
       INTEGER iTr
+#endif
+#ifdef ALLOW_DIAGNOSTICS
       CHARACTER*8 diagName
 #endif /* ALLOW_DIAGNOSTICS */
 
@@ -91,6 +92,11 @@ c global calculations   c
 ccccccccccccccccccccccccc
 #ifdef ALLOW_OLD_VIRTUALFLUX
 #ifdef ALLOW_DIC
+# ifdef ALLOW_AUTODIFF
+      IF ( .NOT.useDIC ) STOP 'ABNORMAL END: S/R GCHEM_FORCING_SEP (1)'
+# else /* ALLOW_AUTODIFF */
+      IF ( useDIC ) THEN
+# endif /* ALLOW_AUTODIFF */
 c find global surface averages
        gsm_s = 0. _d 0
        gsm_dic = 0. _d 0
@@ -101,8 +107,12 @@ c find global surface averages
        print*,'mean surface dic', gsm_dic,gsm_s
        CALL GCHEM_SURFMEAN(
      &             pTracer(1-OLx,1-OLy,1,1,1,2), gsm_alk, myThid )
-#endif
+# ifndef ALLOW_AUTODIFF
+      ENDIF
+# endif /* ALLOW_AUTODIFF */
+#endif /* ALLOW_DIC */
 #ifdef ALLOW_DARWIN
+c     IF ( useDARWIN ) THEN
 c find global surface averages
        gsm_s = 0. _d 0
        gsm_dic = 0. _d 0
@@ -113,21 +123,22 @@ c find global surface averages
        print*,'mean surface dic', gsm_dic,gsm_s
        CALL GCHEM_SURFMEAN(
      &             pTracer(1-OLx,1-OLy,1,1,1,iALK), gsm_alk, myThid )
+c     ENDIF
 #endif
 ccccccccccccccccccccccccccccccccccccccccccc
 #ifdef ALLOW_OFFLINE
-       IF ( useOffLine ) THEN
-         CALL TIMER_START('GCHEM_OFFLINE [GCHEM_FORCING_SEP]',myThid)
-         CALL OFFLINE_GET_SURFFORCING( myTime, myIter, myThid )
-         CALL TIMER_STOP ('GCHEM_OFFLINE [GCHEM_FORCING_SEP]',myThid)
-       ENDIF
+      IF ( useOffLine ) THEN
+        CALL TIMER_START('GCHEM_OFFLINE [GCHEM_FORCING_SEP]',myThid)
+        CALL OFFLINE_GET_SURFFORCING( myTime, myIter, myThid )
+        CALL TIMER_STOP ('GCHEM_OFFLINE [GCHEM_FORCING_SEP]',myThid)
+      ENDIF
 #endif /* ALLOW_OFFLINE */
 #endif /* ALLOW_OLD_VIRTUALFLUX */
 
 #ifdef ALLOW_DARWIN
-       IF ( useDARWIN ) THEN
-         CALL DARWIN_CONS( myIter, myTime, myThid )
-       ENDIF
+      IF ( useDARWIN ) THEN
+        CALL DARWIN_CONS( myIter, myTime, myThid )
+      ENDIF
 #endif
 
 ccccccccccccccccccccccccc
@@ -137,9 +148,9 @@ ccccccccccccccccccccccccc
 #if defined(ALLOW_DIC) || defined(ALLOW_DARWIN)
 
 C$taf loop = parallel
-       DO bj=myByLo(myThid),myByHi(myThid)
+      DO bj=myByLo(myThid),myByHi(myThid)
 C$taf loop = parallel
-        DO bi=myBxLo(myThid),myBxHi(myThid)
+       DO bi=myBxLo(myThid),myBxHi(myThid)
 
         jMin=1
         jMax=sNy
@@ -149,6 +160,11 @@ c
 ccccccccccccccccccccccccccc DIC cccccccccccccccccccccccccccccccc
 
 #ifdef ALLOW_DIC
+# ifdef ALLOW_AUTODIFF
+        IF (.NOT.useDIC) STOP 'ABNORMAL END: S/R GCHEM_FORCING_SEP (2)'
+# else /* ALLOW_AUTODIFF */
+        IF ( useDIC ) THEN
+# endif /* ALLOW_AUTODIFF */
 #ifdef ALLOW_FE
           CALL DIC_BIOTIC_FORCING( pTracer(1-OLx,1-OLy,1,bi,bj,1),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,2),
@@ -156,8 +172,8 @@ ccccccccccccccccccccccccccc DIC cccccccccccccccccccccccccccccccc
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,4),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,5),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,6),
-     &                          bi,bj,imin,imax,jmin,jmax,
-     &                          myIter,myTime,myThid)
+     &                          bi, bj, iMin, iMax, jMin, jMax,
+     &                          myIter, myTime, myThid )
 #else
 #ifdef ALLOW_O2
           CALL DIC_BIOTIC_FORCING( pTracer(1-OLx,1-OLy,1,bi,bj,1),
@@ -165,19 +181,21 @@ ccccccccccccccccccccccccccc DIC cccccccccccccccccccccccccccccccc
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,3),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,4),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,5),
-     &                          bi,bj,imin,imax,jmin,jmax,
-     &                          myIter,myTime,myThid)
+     &                          bi, bj, iMin, iMax, jMin, jMax,
+     &                          myIter, myTime, myThid )
 #else
-          CALL DIC_BIOTIC_Forcing( pTracer(1-OLx,1-OLy,1,bi,bj,1),
+          CALL DIC_BIOTIC_FORCING( pTracer(1-OLx,1-OLy,1,bi,bj,1),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,2),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,3),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,4),
-     &                          bi,bj,imin,imax,jmin,jmax,
-     &                          myIter,myTime,myThid)
+     &                          bi, bj, iMin, iMax, jMin, jMax,
+     &                          myIter, myTime, myThid )
 #endif
 #endif
-
-#endif
+# ifndef ALLOW_AUTODIFF
+        ENDIF
+# endif /* ALLOW_AUTODIFF */
+#endif /* ALLOW_DIC */
 cccccccccccccccccccccccccc END DIC cccccccccccccccccccccccccccccccccc
 
 cccccccccccccccccccccccccc DARWIN ccccccccccccccccccccccccccccccccccc
@@ -186,53 +204,75 @@ cccccccccccccccccccccccccc DARWIN ccccccccccccccccccccccccccccccccccc
 #ifdef NUT_SUPPLY
 c articficial supply of nutrients
           CALL DARWIN_NUT_SUPPLY( pTracer(1-OLx,1-OLy,1,bi,bj,1),
-     &                          bi,bj,imin,imax,jmin,jmax,
-     &                          myIter,myTime,myThid)
+     &                          bi, bj, iMin, iMax, jMin, jMax,
+     &                          myIter, myTime, myThid )
           CALL DARWIN_NUT_SUPPLY( pTracer(1-OLx,1-OLy,1,bi,bj,2),
-     &                          bi,bj,imin,imax,jmin,jmax,
-     &                          myIter,myTime,myThid)
+     &                          bi, bj, iMin, iMax, jMin, jMax,
+     &                          myIter, myTime, myThid )
           CALL DARWIN_NUT_SUPPLY( pTracer(1-OLx,1-OLy,1,bi,bj,3),
-     &                          bi,bj,imin,imax,jmin,jmax,
-     &                          myIter,myTime,myThid)
+     &                          bi, bj, iMin, iMax, jMin, jMax,
+     &                          myIter, myTime, myThid )
           CALL DARWIN_NUT_SUPPLY( pTracer(1-OLx,1-OLy,1,bi,bj,4),
-     &                          bi,bj,imin,imax,jmin,jmax,
-     &                          myIter,myTime,myThid)
+     &                          bi, bj, iMin, iMax, jMin, jMax,
+     &                          myIter, myTime, myThid )
 #endif
 ccccccccccccccc
 C darwin_forcing operates on bi,bj part only, but needs to get full
 C array because of last (iPtr) index
           CALL DARWIN_FORCING(  pTracer(1-OLx,1-OLy,1,1,1,1),
-     &                          bi,bj,imin,imax,jmin,jmax,
-     &                          myIter,myTime,myThid)
+     &                          bi, bj, iMin, iMax, jMin, jMax,
+     &                          myIter, myTime, myThid )
          ENDIF
 #endif /* ALLOW_DARWIN */
 cccccccccccccccccccccccccc END DARWIN ccccccccccccccccccccccccccccccc
 
+#ifdef ALLOW_OBCS
+C--   Apply (again) open boundary conditions for each passive tracer
+C Note: could skip this 2nd call to OBCS_APPLY if all DIC/DARWIN
+C       updates of ptracers were only done in the interior (i.e. with
+C       tendency multiplied by maskInC)
+        IF ( useOBCS .AND. .NOT.useDIC ) THEN
+          DO iTr = 1,PTRACERS_numInUse
+            CALL OBCS_APPLY_PTRACER(
+     I                bi, bj, 0, iTr,
+     U                pTracer(1-OLx,1-OLy,1,bi,bj,iTr),
+     I                myThid )
+          ENDDO
+        ENDIF
+#endif /* ALLOW_OBCS */
+
 C--   end bi,bj loops.
-        ENDDO
        ENDDO
+      ENDDO
 
 #endif /* DIC or DARWIN */
 
 #ifdef ALLOW_DARWIN
-       IF ( useDARWIN ) THEN
+      IF ( useDARWIN ) THEN
          CALL DARWIN_CONS( myIter, myTime, myThid )
 #ifdef ALLOW_CARBON
          CALL DIC_ATMOS( 1, myTime, myIter, myThid )
 #endif
-       ENDIF
+      ENDIF
 #endif /* ALLOW_DARWIN */
 
 #ifdef ALLOW_DIC
-       CALL DIC_ATMOS( 1, myTime, myIter, myThid )
+# ifdef ALLOW_AUTODIFF
+      IF ( .NOT.useDIC ) STOP 'ABNORMAL END: S/R GCHEM_FORCING_SEP (3)'
+# else /* ALLOW_AUTODIFF */
+      IF ( useDIC ) THEN
+# endif /* ALLOW_AUTODIFF */
+       CALL DIC_ATMOS( myTime, myIter, myThid )
+# ifdef COMPONENT_MODULE
        CALL DIC_STORE_FLUXCO2( myTime, myIter, myThid )
-#endif
-
-#ifdef ALLOW_DIC
-#ifdef ALLOW_COST
+# endif
+# ifdef ALLOW_COST
        CALL DIC_COST( myTime, myIter, myThid )
-#endif
-#endif
+# endif
+# ifndef ALLOW_AUTODIFF
+      ENDIF
+# endif /* ALLOW_AUTODIFF */
+#endif /* ALLOW_DIC */
 
 ccccccccccccccccccccccccccc GUD ccccccccccccccccccccccccccccc
 #ifdef ALLOW_GUD

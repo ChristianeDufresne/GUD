@@ -23,6 +23,7 @@ C     \ev
 C     !USES:
       implicit none
 
+#ifdef ECCO_CTRL_DEPRECATED
 c     == global variables ==
 #include "SIZE.h"
 #include "EEPARAMS.h"
@@ -30,24 +31,31 @@ c     == global variables ==
 #include "GRID.h"
 #include "DYNVARS.h"
 #include "FFIELDS.h"
-#include "CTRL_SIZE.h"
-#include "ctrl.h"
-#include "CTRL_FIELDS.h"
-#include "CTRL_GENARR.h"
-#include "ctrl_dummy.h"
-#include "optim.h"
+#ifdef ALLOW_CTRL
+# include "CTRL_SIZE.h"
+# include "ctrl.h"
+# include "CTRL_FIELDS.h"
+# include "CTRL_GENARR.h"
+# include "ctrl_dummy.h"
+# include "optim.h"
+# ifdef ALLOW_ECCO
+#  include "ecco_cost.h"
+# else
+#  include "ctrl_weights.h"
+# endif
+#endif
 #ifdef ALLOW_PTRACERS
 # include "PTRACERS_SIZE.h"
 c#include "PTRACERS_PARAMS.h"
 # include "PTRACERS_FIELDS.h"
 #endif
-#ifdef ALLOW_ECCO
-# include "ecco_cost.h"
-#endif
+#endif /* ECCO_CTRL_DEPRECATED */
 
 C     !INPUT/OUTPUT PARAMETERS:
 c     == routine arguments ==
       integer mythid
+
+#ifdef ECCO_CTRL_DEPRECATED
 
 C     !LOCAL VARIABLES:
 c     == local variables ==
@@ -110,7 +118,7 @@ c--   Temperature field.
           do k = 1,nr
             do j = jmin,jmax
               do i = imin,imax
-#ifdef ALLOW_ECCO
+#if (defined (ALLOW_ECCO) && defined (ECCO_CTRL_DEPRECATED))
                IF (abs(tmpfld3d(i,j,k,bi,bj)).gt.
      $          2.0/sqrt(wtheta(k,bi,bj)))
      $          tmpfld3d(i,j,k,bi,bj)=
@@ -150,7 +158,7 @@ c--   Temperature field.
           do k = 1,nr
             do j = jmin,jmax
               do i = imin,imax
-#ifdef ALLOW_ECCO
+#if (defined (ALLOW_ECCO) && defined (ECCO_CTRL_DEPRECATED))
                IF (abs(tmpfld3d(i,j,k,bi,bj)).gt.
      $          2.0/sqrt(wsalt(k,bi,bj)))
      $          tmpfld3d(i,j,k,bi,bj)=
@@ -569,14 +577,6 @@ c--   SSS relaxation coefficient.
       enddo
 #endif
 
-#if (defined (ALLOW_GENARR2D_CONTROL) || defined (ALLOW_GENARR3D_CONTROL))
-      call ctrl_map_ini_genarr( mythid )
-#endif
-
-#ifdef ALLOW_SEAICE
-      call seaice_ctrl_map_ini( mythid )
-#endif
-
 c--   Update the tile edges.
 
 #if (defined (ALLOW_THETA0_CONTROL) || defined (ALLOW_SST0_CONTROL))
@@ -637,6 +637,8 @@ c--   Update the tile edges.
 #ifdef ALLOW_RELAXSSS_CONTROL
       _EXCH_XY_RS( lambdaThetaClimRelax, mythid )
 #endif
+
+#endif /* ECCO_CTRL_DEPRECATED */
 
       RETURN
       END

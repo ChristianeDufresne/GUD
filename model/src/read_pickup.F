@@ -173,10 +173,10 @@ C---   Old way to read model fields:
           CALL READ_REC_3D_RL( fn, fp, Nr, gV,    5, myIter,myThid )
           CALL READ_REC_3D_RL( fn, fp, Nr, gvNm1, 6, myIter,myThid )
           CALL READ_REC_3D_RL( fn, fp, Nr, theta, 7, myIter,myThid )
-          CALL READ_REC_3D_RL( fn, fp, Nr, gT,    8, myIter,myThid )
+c         CALL READ_REC_3D_RL( fn, fp, Nr, gT,    8, myIter,myThid )
           CALL READ_REC_3D_RL( fn, fp, Nr, gtNm1, 9, myIter,myThid )
           CALL READ_REC_3D_RL( fn, fp, Nr, salt, 10, myIter,myThid )
-          CALL READ_REC_3D_RL( fn, fp, Nr, gS,   11, myIter,myThid )
+c         CALL READ_REC_3D_RL( fn, fp, Nr, gS,   11, myIter,myThid )
           CALL READ_REC_3D_RL( fn, fp, Nr, gsNm1,12, myIter,myThid )
 #endif /*  ALLOW_ADAMSBASHFORTH_3 */
           CALL READ_REC_3D_RL( fn, fp,  1, etaN,
@@ -366,10 +366,16 @@ C--     Temperature
         IF ( AdamsBashforthGt ) THEN
           CALL READ_MFLDS_3D_RL( 'GtNm1   ', gtNm1,
      &                                     nj, fp, Nr, myIter, myThid )
+        ELSEIF ( AdamsBashforth_T ) THEN
+          CALL READ_MFLDS_3D_RL( 'TempNm1 ', gtNm1,
+     &                                     nj, fp, Nr, myIter, myThid )
         ENDIF
 C--     Salinity
         IF ( AdamsBashforthGs ) THEN
           CALL READ_MFLDS_3D_RL( 'GsNm1   ', gsNm1,
+     &                                     nj, fp, Nr, myIter, myThid )
+        ELSEIF ( AdamsBashforth_S ) THEN
+          CALL READ_MFLDS_3D_RL( 'SaltNm1 ', gsNm1,
      &                                     nj, fp, Nr, myIter, myThid )
         ENDIF
 #ifdef ALLOW_NONHYDROSTATIC

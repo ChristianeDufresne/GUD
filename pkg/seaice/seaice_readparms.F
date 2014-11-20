@@ -2,6 +2,9 @@ C $Header$
 C $Name$
 
 #include "SEAICE_OPTIONS.h"
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
 
 CBOP
 C     !ROUTINE: SEAICE_READPARMS
@@ -102,7 +105,8 @@ C--   SEAICE parameters
      & SOLV_MAX_ITERS, SOLV_NCHECK, NPSEUDOTIMESTEPS,
      & LSR_ERROR, LSR_mixIniGuess, SEAICEuseMultiTileSolver,
      & SEAICE_deltaTevp, SEAICE_elasticParm, SEAICE_evpTauRelax,
-     & SEAICE_evpDampC, SEAICEnEVPstarSteps,
+     & SEAICE_evpDampC, SEAICEnEVPstarSteps, 
+     & SEAICE_evpAlpha, SEAICE_evpBeta,
      & SEAICE_zetaMin, SEAICE_zetaMaxFac,
      & SEAICEuseJFNK, SEAICEnewtonIterMax, SEAICEkrylovIterMax,
      & SEAICE_JFNK_lsIter, SEAICE_JFNK_tolIter, JFNKres_t,JFNKres_tFac,
@@ -146,7 +150,8 @@ C--   SEAICE parameters
      & SEAICE_airTurnAngle, SEAICE_waterTurnAngle,
      & MAX_HEFF, MIN_ATEMP, MIN_LWDOWN, MAX_TICE, MIN_TICE,
      & SEAICE_EPS, SEAICE_EPS_SQ,
-     & SEAICEwriteState, SEAICEuseEVPpickup, SEAICEuseEVPstar,
+     & SEAICEwriteState, SEAICEuseEVPpickup, 
+     & SEAICEuseEVPstar, SEAICEuseEVPrev,
      & SEAICE_monFreq, SEAICE_dumpFreq, SEAICE_taveFreq,
      & SEAICE_tave_mnc, SEAICE_dump_mnc, SEAICE_mon_mnc,
 #ifdef SEAICE_ITD
@@ -179,6 +184,16 @@ C--   SEAICE parameters
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
+      IF ( .NOT.useSEAICE ) THEN
+C-    pkg SEAICE is not used
+        _BEGIN_MASTER(myThid)
+C-    Track pkg activation status:
+C     print a (weak) warning if data.seaice is found
+         CALL PACKAGES_UNUSED_MSG( 'useSEAICE', ' ', ' ' )
+        _END_MASTER(myThid)
+        RETURN
+      ENDIF
+
       _BEGIN_MASTER(myThid)
 
 C--   set default sea ice parameters
@@ -195,24 +210,40 @@ C--   set default sea ice parameters
       SEAICEuseMetricTerms = .TRUE.
       SEAICEuseEVPpickup = .TRUE.
       SEAICEuseEVPstar   = .FALSE.
+      SEAICEuseEVPrev    = .FALSE.
       SEAICErestoreUnderIce = .FALSE.
       SEAICE_growMeltByConv = .FALSE.
       SEAICE_salinityTracer = .FALSE.
       SEAICE_ageTracer      = .FALSE.
       useHB87stressCoupling = .FALSE.
       usePW79thermodynamics = .TRUE.
-C     ridging parameters
+C     start of ridging parameters
       useHibler79IceStrength= .TRUE.
       SEAICEsimpleRidging   = .TRUE.
+C     The range of this proportionality constant is 2 to 17
       SEAICE_cf             = 17. _d 0
+C     By default use partition function of Thorndyke et al. (1975) ...
       SEAICEpartFunc        = 0
+C     and redistribution function of Hibler (1980)
       SEAICEredistFunc      = 0
       SEAICEridgingIterMax  = 10
+C     This parameter is not well constraint (Lipscomb et al. 2007)
       SEAICEshearParm       = 0.5 _d 0
+C     Thorndyke et al. (1975)
       SEAICEgStar           = 0.15 _d 0
-      SEAICEhStar           = 100. _d 0
+C     suggested by Hibler (1980), Flato and Hibler (1995)
+C     SEAICEhStar           = 100. _d 0
+C     but this value of 25 seems to give thinner ridges in better agreement 
+C     with observations (according to Lipscomb et al 2007)
+      SEAICEhStar           =  25. _d 0
+C     according to Lipscomb et al. (2007) these values for aStar and mu
+C     are approximately equivalent to gStar=0.15 (aStar = gStar/3) for
+C     SEAICEpartFunc = 1 ...
       SEAICEaStar           = 0.05 _d 0
-      SEAICEmuRidging       = 5. _d 0
+C     ... and hStar=25 for SEAICEredistFunc = 1
+C     Libscomb et al. (2007): mu =  3,  4,  5,   6 
+C     correspond to        hStar = 25, 50, 75, 100
+      SEAICEmuRidging       = 3. _d 0
       SEAICEmaxRaft         = 1. _d 0
       SEAICEsnowFracRidge   = 0.5 _d 0
 C     end ridging parampeters
@@ -264,7 +295,7 @@ C     JFNK stuff
       SEAICE_JFNKepsilon  = 1. _d -06
 C     factor for inexact Newton forcing, .gt. 0 and .le. 1
       SEAICE_JFNKphi      = 1. _d 0
-C     exponent for inexact Newton forcing .gt. 1 and .le. 2 
+C     exponent for inexact Newton forcing .gt. 1 and .le. 2
       SEAICE_JFNKalpha    = 1. _d 0
 C     Hunke, JCP, 2001 use 615 kg/m^2 for this, but does not recommend using it
       SEAICE_evpDampC    = -1. _d 0
@@ -354,7 +385,7 @@ C     old default value of 0.97001763668430343479
 #ifdef SEAICE_ITD
 C in case defined(SEAICE_ITD) MULTDIM = nITD (see SEAICE_SIZE.h)
 c      SEAICE_multDim     = MULTDIM
-C the switch MULTICATEGORY (and with it parameter MULTDIM) has been retired 
+C the switch MULTICATEGORY (and with it parameter MULTDIM) has been retired
 C  and SEAICE_multDim is now a runtime parameter;
 C  in case SEAICE_multDim is given in data.seaice it needs to be overwritten
 C  after PARM01 was read (see below)
@@ -601,7 +632,7 @@ C     yet been tried nor thought through.
       IF ( SEAICEuseEVP ) THEN
        IF (    (SEAICE_deltaTdyn/SEAICE_deltaTevp) .NE.
      &      INT(SEAICE_deltaTdyn/SEAICE_deltaTevp) .AND.
-     &      .NOT. SEAICEuseEVPstar ) THEN
+     &      .NOT. (SEAICEuseEVPstar.OR.SEAICEuseEVPrev) ) THEN
         WRITE(msgBuf,'(A)')
      &       'SEAICE_deltaTevp must be a factor of SEAICE_deltaTdyn.'
         CALL PRINT_ERROR( msgBuf , myThid)
@@ -668,7 +699,7 @@ C     maximum number of LSOR steps as preconditioner in JFNK solver
       ENDIF
 C     Turn line search with JFNK solver off by default by making this
 C     number much larger than the maximum allowed Newton iterations
-      IF ( SEAICE_JFNK_lsIter .EQ. UNSET_I ) 
+      IF ( SEAICE_JFNK_lsIter .EQ. UNSET_I )
      &     SEAICE_JFNK_lsIter  = 2*SEAICEnewtonIterMax
 
 C-    The old ways of specifying mcPheeTaper, mcPheePiston & frazilFrac:
@@ -752,13 +783,6 @@ C     to set SEAICE_mcPheePiston once drF is known)
         STOP 'ABNORMAL END: S/R SEAICE_READPARMS'
       ENDIF
 
-#ifdef SEAICE_ITD
-C     The ice thickness distribution (ITD) module can only be used with
-C      package seaice thermodynamics (seaice_growth)
-C      SEAICE_ADVDIFF and
-C      SEAICE_GROWTH, i.e. needs usePW79thermodynamics = .TRUE.
-      useTHSice = .FALSE.
-#endif
       IF ( useThSice ) THEN
 C     If the thsice package with the Winton thermodynamics is used
 C     is does not make sense to have the following parameters defined,

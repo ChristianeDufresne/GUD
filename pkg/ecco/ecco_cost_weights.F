@@ -2,7 +2,9 @@ C $Header$
 C $Name$
 
 #include "ECCO_OPTIONS.h"
-
+#ifdef ALLOW_CTRL
+# include "CTRL_OPTIONS.h"
+#endif
 
       subroutine ecco_cost_weights( mythid )
 
@@ -32,19 +34,26 @@ c     ==================================================================
 
 c     == global variables ==
 
+#if (defined (ALLOW_ECCO) && defined (ECCO_CTRL_DEPRECATED))
 #include "EEPARAMS.h"
 #include "SIZE.h"
 #include "PARAMS.h"
 #include "GRID.h"
 
-#include "ctrl.h"
 #include "ecco_cost.h"
+#ifdef ALLOW_CTRL
+# include "ctrl.h"
+# include "CTRL_OBCS.h"
+#endif
+#endif
 
 c     == routine arguments ==
 
       integer  mythid
 
 c     == local variables ==
+
+#if (defined (ALLOW_ECCO) && defined (ECCO_CTRL_DEPRECATED))
 
       integer bi,bj
       integer i,j,k
@@ -203,6 +212,8 @@ cph)
         enddo
       enddo
 
+#if (defined (ALLOW_CTRL) && defined (ALLOW_OBCS))
+
 #if (defined (ALLOW_OBCS_COST_CONTRIBUTION) || \
      defined (ALLOW_OBCS_CONTROL))
       do iobcs = 1,nobcs
@@ -226,6 +237,8 @@ cph)
         enddo
       enddo
 #endif
+
+#endif /* ALLOW_CTRL and ALLOW_OBCS */
 
 c--   Build area weighting matrix used in the cost function
 c--   contributions.
@@ -324,6 +337,7 @@ c--
             endif
           enddo
 
+#if (defined (ALLOW_CTRL) && defined (ALLOW_OBCS))
           do k = 1,nr
 #ifdef ALLOW_OBCSN_COST_CONTRIBUTION
             wobcsn(k,1) = wti(k)
@@ -350,6 +364,8 @@ c--
             wobcse(k,4) = wvi(k)
 #endif
           enddo
+#endif /* ALLOW_CTRL and OBCS */
+
         enddo
       enddo
 
@@ -615,6 +631,7 @@ cgf use general hydrography weights
 c--   Read egm-96 geoid covariance. Data in units of meters.
       nnz   =  1
       irec  =  1
+      if ( geoid_errfile .NE. ' ' ) then
       call mdsreadfield( geoid_errfile, cost_iprec, cost_yftype,
      &    nnz, wp, irec, mythid )
 c--   Set all tile edges to zero.
@@ -635,6 +652,7 @@ cph-indonesian)
           enddo
         enddo
       enddo
+      endif
 #else
       do bj = jtlo,jthi
         do bi = itlo,ithi
@@ -855,9 +873,11 @@ c--   Read zonal wind stress variance.
 
       nnz   =   1
       irec  =   1
-      call mdsreadfield( scatx_errfile, cost_iprec, cost_yftype, nnz,
+      if ( scatx_errfile .NE. ' ' ) 
+     &call mdsreadfield( scatx_errfile, cost_iprec, cost_yftype, nnz,
      &                   wscatx, irec, mythid )
-      call mdsreadfield( scaty_errfile, cost_iprec, cost_yftype, nnz,
+      if ( scaty_errfile .NE. ' ' )
+     &call mdsreadfield( scaty_errfile, cost_iprec, cost_yftype, nnz,
      &                   wscaty, irec, mythid )
 
       do bj = jtlo,jthi
@@ -1602,47 +1622,6 @@ c--           Test for missing values.
       endif
 #endif
 
-#ifdef ALLOW_GENCOST_CONTRIBUTION
-      do k=1,NGENCOST
-      if ( gencost_errfile(k) .NE. ' ' ) then
-catn ---------------------------------------------------
-#ifdef ALLOW_GENCOST_TIMEVARY_WEIGHT
-        if(.NOT. gencost_timevaryweight(k)) then
-        call mdsreadfield( gencost_errfile(k), cost_iprec, cost_yftype,
-     &      1, gencost_weight(:,:,1,1,k), 1, mythid )
-        endif
-#else /* ALLOW_GENCOST_TIMEVARY_WEIGHT */
-        call mdsreadfield( gencost_errfile(k), cost_iprec, cost_yftype,
-     &      1, gencost_weight(:,:,1,1,k), 1, mythid )
-#endif /* ALLOW_GENCOST_TIMEVARY_WEIGHT */
-
-      do bj = jtlo,jthi
-        do bi = itlo,ithi
-           do j = jmin,jmax
-            do i = imin,imax
-#ifdef ALLOW_GENCOST_TIMEVARY_WEIGHT
-catn --
-c define fallback error all zeros, so if daily err files
-c missing, no cost at all will be calc
-catn --
-              if( gencost_timevaryweight(k)) then
-                gencost_weight(i,j,bi,bj,k) = 0. _d 0
-              endif
-#endif /* ALLOW_GENCOST_TIMEVARY_WEIGHT */
-c--           Test for missing values.
-              if (gencost_weight(i,j,bi,bj,k) .lt. -9900.) then
-                gencost_weight(i,j,bi,bj,k) = 0. _d 0
-catn ---------------------------------------------------
-              endif
-            enddo
-           enddo
-        enddo
-      enddo
-
-      endif
-      enddo
-#endif
-
 #if (defined (ALLOW_ETAN0_COST_CONTRIBUTION) || defined (ALLOW_ETAN0_CONTROL))
       if ( etan0errfile .NE. ' ' ) then
          call mdsreadfield( etan0errfile, 32, 'RL', 1,
@@ -1912,20 +1891,10 @@ cph(
                  wtauv2(i,j,bi,bj) = 0.0 _d 0
               endif
 cph)
-#ifdef ALLOW_GENCOST_CONTRIBUTION
-              do k=1,NGENCOST
-              if (gencost_weight(i,j,bi,bj,k) .ne. 0.) then
-                 gencost_weight(i,j,bi,bj,k) =
-     &                1./gencost_weight(i,j,bi,bj,k)/
-     &                   gencost_weight(i,j,bi,bj,k)
-              else
-                 gencost_weight(i,j,bi,bj,k) = 0.0 _d 0
-              endif
-              enddo
-#endif
             enddo
           enddo
 
+#if (defined (ALLOW_CTRL) && defined (ALLOW_OBCS))
 #ifdef ALLOW_OBCS_COST_CONTRIBUTION
           do iobcs = 1,nobcs
             do k = 1,nr
@@ -1963,7 +1932,8 @@ cph)
 #endif
             enddo
           enddo
-#endif
+#endif /* ALLOW_OBCS_COST_CONTRIBUTION */
+#endif /* ALLOW_CTRL and ALLOW_OBCS */
 
         enddo
       enddo
@@ -2133,9 +2103,6 @@ c#endif
       call active_write_xy_loc( 'wvwind', wvwind, 1, 0, mythid, dummy)
 #endif
 
-#ifdef ALLOW_OBCSN_COST_CONTRIBUTION
-#endif
-
 #if   (defined (ALLOW_KAPGM_COST_CONTRIBUTION) || defined (ALLOW_KAPGM_CONTROL))
       call active_write_xyz( 'wkapgmFld',wkapgmFld,
      &     1, 0, mythid, dummy)
@@ -2162,5 +2129,9 @@ c#endif
       call active_write_xy_loc( 'wbottomdrag', wbottomdrag
      & , 1, 0, mythid, dummy)
 #endif
+
+
+#endif /* ALLOW_ECCO and ECCO_CTRL_DEPRECATED */
+
       RETURN
       END

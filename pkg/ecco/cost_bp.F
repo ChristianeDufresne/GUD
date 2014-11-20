@@ -29,6 +29,7 @@ c     == global variables ==
 
 #include "EEPARAMS.h"
 #include "SIZE.h"
+#ifdef ALLOW_BP_COST_CONTRIBUTION
 #include "PARAMS.h"
 #include "GRID.h"
 
@@ -40,6 +41,7 @@ c     == global variables ==
 #include "DYNVARS.h"
 #ifdef ALLOW_PROFILES
 #include "profiles.h"
+#endif
 #endif
 
 c     == routine arguments ==
@@ -126,7 +128,8 @@ c--     Compute the mean over all bpdat records.
      &                       ladinit, optimcycle, mythid,
      &                       xx_bpbar_mean_dummy )
 
-        call cost_bp_read( irec, mythid )
+        call cost_bp_read( bpdatfile, bpstartdate,
+     &                     bpdat, bpmask, irec, mythid )
 
         do bj = jtlo,jthi
           do bi = itlo,ithi
@@ -173,7 +176,8 @@ c--   Loop over records for the second time.
      &                       ladinit, optimcycle, mythid,
      &                       xx_bpbar_mean_dummy )
 
-        call cost_bp_read( irec, mythid )
+        call cost_bp_read( bpdatfile, bpstartdate,
+     &                     bpdat, bpmask, irec, mythid )
 
 c--    Compute field of anomalies
         do bj = jtlo,jthi

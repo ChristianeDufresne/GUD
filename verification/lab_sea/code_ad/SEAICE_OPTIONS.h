@@ -89,6 +89,10 @@ C     solvers (Lemieux and Tremblay 2009, JGR). No effect on EVP
 # undef SEAICE_ZETA_SMOOTHREG
 C     allow the truncated ellipse rheology (runtime flag SEAICEuseTEM)
 # undef SEAICE_ALLOW_TEM
+C     The adjoint compiler TAF complains the least (and gives the best code)
+C     when SEAICE_VECTORIZE_LSR is defined, but this is a bit of a hack
+# define SEAICE_VECTORIZE_LSR
+# define SEAICE_LSR_ADJOINT_ITER
 #else /* not SEAICE_CGRID, but old B-grid */
 C--   By default for B-grid dynamics solver wind stress under sea-ice is
 C     set to the same value as it would be if there was no sea-ice.
@@ -119,6 +123,12 @@ C     SEAICE_CAP_SUBLIM is not needed as of now, but kept just in case.
 
 C--   Enable free drift code
 #define SEAICE_ALLOW_FREEDRIFT
+
+C--   pkg/seaice cost functions compile flags
+c       >>> Sea-ice volume (requires pkg/cost)
+#undef  ALLOW_COST_ICE
+c       >>> Sea-ice misfit to obs (requires pkg/cost and ecco)
+#define ALLOW_SEAICE_COST_SMR_AREA
 
 #endif /* ALLOW_SEAICE */
 #endif /* SEAICE_OPTIONS_H */

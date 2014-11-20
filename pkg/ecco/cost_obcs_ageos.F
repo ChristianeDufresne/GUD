@@ -2,6 +2,9 @@ C $Header$
 C $Name$
 
 #include "ECCO_OPTIONS.h"
+#ifdef ALLOW_CTRL
+# include "CTRL_OPTIONS.h"
+#endif
 
       subroutine cost_obcs_ageos( myiter, mytime, mythid )
 
@@ -33,18 +36,29 @@ c     == global variables ==
 # include "OBCS_GRID.h"
 #endif
 
-#include "cal.h"
-#include "ecco_cost.h"
-#include "CTRL_SIZE.h"
-#include "ctrl.h"
-#include "ctrl_dummy.h"
-#include "optim.h"
+#ifdef ALLOW_CAL
+# include "cal.h"
+#endif
+#ifdef ALLOW_ECCO
+# include "ecco_cost.h"
+#endif
+#ifdef ALLOW_CTRL
+# include "CTRL_SIZE.h"
+# include "ctrl.h"
+# include "ctrl_dummy.h"
+# include "optim.h"
+# include "CTRL_OBCS.h"
+#endif
 
 c     == routine arguments ==
 
       integer myiter
       _RL     mytime
       integer mythid
+
+#if (defined (ALLOW_CTRL) && \
+     defined (ALLOW_OBCS) && \
+     defined (ALLOW_ECCO))
 
 c     == local variables ==
 
@@ -530,6 +544,8 @@ c--     Print cost function for all tiles.
 c--   End of loop over records.
 
 #endif
+
+#endif /* ALLOW_CTRL, ALLOW_OBCS and ALLOW_ECCO */
 
       return
       end

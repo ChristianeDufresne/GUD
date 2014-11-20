@@ -2,6 +2,9 @@ C $Header$
 C $Name$
 
 #include "SMOOTH_OPTIONS.h"
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
 
       subroutine smooth_diff3D (fld_in,nbt_in,mythid)
 
@@ -107,7 +110,6 @@ CADJ STORE gTm1_in(:,:,:,bi,bj) = tape_smooth_lev1 ,
 CADJ & key = key_in*nchklev_1 + ilev_1
 #endif /* ALLOW_AUTODIFF_TAMC */
 
-
 #else /* ALLOW_TAMC_CHECKPOINTING */
       do iloop=1,nbt_in
 #endif
@@ -135,9 +137,10 @@ c adams bashfort on gT_in:
       myIter(bi,bj)=iloop-1
         DO k=1,Nr
         CALL ADAMS_BASHFORTH2(
-     &                        bi, bj, k, Nr,
-     &                        gT_in, gTm1_in, gt_AB, 0,
-     &                        myIter(bi,bj) , myThid )
+     I                        bi, bj, k, Nr,
+     U                        gT_in(1-OLx,1-OLy,1,bi,bj),
+     U                        gTm1_in(1-OLx,1-OLy,1,bi,bj), gt_AB,
+     I                        0, myIter(bi,bj), myThid )
         ENDDO
 c time stepping:
         DO k=1,Nr

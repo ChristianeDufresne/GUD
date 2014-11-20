@@ -2,6 +2,12 @@ C $Header$
 C $Name$
 
 #include "EXF_OPTIONS.h"
+#ifdef ALLOW_CTRL
+# include "CTRL_OPTIONS.h"
+#endif
+#ifdef ALLOW_ECCO
+# include "ECCO_OPTIONS.h"
+#endif
 
       subroutine exf_GetSurfaceFluxes(
      I                                 mytime,
@@ -41,10 +47,14 @@ c     == global variables ==
 
 #include "EXF_FIELDS.h"
 #include "EXF_PARAM.h"
-#ifdef ALLOW_AUTODIFF
+#ifdef ALLOW_CTRL
 # include "CTRL_SIZE.h"
 # include "ctrl.h"
 # include "ctrl_dummy.h"
+# include "CTRL_GENARR.h"
+#endif
+#if (defined (ALLOW_ECCO) && defined (ECCO_CTRL_DEPRECATED))
+#  include "ecco_cost.h"
 #endif
 
 c     == routine arguments ==
@@ -55,56 +65,27 @@ c     == routine arguments ==
 
 c     == global variables ==
 
+#ifdef ALLOW_CTRL
+
 #ifdef ALLOW_ROTATE_UV_CONTROLS
       _RL     tmpUE(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL     tmpVN(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL     tmpUX(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL     tmpVY(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
+#endif
+
+#ifdef ALLOW_GENTIM2D_CONTROL
+      integer iarr
+#endif
+
+#if (defined (ALLOW_ROTATE_UV_CONTROLS) || defined (ALLOW_GENTIM2D_CONTROL))
       integer i,j,bi,bj
 #endif
 
-
 c     == end of interface ==
 
-#ifdef ALLOW_HFLUX_CONTROL
-      call ctrl_get_gen ( 
-     &     xx_hflux_file, xx_hfluxstartdate, xx_hfluxperiod,
-     &     maskc, hflux, xx_hflux0, xx_hflux1, xx_hflux_dummy,
-     &     xx_hflux_remo_intercept, xx_hflux_remo_slope,
-     &     mytime, myiter, mythid )
-#endif
-
-#ifdef ALLOW_SFLUX_CONTROL
-      call ctrl_get_gen ( 
-     &     xx_sflux_file, xx_sfluxstartdate, xx_sfluxperiod,
-     &     maskc, sflux, xx_sflux0, xx_sflux1, xx_sflux_dummy,
-     &     xx_sflux_remo_intercept, xx_sflux_remo_slope,
-     &     mytime, myiter, mythid )
-#endif
-
-      IF ( .NOT.useAtmWind ) THEN
-#ifndef ALLOW_ROTATE_UV_CONTROLS
-
-#ifdef ALLOW_USTRESS_CONTROL
-      call ctrl_get_gen ( 
-     &     xx_tauu_file, xx_tauustartdate, xx_tauuperiod,
-     &     maskw, ustress, xx_tauu0, xx_tauu1, xx_tauu_dummy,
-     &     xx_tauu_remo_intercept, xx_tauu_remo_slope,
-     &     mytime, myiter, mythid )
-#endif
-
-#ifdef ALLOW_VSTRESS_CONTROL
-      call ctrl_get_gen ( 
-     &     xx_tauv_file, xx_tauvstartdate, xx_tauvperiod,
-     &     masks, vstress, xx_tauv0, xx_tauv1, xx_tauv_dummy,
-     &     xx_tauv_remo_intercept, xx_tauv_remo_slope,
-     &     mytime, myiter, mythid )
-#endif
-
-#else
-
-#if defined(ALLOW_USTRESS_CONTROL) && defined(ALLOW_VSTRESS_CONTROL)
-
+#ifdef ALLOW_ROTATE_UV_CONTROLS
+      if ( useCTRL ) then
         do bj = mybylo(mythid),mybyhi(mythid)
          do bi = mybxlo(mythid),mybxhi(mythid)
           do j = 1-oly,sny+oly
@@ -117,19 +98,105 @@ c     == end of interface ==
           enddo
          enddo
         enddo
+      endif
+#endif
+
+#if (defined (ALLOW_CTRL) && \
+     defined (ALLOW_GENTIM2D_CONTROL))
+      if ( useCTRL.AND.ctrlUseGen) then
+      DO bj = myByLo(myThid),myByHi(myThid)
+       DO bi = myBxLo(myThid),mybxhi(myThid)
+        DO j = 1,sNy
+         DO i = 1,sNx
+           do iarr = 1, maxCtrlTim2D
+#ifndef ALLOW_ROTATE_UV_CONTROLS
+           if (xx_gentim2d_file(iarr).EQ.'xx_tauu')
+     &       ustress(i,j,bi,bj)=ustress(i,j,bi,bj)+
+     &                         xx_gentim2d(i,j,bi,bj,iarr)
+           if (xx_gentim2d_file(iarr).EQ.'xx_tauv')
+     &       vstress(i,j,bi,bj)=vstress(i,j,bi,bj)+
+     &                         xx_gentim2d(i,j,bi,bj,iarr)
+#else
+           if (xx_gentim2d_file(iarr).EQ.'xx_tauu')
+     &       tmpUE(i,j,bi,bj)=tmpUE(i,j,bi,bj)
+     &          +xx_gentim2d(i,j,bi,bj,iarr)
+           if (xx_gentim2d_file(iarr).EQ.'xx_tauv')
+     &       tmpVN(i,j,bi,bj)=tmpVN(i,j,bi,bj)
+     &          +xx_gentim2d(i,j,bi,bj,iarr)
+#endif
+           enddo
+         ENDDO
+        ENDDO
+       ENDDO
+      ENDDO
+      endif !if (ctrlUseGen) then
+#endif
+
+#if (!defined (ALLOW_ECCO) || defined (ECCO_CTRL_DEPRECATED))
+
+#ifdef ALLOW_HFLUX_CONTROL
+      call ctrl_get_gen ( 
+     &     xx_hflux_file, xx_hfluxstartdate, xx_hfluxperiod,
+     &     maskc, hflux, xx_hflux0, xx_hflux1, xx_hflux_dummy,
+     &     xx_hflux_remo_intercept, xx_hflux_remo_slope,
+     &     whflux, mytime, myiter, mythid )
+#endif
+
+#ifdef ALLOW_SFLUX_CONTROL
+      call ctrl_get_gen ( 
+     &     xx_sflux_file, xx_sfluxstartdate, xx_sfluxperiod,
+     &     maskc, sflux, xx_sflux0, xx_sflux1, xx_sflux_dummy,
+     &     xx_sflux_remo_intercept, xx_sflux_remo_slope,
+     &     wsflux, mytime, myiter, mythid )
+#endif
+
+      IF ( .NOT.useAtmWind ) THEN
+
+      IF ( .NOT.ctrlUseGen ) THEN
+#ifndef ALLOW_ROTATE_UV_CONTROLS
+
+#ifdef ALLOW_USTRESS_CONTROL
+      call ctrl_get_gen ( 
+     &     xx_tauu_file, xx_tauustartdate, xx_tauuperiod,
+     &     maskw, ustress, xx_tauu0, xx_tauu1, xx_tauu_dummy,
+     &     xx_tauu_remo_intercept, xx_tauu_remo_slope,
+     &     wtauu, mytime, myiter, mythid )
+#endif
+
+#ifdef ALLOW_VSTRESS_CONTROL
+      call ctrl_get_gen ( 
+     &     xx_tauv_file, xx_tauvstartdate, xx_tauvperiod,
+     &     masks, vstress, xx_tauv0, xx_tauv1, xx_tauv_dummy,
+     &     xx_tauv_remo_intercept, xx_tauv_remo_slope,
+     &     wtauv, mytime, myiter, mythid )
+#endif
+
+#else
+
+#if (defined (ALLOW_USTRESS_CONTROL) && defined (ALLOW_VSTRESS_CONTROL))
 
       call ctrl_get_gen ( 
      &     xx_tauu_file, xx_tauustartdate, xx_tauuperiod,
      &     maskc, tmpUE, xx_tauu0, xx_tauu1, xx_tauu_dummy,
      &     xx_tauu_remo_intercept, xx_tauu_remo_slope,
-     &     mytime, myiter, mythid )
+     &     wtauu, mytime, myiter, mythid )
 
       call ctrl_get_gen ( 
      &     xx_tauv_file, xx_tauvstartdate, xx_tauvperiod,
      &     maskc, tmpVN, xx_tauv0, xx_tauv1, xx_tauv_dummy,
      &     xx_tauv_remo_intercept, xx_tauv_remo_slope,
-     &     mytime, myiter, mythid )
+     &     wtauv, mytime, myiter, mythid )
 
+#endif /* ALLOW_USTRESS_CONTROL and ALLOW_VSTRESS_CONTROL */
+
+#endif /* ALLOW_ROTATE_UV_CONTROLS */
+      ENDIF ! (.NOT.ctrlUseGen)
+
+#else
+      IF ( (useCTRL).AND.(.NOT.useAtmWind) ) THEN
+#endif /* undef ALLOW_ECCO || def ECCO_CTRL_DEPRECATED */
+
+#ifdef ALLOW_ROTATE_UV_CONTROLS
       _EXCH_XY_RL(tmpUE,myThid)
       _EXCH_XY_RL(tmpVN,myThid)
 
@@ -152,10 +219,10 @@ c     == end of interface ==
           enddo
          enddo
         enddo
-
-#endif
 #endif /* ALLOW_ROTATE_UV_CONTROLS */
-      ENDIF
 
+      ENDIF !( .NOT.useAtmWind )
+
+#endif /* ALLOW_CTRL */
 
       end

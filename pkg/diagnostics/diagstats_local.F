@@ -12,8 +12,8 @@ C     !INTERFACE:
      I                  scaleFact, power, useFract, sizF,
      I                  sizI1,sizI2,sizJ1,sizJ2,sizK,sizTx,sizTy,
      I                  iRun,jRun,kIn,biIn,bjIn,
-     I                  k,bi,bj, region2fill, ndId, parsFld,
-     I                  myThid )
+     I                  k,bi,bj, bibjFlg, region2fill,
+     I                  ndId, parsFld, myThid )
 
 C     !DESCRIPTION:
 C     Update array statFld
@@ -54,6 +54,7 @@ C     iRun,jRun   :: range of 1rst & 2nd index
 C     kIn         :: level index of inpFld array to process
 C     biIn,bjIn   :: tile indices of inpFld array to process
 C     k,bi,bj     :: level and tile indices used for weighting (mask,area ...)
+C     bibjFlg     :: passed from calling S/R (see diagstats_fill.F)
 C     region2fill :: indicates whether to compute statistics over this region
 C     ndId        :: Diagnostics Id Number (in available diag. list)
 C     parsFld     :: parser field with characteristics of the diagnostics
@@ -67,8 +68,9 @@ C     myThid      :: my Thread Id number
       INTEGER power
       LOGICAL useFract
       INTEGER iRun, jRun, kIn, biIn, bjIn
-      INTEGER k, bi, bj, ndId
+      INTEGER k, bi, bj, bibjFlg
       INTEGER region2fill(0:nRegions)
+      INTEGER ndId
       CHARACTER*16 parsFld
       INTEGER myThid
 CEOP
@@ -81,7 +83,7 @@ C     !FUNCTIONS:
 
 C     !LOCAL VARIABLES:
 C     i,j    :: loop indices
-      INTEGER i, n, kFr, kRegMsk
+      INTEGER i, n, kFr, kRegMsk, lReg
       INTEGER im, ix, iv
       PARAMETER ( iv = nStats - 2 , im = nStats - 1 , ix = nStats )
       LOGICAL exclSpVal
@@ -108,6 +110,12 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C---   Compute statistics for this tile, level and region:
 
          kRegMsk = diagSt_kRegMsk(n)
+         lReg = 0
+         IF ( n.GE.1 ) THEN
+           lReg = 1
+           IF ( parsFld(2:2).EQ.'U' ) lReg = 2
+           IF ( parsFld(2:2).EQ.'V' ) lReg = 3
+         ENDIF
 
          IF ( parsFld(10:10) .EQ. 'R' ) THEN
 
@@ -121,10 +129,10 @@ C---   Compute statistics for this tile, level and region:
      O            statLoc,
      I            inpFld(sizI1,sizJ1,kIn,biIn,bjIn),
      I            frcFld(sizI1,sizJ1,kFr,biIn,bjIn),
-     I            scaleFact, power, useFract, n, diagSt_vRegMsk(n),
+     I            scaleFact, power, useFract, lReg, diagSt_vRegMsk(n),
      I            nStats,sizI1,sizI2,sizJ1,sizJ2,iRun,jRun,
      I            diagSt_regMask(1-OLx,1-OLy,kRegMsk,bi,bj),
-     I            maskW(1-OLx,1-OLy,k,bi,bj),
+     I            maskInW(1-OLx,1-OLy,bi,bj),
      I            hFacW(1-OLx,1-OLy,k,bi,bj), rAw(1-OLx,1-OLy,bi,bj),
      I            drLoc, specialVal, exclSpVal, useWeight, myThid )
 c    I            drLoc, k,bi,bj, parsFld, myThid )
@@ -133,10 +141,10 @@ c    I            drLoc, k,bi,bj, parsFld, myThid )
      O            statLoc,
      I            inpFld(sizI1,sizJ1,kIn,biIn,bjIn),
      I            frcFld(sizI1,sizJ1,kFr,biIn,bjIn),
-     I            scaleFact, power, useFract, n, diagSt_vRegMsk(n),
+     I            scaleFact, power, useFract, lReg, diagSt_vRegMsk(n),
      I            nStats,sizI1,sizI2,sizJ1,sizJ2,iRun,jRun,
      I            diagSt_regMask(1-OLx,1-OLy,kRegMsk,bi,bj),
-     I            maskS(1-OLx,1-OLy,k,bi,bj),
+     I            maskInS(1-OLx,1-OLy,bi,bj),
      I            hFacS(1-OLx,1-OLy,k,bi,bj), rAs(1-OLx,1-OLy,bi,bj),
      I            drLoc, specialVal, exclSpVal, useWeight, myThid )
           ELSE
@@ -144,10 +152,10 @@ c    I            drLoc, k,bi,bj, parsFld, myThid )
      O            statLoc,
      I            inpFld(sizI1,sizJ1,kIn,biIn,bjIn),
      I            frcFld(sizI1,sizJ1,kFr,biIn,bjIn),
-     I            scaleFact, power, useFract, n, diagSt_vRegMsk(n),
+     I            scaleFact, power, useFract, lReg, diagSt_vRegMsk(n),
      I            nStats,sizI1,sizI2,sizJ1,sizJ2,iRun,jRun,
      I            diagSt_regMask(1-OLx,1-OLy,kRegMsk,bi,bj),
-     I            maskC(1-OLx,1-OLy,k,bi,bj),
+     I            maskInC(1-OLx,1-OLy,bi,bj),
      I            hFacC(1-OLx,1-OLy,k,bi,bj), rA(1-OLx,1-OLy,bi,bj),
      I            drLoc, specialVal, exclSpVal, useWeight, myThid )
           ENDIF
@@ -159,7 +167,7 @@ c    I            drLoc, k,bi,bj, parsFld, myThid )
      O            statLoc,
      I            inpFld(sizI1,sizJ1,kIn,biIn,bjIn),
      I            frcFld(sizI1,sizJ1,kFr,biIn,bjIn),
-     I            scaleFact, power, useFract, n, diagSt_vRegMsk(n),
+     I            scaleFact, power, useFract, lReg, diagSt_vRegMsk(n),
      I            nStats,sizI1,sizI2,sizJ1,sizJ2,iRun,jRun,
      I            diagSt_regMask(1-OLx,1-OLy,kRegMsk,bi,bj),
      I            maskInC(1-OLx,1-OLy,bi,bj), rA(1-OLx,1-OLy,bi,bj),
@@ -172,7 +180,7 @@ c    I            drLoc, k,bi,bj, parsFld, myThid )
      O            statLoc,
      I            inpFld(sizI1,sizJ1,kIn,biIn,bjIn),
      I            frcFld(sizI1,sizJ1,kFr,biIn,bjIn),
-     I            scaleFact, power, useFract, n, diagSt_vRegMsk(n),
+     I            scaleFact, power, useFract, lReg, diagSt_vRegMsk(n),
      I            nStats,sizI1,sizI2,sizJ1,sizJ2,iRun,jRun,
      I            diagSt_regMask(1-OLx,1-OLy,kRegMsk,bi,bj),
      I            rA(1-OLx,1-OLy,bi,bj),
@@ -188,7 +196,7 @@ c        ELSEIF ( parsFld(10:10) .EQ. '1' ) THEN
      O            statLoc,
      I            inpFld(sizI1,sizJ1,kIn,biIn,bjIn),
      I            frcFld(sizI1,sizJ1,kFr,biIn,bjIn),
-     I            scaleFact, power, useFract, n, diagSt_vRegMsk(n),
+     I            scaleFact, power, useFract, lReg, diagSt_vRegMsk(n),
      I            nStats,sizI1,sizI2,sizJ1,sizJ2,iRun,jRun,
      I            diagSt_regMask(1-OLx,1-OLy,kRegMsk,bi,bj),
      I            maskInW(1-OLx,1-OLy,bi,bj),
@@ -199,7 +207,7 @@ c        ELSEIF ( parsFld(10:10) .EQ. '1' ) THEN
      O            statLoc,
      I            inpFld(sizI1,sizJ1,kIn,biIn,bjIn),
      I            frcFld(sizI1,sizJ1,kFr,biIn,bjIn),
-     I            scaleFact, power, useFract, n, diagSt_vRegMsk(n),
+     I            scaleFact, power, useFract, lReg, diagSt_vRegMsk(n),
      I            nStats,sizI1,sizI2,sizJ1,sizJ2,iRun,jRun,
      I            diagSt_regMask(1-OLx,1-OLy,kRegMsk,bi,bj),
      I            maskInS(1-OLx,1-OLy,bi,bj),
@@ -210,7 +218,7 @@ c        ELSEIF ( parsFld(10:10) .EQ. '1' ) THEN
      O            statLoc,
      I            inpFld(sizI1,sizJ1,kIn,biIn,bjIn),
      I            frcFld(sizI1,sizJ1,kFr,biIn,bjIn),
-     I            scaleFact, power, useFract, n, diagSt_vRegMsk(n),
+     I            scaleFact, power, useFract, lReg, diagSt_vRegMsk(n),
      I            nStats,sizI1,sizI2,sizJ1,sizJ2,iRun,jRun,
      I            diagSt_regMask(1-OLx,1-OLy,kRegMsk,bi,bj),
      I            maskInC(1-OLx,1-OLy,bi,bj),
@@ -222,16 +230,22 @@ c        ELSEIF ( parsFld(10:10) .EQ. '1' ) THEN
 
 C     Update cumulative statistics array
          IF ( statLoc(0).GT.0. ) THEN
-            IF ( statFld(0,n).LE.0. ) THEN
-              statFld(im,n) = statLoc(im)
-              statFld(ix,n) = statLoc(ix)
-            ELSE
-              statFld(im,n) = MIN( statFld(im,n), statLoc(im) )
-              statFld(ix,n) = MAX( statFld(ix,n), statLoc(ix) )
-            ENDIF
+           IF ( statFld(0,n).LE.0. ) THEN
+             statFld(im,n) = statLoc(im)
+             statFld(ix,n) = statLoc(ix)
+           ELSE
+             statFld(im,n) = MIN( statFld(im,n), statLoc(im) )
+             statFld(ix,n) = MAX( statFld(ix,n), statLoc(ix) )
+           ENDIF
+           IF ( bibjFlg.GE.0 ) THEN
             DO i=0,iv
-              statFld(i,n) = statFld(i,n) + statLoc(i)
+             statFld(i,n) = statFld(i,n) + statLoc(i)
             ENDDO
+           ELSE
+            DO i=1,iv
+             statFld(i,n) = statFld(i,n) + statLoc(i)
+            ENDDO
+           ENDIF
          ENDIF
 
 C---   processing region "n" ends here.

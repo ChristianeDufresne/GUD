@@ -2,22 +2,32 @@ C $Header$
 C $Name$
 
 #include "GMREDI_OPTIONS.h"
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
 #ifdef ALLOW_CTRL
 # include "CTRL_OPTIONS.h"
 #endif
 
+C     !ROUTINE: GMREDI_YTRANSPORT
+C     !INTERFACE:
       SUBROUTINE GMREDI_YTRANSPORT(
-     I     iMin,iMax,jMin,jMax,bi,bj,K,
-     I     yA,Tracer,tracerIdentity,
+     I     trIdentity, bi, bj, k,
+     I     iMin, iMax, jMin, jMax,
+     I     yA, Tracer,
      U     df,
-     I     myThid)
+     I     myThid )
+
+C     !DESCRIPTION: \bv
 C     *==========================================================*
 C     | o SUBROUTINE GMREDI_YTRANSPORT
 C     |   Add horizontal y transport terms from GM/Redi
 C     |   parameterization.
 C     *==========================================================*
-      IMPLICIT NONE
+C     \ev
 
+C     !USES:
+      IMPLICIT NONE
 C     == GLobal variables ==
 #include "SIZE.h"
 #include "EEPARAMS.h"
@@ -36,24 +46,29 @@ C     == GLobal variables ==
 # endif
 #endif /* ALLOW_AUTODIFF_TAMC */
 
-C     == Routine arguments ==
-C     iMin,iMax,jMin,  - Range of points for which calculation
-C     jMax,bi,bj,k       results will be set.
-C     xA               - Area of X face
-C     Tracer           - 3D Tracer field
-C     df               - Diffusive flux component work array.
-      INTEGER iMin,iMax,jMin,jMax,bi,bj,k
-      _RS yA(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
-      _RL Tracer(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
-      integer tracerIdentity
+C     !INPUT/OUTPUT PARAMETERS:
+C     trIdentity   :: tracer Id number
+C     bi, bj       :: current tile indices
+C     k            :: current level index
+C     iMin,iMax    :: Range of 1rst index where results will be set
+C     jMin,jMax    :: Range of 2nd  index where results will be set
+C     yA           :: Area of Y face
+C     Tracer       :: 3D Tracer field
+C     df           :: Diffusive flux component work array.
+C     myThid       :: my Thread Id number
+      INTEGER trIdentity
+      INTEGER bi, bj, k
+      INTEGER iMin, iMax, jMin, jMax
+      _RS yA    (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL Tracer(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr)
       _RL df    (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       INTEGER myThid
+CEOP
 
 #ifdef ALLOW_GMREDI
-
-C     == Local variables ==
-C     I, J - Loop counters
-      INTEGER I, J
+C     !LOCAL VARIABLES:
+C     i, j    ::  Loop counters
+      INTEGER i, j
 #if ( defined (GM_EXTRA_DIAGONAL) || defined (GM_BOLUS_ADVEC) )
       INTEGER kp1
 #endif
@@ -72,7 +87,7 @@ C     I, J - Loop counters
 #endif /* GM_BOLUS_ADVEC */
 
 #ifdef ALLOW_AUTODIFF_TAMC
-          act0 = tracerIdentity - 1
+          act0 = trIdentity - 1
           max0 = maxpass
           act1 = bi - myBxLo(myThid)
           max1 = myBxHi(myThid) - myBxLo(myThid) + 1
@@ -87,9 +102,9 @@ C     I, J - Loop counters
      &                      + act3*max0*max1*max2
      &                      + act4*max0*max1*max2*max3
           kkey = (igadkey-1)*Nr + k
-          if (tracerIdentity.GT.maxpass) then
-             print *, 'ph-pass gmredi_ytrans ', maxpass, tracerIdentity
-             STOP 'maxpass seems smaller than tracerIdentity'
+          if (trIdentity.GT.maxpass) then
+             print *, 'ph-pass gmredi_ytrans ', maxpass, trIdentity
+             STOP 'maxpass seems smaller than trIdentity'
           endif
 #endif /* ALLOW_AUTODIFF_TAMC */
 
@@ -104,7 +119,7 @@ CADJ &     comlev1_gmredi_k_gad, key=kkey, byte=isbyte
 CADJ STORE Kvz(:,:,k,bi,bj) =
 CADJ &     comlev1_gmredi_k_gad, key=kkey, byte=isbyte
 # endif
-#endif
+#endif /* ALLOW_AUTODIFF_TAMC */
 
 C--   Area integrated meridional flux
       DO j=jMin,jMax
@@ -125,7 +140,7 @@ C--   Area integrated meridional flux
      &     )
 #endif /* GM_NON_UNITY_DIAGONAL */
      &    *_recip_dyC(i,j,bi,bj)
-     &    *(Tracer(i,j,k,bi,bj)-Tracer(i,j-1,k,bi,bj))
+     &    *(Tracer(i,j,k)-Tracer(i,j-1,k))
        ENDDO
       ENDDO
 
@@ -134,22 +149,21 @@ C--   Area integrated meridional flux
        km1 = MAX(k-1,1)
        kp1 = MIN(k+1,Nr)
 
+C-    Vertical gradients interpolated to V points
        DO j=jMin,jMax
         DO i=iMin,iMax
-
-C-      Vertical gradients interpolated to V points
         dTdz(i,j) =  op5*(
      &   +op5*recip_drC(k)*
      &       ( maskC(i,j-1,k,bi,bj)*
-     &           (Tracer(i,j-1,km1,bi,bj)-Tracer(i,j-1,k,bi,bj))
+     &           (Tracer(i,j-1,km1)-Tracer(i,j-1,k))
      &        +maskC(i, j ,k,bi,bj)*
-     &           (Tracer(i, j ,km1,bi,bj)-Tracer(i, j ,k,bi,bj))
+     &           (Tracer(i, j ,km1)-Tracer(i, j ,k))
      &       )
      &   +op5*recip_drC(kp1)*
      &       ( maskC(i,j-1,kp1,bi,bj)*
-     &           (Tracer(i,j-1,k,bi,bj)-Tracer(i,j-1,kp1,bi,bj))
+     &           (Tracer(i,j-1,k)-Tracer(i,j-1,kp1))
      &        +maskC(i, j ,kp1,bi,bj)*
-     &           (Tracer(i, j ,k,bi,bj)-Tracer(i, j ,kp1,bi,bj))
+     &           (Tracer(i, j ,k)-Tracer(i, j ,kp1))
      &       )      )
         ENDDO
        ENDDO
@@ -157,9 +171,9 @@ C-      Vertical gradients interpolated to V points
 CADJ STORE dtdz(:,:) =
 CADJ &     comlev1_gmredi_k_gad, key=kkey, byte=isbyte
 #endif
+C-    Off-diagonal components of horizontal flux
        DO j=jMin,jMax
         DO i=iMin,iMax
-C-      Off-diagonal components of horizontal flux
           df(i,j) = df(i,j) - yA(i,j)*Kvz(i,j,k,bi,bj)*dTdz(i,j)
 
         ENDDO
@@ -187,7 +201,7 @@ CADJ &     comlev1_gmredi_k_gad, key=kkey, byte=isbyte
        DO j=jMin,jMax
         DO i=iMin,iMax
          df(i,j) = df(i,j)
-     &    +vTrans(i,j)*op5*(Tracer(i,j,k,bi,bj)+Tracer(i,j-1,k,bi,bj))
+     &    +vTrans(i,j)*op5*(Tracer(i,j,k)+Tracer(i,j-1,k))
         ENDDO
        ENDDO
       ENDIF
@@ -196,7 +210,7 @@ CADJ &     comlev1_gmredi_k_gad, key=kkey, byte=isbyte
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
       IF ( useDiagnostics
      &     .AND. DIAGNOSTICS_IS_ON('GM_vbT  ', myThid )
-     &     .AND. tracerIdentity .EQ. 1) THEN
+     &     .AND. trIdentity.EQ.1 ) THEN
        kp1 = MIN(k+1,Nr)
        maskp1 = 1.
        IF (k.GE.Nr) maskp1 = 0.
@@ -205,11 +219,10 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
          tmp1k(i,j) = dxG(i,j,bi,bj)*( GM_PsiY(i,j,kp1,bi,bj)*maskp1
      &                                -GM_PsiY(i,j,k,bi,bj) )
      &                               *maskS(i,j,k,bi,bj)
-     &               *op5*(Tracer(i,j,k,bi,bj)+Tracer(i,j-1,k,bi,bj))
+     &               *op5*(Tracer(i,j,k)+Tracer(i,j-1,k))
         ENDDO
        ENDDO
        CALL DIAGNOSTICS_FILL(tmp1k,'GM_vbT  ', k,1,2,bi,bj,myThid)
-
       ENDIF
 #endif /* ALLOW_DIAGNOSTICS */
 

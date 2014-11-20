@@ -79,13 +79,10 @@ c     IF ( useMultiDimAdvec ) THEN
 
 C--  Check parameters:
 
-C-   Check internal wave dynamics stability regarding active tracer time-stepping
-      IF ( .NOT.staggerTimeStep ) THEN
-        IF ( tempIsActiveTr .AND.
-     &                      .NOT.(AdamsBashforthGt.OR.AdamsBashforth_T)
-     &  .OR. saltIsActiveTr .AND.
-     &                      .NOT.(AdamsBashforthGs.OR.AdamsBashforth_S)
-     &     ) THEN
+C--  Check internal wave dynamics stability regarding active tracer time-stepping
+      IF ( .NOT.(staggerTimeStep.OR.implicitIntGravWave) ) THEN
+        IF ( ( tempIsActiveTr .AND. .NOT.AdamsBashforthGt )
+     &  .OR. ( saltIsActiveTr .AND. .NOT.AdamsBashforthGs ) ) THEN
 C-      issue a warning in Error msg file:
            WRITE(msgBuf,'(2A)') '** WARNING ** GAD_CHECK: ',
      &       'potentially unstable time-stepping (Internal Wave)'

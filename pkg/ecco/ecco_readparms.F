@@ -25,7 +25,20 @@ c     == global variables ==
 #include "GRID.h"
 #include "PARAMS.h"
 
-#include "ecco_cost.h"
+#ifdef ALLOW_ECCO
+# ifdef ECCO_CTRL_DEPRECATED
+#  include "ecco_cost.h"
+# else
+#  include "ecco.h"
+#  include "ecco_local_params.h"
+# endif
+#endif
+#ifdef ALLOW_CTRL
+# include "CTRL_OBCS.h"
+#endif
+#ifdef ALLOW_CAL
+# include "cal.h"
+#endif
 
 c     == routine arguments ==
 
@@ -35,9 +48,9 @@ c     == local variables ==
 C     msgBuf      - Informational/error meesage buffer
 C     iUnit       - Work variable for IO unit number
       CHARACTER*(MAX_LEN_MBUF) msgBuf
-      INTEGER k, iUnit, num_file, num_var
+      INTEGER k, k2, iUnit, num_file, num_var
 #ifdef ALLOW_GENCOST_CONTRIBUTION
-      INTEGER IL
+      INTEGER IL, gencost_k3d
 #endif
 
 Catn-- retired parameters
@@ -62,10 +75,11 @@ c--   Read the namelist input.
      &                   costTranspDataFile, mdtdatfile,
      &                   mdtstartdate1, mdtstartdate2,
      &                   mdtenddate1, mdtenddate2,
-     &                   using_cost_altim, 
+     &                   using_cost_altim,
      &                   using_cost_bp, using_cost_scat, 
      &                   using_cost_sst, using_cost_seaice,
-     &                   using_topex, using_ers, using_gfo,
+     &                   using_mdt, using_tpj, using_ers, using_gfo,
+     &                   using_topex,
      &                   topexstartdate1, topexstartdate2,
      &                   topexperiod, topexfile, tpTimeMaskFile,
      &                   topexintercept, topexslope, ersTimeMaskFile,
@@ -127,9 +141,12 @@ c--   Read the namelist input.
      &                   mult_sdrift, mult_tdrift, mult_wdrift,
      &                   mult_temp0, mult_salt0,
      &                   mult_etan0, mult_uvel0, mult_vvel0,
+#if (defined (ALLOW_CTRL) && defined (ALLOW_OBCS))
      &                   mult_obcsn, mult_obcss,
      &                   mult_obcsw, mult_obcse, mult_obcsvol,
-     &                   mult_curmtr, mult_ageos,
+     &                   mult_ageos,
+#endif
+     &                   mult_curmtr,
      &                   mult_kapgm, mult_kapredi, mult_diffkr,
      &                   mult_edtau, mult_bottomdrag,
      &                   mult_usercost, mult_transp,
@@ -156,26 +173,48 @@ c--   Read the namelist input.
      &         gencost_name,
      &         gencost_scalefile,
      &         gencost_errfile,
+     &         gencost_preproc,
+     &         gencost_preproc_c,
+     &         gencost_preproc_i,
+     &         gencost_preproc_r,
+     &         gencost_posproc,
+     &         gencost_posproc_c,
+     &         gencost_posproc_i,
+     &         gencost_posproc_r,
+     &         gencost_outputlevel,
      &         gencost_mask,
      &         gencost_spmin,
      &         gencost_spmax,
      &         gencost_spzero,
      &         gencost_avgperiod,
-#ifdef ALLOW_SMOOTH
+     &         gencost_nrecperiod,
+     &         gencost_startdate1,
+     &         gencost_startdate2,
+     &         gencost_enddate1,
+     &         gencost_enddate2,
      &         gencost_smooth2Ddiffnbt,
-#endif /* ALLOW_SMOOTH */
-#ifdef ALLOW_GENCOST_TIMEVARY_WEIGHT
+     &         gencost_is3d,
      &         gencost_timevaryweight,
-#endif /* ALLOW_GENCOST_TIMEVARY_WEIGHT */
      &         mult_gencost
-#endif
+#endif /* ALLOW_GENCOST_CONTRIBUTION */
+
+      IF ( .NOT.useECCO ) THEN
+C-    pkg ECCO is not used
+        _BEGIN_MASTER(myThid)
+C-    Track pkg activation status:
+C     print a (weak) warning if data.ecco is found
+         CALL PACKAGES_UNUSED_MSG( 'useECCO', ' ', ' ' )
+        _END_MASTER(myThid)
+        RETURN
+      ENDIF
 
       _BEGIN_MASTER( myThid )
 
 c--     Set default values.
 
 c run time switches for main cost terms
-#ifdef ALLOW_SSH_COST_CONTRIBUTION
+#if (defined (ALLOW_SSH_COST_CONTRIBUTION) && \
+     !defined (ALLOW_GENCOST_CONTRIBUTION) )
       using_cost_altim=.TRUE.
 #else
       using_cost_altim=.FALSE.
@@ -218,11 +257,7 @@ c other run time parameters
         hfluxmeanbarfile      =    'hfluxmeanbar'
         sfluxmeanbarfile      =    'sfluxmeanbar'
         costTranspDataFile    =    ' '
-#ifdef ALLOW_SSH_TPANOM_COST_CONTRIBUTION
-        using_topex           = .true.
-#else
-        using_topex           = .false.
-#endif
+        using_tpj             = .false.
         topexstartdate1       =      0
         topexstartdate2       =      0
         topexperiod           =      0. _d 0
@@ -231,27 +266,20 @@ c other run time parameters
         topexfile             =    ' '
 catn: defaulting mdt[start,end]date1 to pavlis so that
 catn  eccov4 will run without needing to read in these params
+        using_mdt             =.FALSE.
         mdtdatfile            =    ' '
         mdtstartdate1         =      19930101
         mdtstartdate2         =      0
         mdtenddate1           =      20041231
         mdtenddate2           =      0
-#ifdef ALLOW_SSH_ERSANOM_COST_CONTRIBUTION
-        using_ers             = .true.
-#else
         using_ers             = .false.
-#endif
         ersstartdate1         =      0
         ersstartdate2         =      0
         ersperiod             =      0. _d 0
         ersintercept          =      0. _d 0
         ersslope              =      0. _d 0
         ersfile               =    ' '
-#ifdef ALLOW_SSH_GFOANOM_COST_CONTRIBUTION
-        using_gfo             = .true.
-#else
         using_gfo             = .false.
-#endif
         gfostartdate1         =      0
         gfostartdate2         =      0
         gfoperiod             =      0. _d 0
@@ -400,12 +428,14 @@ catn  eccov4 will run without needing to read in these params
         mult_wdrift           =      0. _d 0
         mult_scatx            =      0. _d 0
         mult_scaty            =      0. _d 0
+#if (defined (ALLOW_CTRL) && defined (ALLOW_OBCS))
         mult_obcsn            =      0. _d 0
         mult_obcss            =      0. _d 0
         mult_obcsw            =      0. _d 0
         mult_obcse            =      0. _d 0
         mult_obcsvol          =      0. _d 0
         mult_ageos            =      0. _d 0
+#endif
         mult_curmtr           =      0. _d 0
         mult_kapgm            =      0. _d 0
         mult_kapredi            =      0. _d 0
@@ -506,6 +536,22 @@ Catn -- retired parameters
 
       _END_MASTER( myThid )
 
+c     empty pre/post-processing :
+c     =========================
+
+      _BEGIN_MASTER( myThid )
+      do k2=1,NGENPPROC
+       no_preproc(k2)   = ' '
+       no_preproc_c(k2) = ' '
+       no_preproc_i(k2) = 0
+       no_preproc_r(k2) = 0. _d 0
+       no_posproc(k2)   = ' '
+       no_posproc_c(k2) = ' '
+       no_posproc_i(k2) = 0
+       no_posproc_r(k2) = 0. _d 0
+      enddo
+      _END_MASTER( myThid )
+
 #ifdef ALLOW_GENCOST_CONTRIBUTION
 
       _BEGIN_MASTER( myThid )
@@ -515,24 +561,36 @@ c--   Set default values.
          using_gencost(k)      = .FALSE.
          gencost_flag(k)       = 0
          gencost_avgperiod(k)  = '     '
+         gencost_nrecperiod(k) = 0
+         gencost_startdate1(k) = 0
+         gencost_startdate2(k) = 0
+         gencost_enddate1(k) = 0
+         gencost_enddate2(k) = 0
          gencost_datafile(k)   = ' '
          gencost_name(k)       = 'gencost'
+         do k2=1,NGENPPROC
+          gencost_preproc(k2,k)   = ' '
+          gencost_preproc_c(k2,k) = ' '
+          gencost_preproc_i(k2,k) = 0
+          gencost_preproc_r(k2,k) = 0. _d 0
+          gencost_posproc(k2,k)   = ' '
+          gencost_posproc_c(k2,k) = ' '
+          gencost_posproc_i(k2,k) = 0
+          gencost_posproc_r(k2,k) = 0. _d 0
+         enddo
+         gencost_outputlevel(k)= 0
          gencost_scalefile(k)  = ' '
          gencost_errfile(k)    = ' '
          gencost_mask(k)       = 'c'
-cgf         write(gencost_barfile(k)(1:8),'(a,i2.2)')
-cgf     &        'genbar', k
          gencost_barfile(k)    = ' '
          gencost_spmin(k)      = 0. _d 0
          gencost_spmax(k)      = 0. _d 0
          gencost_spzero(k)     = 9876. _d 0
          mult_gencost(k)       = 0. _d 0
-#ifdef ALLOW_SMOOTH
          gencost_smooth2Ddiffnbt(k) = 300
-#endif /* ALLOW_SMOOTH */
-#ifdef ALLOW_GENCOST_TIMEVARY_WEIGHT
+         gencost_is3d(k)       = .FALSE.
+         gencost_pointer3d(k)=0
          gencost_timevaryweight(k) = .FALSE.
-#endif /* ALLOW_GENCOST_TIMEVARY_WEIGHT */
       enddo
 
       READ(  iUnit, nml = ecco_gencost_nml )
@@ -542,31 +600,42 @@ cgf     &        'genbar', k
       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &     SQUEEZE_RIGHT , 1)
 
+      gencost_k3d=1
+
       do k=1,NGENCOST
+
+c pre-specified generic cost terms using otherwise created barfiles
          if ( (gencost_name(k).EQ.'sshv4-mdt').OR.
      &        (gencost_name(k).EQ.'sshv4-tp').OR.
      &        (gencost_name(k).EQ.'sshv4-ers').OR.
      &        (gencost_name(k).EQ.'sshv4-gfo').OR.
      &        (gencost_name(k).EQ.'sshv4-lsc').OR.
+     &        (gencost_name(k).EQ.'sshv4-gmsl').OR.
+     &        (gencost_name(k).EQ.'boxmean').OR.
+     &        (gencost_name(k).EQ.'bpv4-grace').OR.
      &        (gencost_name(k).EQ.'sstv4-amsre').OR.
      &        (gencost_name(k).EQ.'sstv4-amsre-lsc') ) then
-c pre-specified generic cost terms using otherwise created barfiles
            gencost_flag(k)=-1
            using_gencost(k)=.TRUE.
-#ifdef ALLOW_GENCOST_SEAICEV4
+c pre-specified generic cost terms that create their own barfile
          elseif ( 
      &        (gencost_name(k).EQ.'siv4-conc').OR.
      &        (gencost_name(k).EQ.'siv4-deconc').OR.
      &        (gencost_name(k).EQ.'siv4-exconc') ) then
-c pre-specified generic cost terms that create their own barfile
            gencost_flag(k)=2
            using_gencost(k)=.TRUE.
-#endif
-         elseif ( gencost_datafile(k) .NE. ' ' ) then
 c fully interactive generic cost terms
+         elseif ( gencost_datafile(k) .NE. ' ' ) then
            gencost_flag(k)=1
            using_gencost(k)=.TRUE.
          endif
+
+c fully interactive generic cost terms
+         if ( gencost_is3d(k) ) then
+           gencost_pointer3d(k)=gencost_k3d
+           gencost_k3d=gencost_k3d+1
+         endif
+
       enddo
 
 C--   Check parameters:
@@ -581,6 +650,8 @@ C--   Check parameters:
      &        gencost_avgperiod(k) .NE. 'DAY  ' .AND.
      &        gencost_avgperiod(k) .NE. 'month' .AND.
      &        gencost_avgperiod(k) .NE. 'MONTH' .AND.
+     &        gencost_avgperiod(k) .NE. 'step' .AND.
+     &        gencost_avgperiod(k) .NE. 'STEP' .AND.
      &        gencost_avgperiod(k) .NE. 'year ' .AND.
      &        gencost_avgperiod(k) .NE. 'YEAR ' ) then
 

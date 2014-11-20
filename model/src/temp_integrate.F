@@ -21,10 +21,12 @@ C     !INTERFACE:
 C     !DESCRIPTION: \bv
 C     *==========================================================*
 C     | SUBROUTINE TEMP_INTEGRATE
-C     | o Calculate tendency for temperature
-C     |   and integrates forward in time.
+C     | o Calculate tendency for temperature and integrates
+C     |   forward in time. The temperature array is updated here
+C     |   while adjustments (filters, conv.adjustment) are applied
+C     |   later, in S/R TRACERS_CORRECTION_STEP.
 C     *==========================================================*
-C     | A procedure called EXTERNAL_FORCING_T is called from
+C     | A procedure called APPLY_FORCING_T is called from
 C     | here. These procedures can be used to add per problem
 C     | heat flux source terms.
 C     | Note: Although it is slightly counter-intuitive the
@@ -90,6 +92,12 @@ C     myThid     :: my Thread Id. number
 CEOP
 
 #ifdef ALLOW_GENERIC_ADVDIFF
+#ifdef ALLOW_DIAGNOSTICS
+C     !FUNCTIONS:
+      LOGICAL  DIAGNOSTICS_IS_ON
+      EXTERNAL DIAGNOSTICS_IS_ON
+#endif /* ALLOW_DIAGNOSTICS */
+
 C     !LOCAL VARIABLES:
 C     iMin, iMax :: 1rst index loop range
 C     jMin, jMax :: 2nd  index loop range
@@ -108,6 +116,9 @@ C     fZon       :: Flux of temperature (T) in the zonal direction
 C     fMer       :: Flux of temperature (T) in the meridional direction
 C     fVer       :: Flux of temperature (T) in the vertical direction
 C                   at the upper(U) and lower(D) faces of a cell.
+C     gT_loc     :: Temperature tendency (local to this S/R)
+C     gtForc     :: Temperature forcing tendency
+C     gt_AB      :: Adams-Bashforth temperature tendency increment
 C   useVariableK :: T when vertical diffusion is not constant
       INTEGER iMin, iMax, jMin, jMax
       INTEGER i, j, k
@@ -122,11 +133,16 @@ C   useVariableK :: T when vertical diffusion is not constant
       _RL fZon    (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL fMer    (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL fVer    (1-OLx:sNx+OLx,1-OLy:sNy+OLy,2)
+      _RL gT_loc  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr)
+      _RL gtForc  (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL gt_AB   (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+#ifdef ALLOW_DIAGNOSTICS
+      LOGICAL diagForcing, diagAB_tend
+#endif
       LOGICAL calcAdvection
       INTEGER iterNb
 #ifdef ALLOW_ADAMSBASHFORTH_3
-      INTEGER m1, m2
+      INTEGER m2
 #endif
 #ifdef ALLOW_TIMEAVE
       LOGICAL useVariableK
@@ -134,14 +150,31 @@ C   useVariableK :: T when vertical diffusion is not constant
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
-C-    Loop ranges for daughter routines
-      iMin = 1-OLx+2
-      iMax = sNx+OLx-1
-      jMin = 1-OLy+2
-      jMax = sNy+OLy-1
-
       iterNb = myIter
       IF (staggerTimeStep) iterNb = myIter - 1
+
+C-    Loop ranges for daughter routines:
+c     iMin = 1
+c     iMax = sNx
+c     jMin = 1
+c     jMax = sNy
+C     Regarding model dynamics, only needs to get correct tracer tendency
+C     (gT_loc) in tile interior (1:sNx,1:sNy);
+C     However, for some diagnostics, we may want to get valid tendency
+C     extended over 1 point in tile halo region (0:sNx+1,0:sNy=1).
+      iMin = 0
+      iMax = sNx+1
+      jMin = 0
+      jMax = sNy+1
+
+#ifdef ALLOW_DIAGNOSTICS
+      diagForcing = .FALSE.
+      diagAB_tend = .FALSE.
+      IF ( useDiagnostics .AND. tempForcing )
+     &     diagForcing = DIAGNOSTICS_IS_ON( 'gT_Forc ', myThid )
+      IF ( useDiagnostics .AND. AdamsBashforthGt )
+     &     diagAB_tend = DIAGNOSTICS_IS_ON( 'AB_gT   ', myThid )
+#endif
 
 #ifdef ALLOW_AUTODIFF_TAMC
           act1 = bi - myBxLo(myThid)
@@ -156,11 +189,31 @@ C-    Loop ranges for daughter routines
      &                      + act4*max1*max2*max3
 #endif /* ALLOW_AUTODIFF_TAMC */
 
+C-    Apply AB on T :
+      IF ( AdamsBashforth_T ) THEN
+C     compute T^n+1/2 (stored in gtNm) extrapolating T forward in time
+#ifdef ALLOW_ADAMSBASHFORTH_3
+c         m1 = 1 + MOD(iterNb+1,2)
+c         m2 = 1 + MOD( iterNb ,2)
+          CALL ADAMS_BASHFORTH3(
+     I                           bi, bj, 0, Nr,
+     I                           theta(1-OLx,1-OLy,1,bi,bj),
+     U                           gtNm, gt_AB,
+     I                           tempStartAB, iterNb, myThid )
+#else /* ALLOW_ADAMSBASHFORTH_3 */
+          CALL ADAMS_BASHFORTH2(
+     I                           bi, bj, 0, Nr,
+     I                           theta(1-OLx,1-OLy,1,bi,bj),
+     U                           gtNm1(1-OLx,1-OLy,1,bi,bj), gt_AB,
+     I                           tempStartAB, iterNb, myThid )
+#endif /* ALLOW_ADAMSBASHFORTH_3 */
+      ENDIF
+
 C-    Tracer tendency needs to be set to zero (moved here from gad_calc_rhs):
       DO k=1,Nr
        DO j=1-OLy,sNy+OLy
         DO i=1-OLx,sNx+OLx
-         gT(i,j,k,bi,bj) = 0. _d 0
+         gT_loc(i,j,k) = 0. _d 0
         ENDDO
        ENDDO
       ENDDO
@@ -178,8 +231,14 @@ C-    Tracer tendency needs to be set to zero (moved here from gad_calc_rhs):
         ENDDO
        ENDDO
       ENDDO
-CADJ STORE theta(:,:,:,bi,bj) = comlev1_bibj , key=itdkey, byte=isbyte
-CADJ STORE wFld(:,:,:) = comlev1_bibj , key=itdkey, byte=isbyte
+CADJ STORE wFld(:,:,:)         = comlev1_bibj , key=itdkey, byte=isbyte
+CADJ STORE theta(:,:,:,bi,bj)  = comlev1_bibj , key=itdkey, byte=isbyte
+# ifdef ALLOW_ADAMSBASHFORTH_3
+CADJ STORE gtNm(:,:,:,bi,bj,1) = comlev1_bibj, key=itdkey, byte=isbyte
+CADJ STORE gtNm(:,:,:,bi,bj,2) = comlev1_bibj, key=itdkey, byte=isbyte
+# else
+CADJ STORE gtNm1(:,:,:,bi,bj)  = comlev1_bibj, key=itdkey, byte=isbyte
+# endif
 #endif /* ALLOW_AUTODIFF */
 
 #ifdef INCLUDE_CALC_DIFFUSIVITY_CALL
@@ -210,11 +269,11 @@ CADJ STORE som_T = comlev1_bibj, key=itdkey, byte=isbyte
         IF (debugMode) CALL DEBUG_CALL('GAD_SOM_ADVECT',myThid)
 # endif
         CALL GAD_SOM_ADVECT(
-     I             tempImplVertAdv, tempAdvScheme, tempVertAdvScheme,
-     I             GAD_TEMPERATURE, dTtracerLev,
-     I             uFld, vFld, wFld, theta,
+     I             tempImplVertAdv,
+     I             tempAdvScheme, tempVertAdvScheme, GAD_TEMPERATURE,
+     I             dTtracerLev, uFld, vFld, wFld, theta,
      U             som_T,
-     O             gT,
+     O             gT_loc,
      I             bi, bj, myTime, myIter, myThid )
       ELSEIF (tempMultiDimAdvec) THEN
 #else /* GAD_ALLOW_TS_SOM_ADV */
@@ -224,10 +283,10 @@ CADJ STORE som_T = comlev1_bibj, key=itdkey, byte=isbyte
         IF (debugMode) CALL DEBUG_CALL('GAD_ADVECTION',myThid)
 # endif
         CALL GAD_ADVECTION(
-     I             tempImplVertAdv, tempAdvScheme, tempVertAdvScheme,
-     I             GAD_TEMPERATURE, dTtracerLev,
-     I             uFld, vFld, wFld, theta,
-     O             gT,
+     I             tempImplVertAdv,
+     I             tempAdvScheme, tempVertAdvScheme, GAD_TEMPERATURE,
+     I             dTtracerLev, uFld, vFld, wFld, theta,
+     O             gT_loc,
      I             bi, bj, myTime, myIter, myThid )
       ENDIF
 #endif /* DISABLE_MULTIDIM_ADVECTION */
@@ -247,7 +306,7 @@ C-    Start vertical index (k) loop (Nr:1)
 #ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE fVer(:,:,:) = comlev1_bibj_k, key=kkey,
 CADJ &     byte=isbyte,  kind = isbyte
-CADJ STORE gT(:,:,k,bi,bj) = comlev1_bibj_k, key=kkey,
+CADJ STORE gT_loc(:,:,k) = comlev1_bibj_k, key=kkey,
 CADJ &     byte=isbyte,  kind = isbyte
 # ifdef ALLOW_ADAMSBASHFORTH_3
 CADJ STORE gtNm(:,:,k,bi,bj,1) = comlev1_bibj_k, key=kkey,
@@ -266,8 +325,26 @@ CADJ &     byte=isbyte,  kind = isbyte
      O                maskUp, xA, yA,
      I                k, bi, bj, myThid )
 
+C--   Collect forcing term in local array gtForc:
+        DO j=1-OLy,sNy+OLy
+         DO i=1-OLx,sNx+OLx
+          gtForc(i,j) = 0. _d 0
+         ENDDO
+        ENDDO
+        IF ( tempForcing ) THEN
+          CALL APPLY_FORCING_T(
+     U                        gtForc,
+     I                        iMin,iMax,jMin,jMax, k, bi,bj,
+     I                        myTime, myIter, myThid )
+#ifdef ALLOW_DIAGNOSTICS
+          IF ( diagForcing ) THEN
+            CALL DIAGNOSTICS_FILL(gtForc,'gT_Forc ',k,1,2,bi,bj,myThid)
+          ENDIF
+#endif /* ALLOW_DIAGNOSTICS */
+        ENDIF
+
 #ifdef ALLOW_ADAMSBASHFORTH_3
-        m1 = 1 + MOD(iterNb+1,2)
+c       m1 = 1 + MOD(iterNb+1,2)
         m2 = 1 + MOD( iterNb ,2)
         CALL GAD_CALC_RHS(
      I           bi, bj, iMin,iMax,jMin,jMax, k, kM1, kUp, kDown,
@@ -275,12 +352,13 @@ CADJ &     byte=isbyte,  kind = isbyte
      I           vFld(1-OLx,1-OLy,k), wFld(1-OLx,1-OLy,k),
      I           uTrans, vTrans, rTrans, rTransKp,
      I           diffKhT, diffK4T, KappaRk(1-OLx,1-OLy,k), diffKr4T,
-     I           gtNm(1-OLx,1-OLy,1,1,1,m2), theta, dTtracerLev,
+     I           theta(1-OLx,1-OLy,1,bi,bj),
+     I           gtNm(1-OLx,1-OLy,1,bi,bj,m2), dTtracerLev,
      I           GAD_TEMPERATURE, tempAdvScheme, tempVertAdvScheme,
      I           calcAdvection, tempImplVertAdv, AdamsBashforth_T,
      I           tempVertDiff4, useGMRedi, useKPP,
      O           fZon, fMer,
-     U           fVer, gT,
+     U           fVer, gT_loc,
      I           myTime, myIter, myThid )
 #else /* ALLOW_ADAMSBASHFORTH_3 */
         CALL GAD_CALC_RHS(
@@ -289,51 +367,60 @@ CADJ &     byte=isbyte,  kind = isbyte
      I           vFld(1-OLx,1-OLy,k), wFld(1-OLx,1-OLy,k),
      I           uTrans, vTrans, rTrans, rTransKp,
      I           diffKhT, diffK4T, KappaRk(1-OLx,1-OLy,k), diffKr4T,
-     I           gtNm1, theta, dTtracerLev,
+     I           theta(1-OLx,1-OLy,1,bi,bj),
+     I           gtNm1(1-OLx,1-OLy,1,bi,bj), dTtracerLev,
      I           GAD_TEMPERATURE, tempAdvScheme, tempVertAdvScheme,
      I           calcAdvection, tempImplVertAdv, AdamsBashforth_T,
      I           tempVertDiff4, useGMRedi, useKPP,
      O           fZon, fMer,
-     U           fVer, gT,
+     U           fVer, gT_loc,
      I           myTime, myIter, myThid )
 #endif
 
 C--   External thermal forcing term(s) inside Adams-Bashforth:
-        IF ( tempForcing .AND. tracForcingOutAB.NE.1 )
-     &    CALL EXTERNAL_FORCING_T(
-     I         iMin, iMax, jMin, jMax, bi, bj, k,
-     I         myTime, myThid )
+        IF ( tempForcing .AND. tracForcingOutAB.NE.1 ) THEN
+          DO j=1-OLy,sNy+OLy
+           DO i=1-OLx,sNx+OLx
+            gT_loc(i,j,k) = gT_loc(i,j,k) + gtForc(i,j)
+           ENDDO
+          ENDDO
+        ENDIF
 
         IF ( AdamsBashforthGt ) THEN
 #ifdef ALLOW_ADAMSBASHFORTH_3
           CALL ADAMS_BASHFORTH3(
      I                          bi, bj, k, Nr,
-     U                          gT, gtNm, gt_AB,
+     U                          gT_loc, gtNm,
+     O                          gt_AB,
      I                          tempStartAB, iterNb, myThid )
 #else
           CALL ADAMS_BASHFORTH2(
      I                          bi, bj, k, Nr,
-     U                          gT, gtNm1, gt_AB,
+     U                          gT_loc, gtNm1(1-OLx,1-OLy,1,bi,bj),
+     O                          gt_AB,
      I                          tempStartAB, iterNb, myThid )
 #endif
 #ifdef ALLOW_DIAGNOSTICS
-          IF ( useDiagnostics ) THEN
+          IF ( diagAB_tend ) THEN
             CALL DIAGNOSTICS_FILL(gt_AB,'AB_gT   ',k,1,2,bi,bj,myThid)
           ENDIF
 #endif /* ALLOW_DIAGNOSTICS */
         ENDIF
 
 C--   External thermal forcing term(s) outside Adams-Bashforth:
-        IF ( tempForcing .AND. tracForcingOutAB.EQ.1 )
-     &    CALL EXTERNAL_FORCING_T(
-     I         iMin, iMax, jMin, jMax, bi, bj, k,
-     I         myTime, myThid )
+        IF ( tempForcing .AND. tracForcingOutAB.EQ.1 ) THEN
+          DO j=1-OLy,sNy+OLy
+           DO i=1-OLx,sNx+OLx
+            gT_loc(i,j,k) = gT_loc(i,j,k) + gtForc(i,j)
+           ENDDO
+          ENDDO
+        ENDIF
 
 #ifdef NONLIN_FRSURF
         IF (nonlinFreeSurf.GT.0) THEN
           CALL FREESURF_RESCALE_G(
      I                            bi, bj, k,
-     U                            gT,
+     U                            gT_loc,
      I                            myThid )
          IF ( AdamsBashforthGt ) THEN
 #ifdef ALLOW_ADAMSBASHFORTH_3
@@ -345,39 +432,21 @@ CADJ &     byte=isbyte,  kind = isbyte
 # endif
           CALL FREESURF_RESCALE_G(
      I                            bi, bj, k,
-     U                            gtNm(1-OLx,1-OLy,1,1,1,1),
+     U                            gtNm(1-OLx,1-OLy,1,bi,bj,1),
      I                            myThid )
           CALL FREESURF_RESCALE_G(
      I                            bi, bj, k,
-     U                            gtNm(1-OLx,1-OLy,1,1,1,2),
+     U                            gtNm(1-OLx,1-OLy,1,bi,bj,2),
      I                            myThid )
 #else
           CALL FREESURF_RESCALE_G(
      I                            bi, bj, k,
-     U                            gtNm1,
+     U                            gtNm1(1-OLx,1-OLy,1,bi,bj),
      I                            myThid )
 #endif
          ENDIF
         ENDIF
 #endif /* NONLIN_FRSURF */
-
-#ifdef ALLOW_ADAMSBASHFORTH_3
-        IF ( AdamsBashforth_T ) THEN
-          CALL TIMESTEP_TRACER(
-     I           bi, bj, k, dTtracerLev(k),
-     I           gtNm(1-OLx,1-OLy,1,1,1,m2),
-     U           gT,
-     I           myIter, myThid )
-        ELSE
-#endif
-          CALL TIMESTEP_TRACER(
-     I           bi, bj, k, dTtracerLev(k),
-     I           theta,
-     U           gT,
-     I           myIter, myThid )
-#ifdef ALLOW_ADAMSBASHFORTH_3
-        ENDIF
-#endif
 
 C-    end of vertical index (k) loop (Nr:1)
       ENDDO
@@ -387,27 +456,27 @@ C-    end of vertical index (k) loop (Nr:1)
         IF ( usingPCoords ) THEN
           CALL DWNSLP_APPLY(
      I                  GAD_TEMPERATURE, bi, bj, kSurfC,
-     I                  recip_drF, recip_hFacC, recip_rA,
-     I                  dTtracerLev,
-     I                  theta,
-     U                  gT,
-     I                  myTime, myIter, myThid )
+     I                  theta(1-OLx,1-OLy,1,bi,bj),
+     U                  gT_loc,
+     I                  recip_hFac, recip_rA, recip_drF,
+     I                  dTtracerLev, myTime, myIter, myThid )
         ELSE
           CALL DWNSLP_APPLY(
      I                  GAD_TEMPERATURE, bi, bj, kLowC,
-     I                  recip_drF, recip_hFacC, recip_rA,
-     I                  dTtracerLev,
-     I                  theta,
-     U                  gT,
-     I                  myTime, myIter, myThid )
+     I                  theta(1-OLx,1-OLy,1,bi,bj),
+     U                  gT_loc,
+     I                  recip_hFac, recip_rA, recip_drF,
+     I                  dTtracerLev, myTime, myIter, myThid )
         ENDIF
       ENDIF
 #endif /* ALLOW_DOWN_SLOPE */
 
-      iMin = 0
-      iMax = sNx+1
-      jMin = 0
-      jMax = sNy+1
+C-    Integrate forward in time, storing in gT_loc:  gT <= T + dt*gT
+      CALL TIMESTEP_TRACER(
+     I                  bi, bj, dTtracerLev,
+     I                  theta(1-OLx,1-OLy,1,bi,bj),
+     U                  gT_loc,
+     I                  myTime, myIter, myThid )
 
 C--   Implicit vertical advection & diffusion
 
@@ -415,16 +484,16 @@ C--   Implicit vertical advection & diffusion
       IF ( tempImplVertAdv ) THEN
 #ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE kappaRk(:,:,:) = comlev1_bibj , key=itdkey, byte=isbyte
-CADJ STORE gT(:,:,:,bi,bj) = comlev1_bibj , key=itdkey, byte=isbyte
+CADJ STORE gT_loc(:,:,:) = comlev1_bibj , key=itdkey, byte=isbyte
 CADJ STORE wFld(:,:,:) = comlev1_bibj , key=itdkey, byte=isbyte
 CADJ STORE theta(:,:,:,bi,bj) = comlev1_bibj , key=itdkey, byte=isbyte
 CADJ STORE recip_hFac(:,:,:) = comlev1_bibj , key=itdkey, byte=isbyte
 #endif /* ALLOW_AUTODIFF_TAMC */
         CALL GAD_IMPLICIT_R(
      I         tempImplVertAdv, tempVertAdvScheme, GAD_TEMPERATURE,
-     I         dTtracerLev,
-     I         kappaRk, recip_hFac, wFld, theta,
-     U         gT,
+     I         dTtracerLev, kappaRk, recip_hFac, wFld,
+     I         theta(1-OLx,1-OLy,1,bi,bj),
+     U         gT_loc,
      I         bi, bj, myTime, myIter, myThid )
       ELSEIF ( implicitDiffusion ) THEN
 #else /* INCLUDE_IMPLVERTADV_CODE */
@@ -432,24 +501,48 @@ CADJ STORE recip_hFac(:,:,:) = comlev1_bibj , key=itdkey, byte=isbyte
 #endif /* INCLUDE_IMPLVERTADV_CODE */
 #ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE kappaRk(:,:,:) = comlev1_bibj , key=itdkey, byte=isbyte
-CADJ STORE gT(:,:,:,bi,bj) = comlev1_bibj , key=itdkey, byte=isbyte
+CADJ STORE gT_loc(:,:,:) = comlev1_bibj , key=itdkey, byte=isbyte
 #endif /* ALLOW_AUTODIFF_TAMC */
         CALL IMPLDIFF(
      I         bi, bj, iMin, iMax, jMin, jMax,
      I         GAD_TEMPERATURE, kappaRk, recip_hFac,
-     U         gT,
+     U         gT_loc,
      I         myThid )
       ENDIF
 
 #ifdef ALLOW_TIMEAVE
-      useVariableK = useKPP .OR. usePP81 .OR. useMY82 .OR. useGGL90
-     &       .OR. useGMredi .OR. ivdc_kappa.NE.0.
+      useVariableK = useKPP .OR. usePP81 .OR. useKL10 .OR. useMY82
+     &       .OR. useGGL90 .OR. useGMredi .OR. ivdc_kappa.NE.0.
       IF ( taveFreq.GT.0. .AND. useVariableK
      &                    .AND.implicitDiffusion ) THEN
-        CALL TIMEAVE_CUMUL_DIF_1T(TdiffRtave, gT, kappaRk,
-     I                        Nr, 3, deltaTClock, bi, bj, myThid)
+        CALL TIMEAVE_CUMUL_DIF_1T( TdiffRtave,
+     I                        gT_loc, kappaRk,
+     I                        Nr, 3, deltaTClock, bi, bj, myThid )
       ENDIF
 #endif /* ALLOW_TIMEAVE */
+
+      IF ( AdamsBashforth_T ) THEN
+C-    Save current tracer field (for AB on tracer) and then update tracer
+#ifdef ALLOW_ADAMSBASHFORTH_3
+        CALL CYCLE_AB_TRACER(
+     I             bi, bj, gT_loc,
+     U             theta(1-OLx,1-OLy,1,bi,bj),
+     O             gtNm(1-OLx,1-OLy,1,bi,bj,m2),
+     I             myTime, myIter, myThid )
+#else /* ALLOW_ADAMSBASHFORTH_3 */
+        CALL CYCLE_AB_TRACER(
+     I             bi, bj, gT_loc,
+     U             theta(1-OLx,1-OLy,1,bi,bj),
+     O             gtNm1(1-OLx,1-OLy,1,bi,bj),
+     I             myTime, myIter, myThid )
+#endif /* ALLOW_ADAMSBASHFORTH_3 */
+      ELSE
+C-    Update tracer fields:  T(n) = T**
+        CALL CYCLE_TRACER(
+     I             bi, bj,
+     O             theta(1-OLx,1-OLy,1,bi,bj),
+     I             gT_loc, myTime, myIter, myThid )
+      ENDIF
 
 #endif /* ALLOW_GENERIC_ADVDIFF */
 

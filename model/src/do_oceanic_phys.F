@@ -9,6 +9,12 @@ C $Name$
 #ifdef ALLOW_CTRL
 # include "CTRL_OPTIONS.h"
 #endif
+#ifdef ALLOW_SALT_PLUME
+# include "SALT_PLUME_OPTIONS.h"
+#endif
+#ifdef ALLOW_ECCO
+# include "ECCO_OPTIONS.h"
+#endif
 
 #ifdef ALLOW_AUTODIFF
 # ifdef ALLOW_GMREDI
@@ -38,6 +44,82 @@ C     *==========================================================*
 C     | o originally, part of S/R thermodynamics
 C     *==========================================================*
 C     \ev
+
+C     !CALLING SEQUENCE:
+C     DO_OCEANIC_PHYS
+C       |
+C       |-- OBCS_CALC
+C       |
+C       |-- FRAZIL_CALC_RHS
+C       |
+C       |-- THSICE_MAIN
+C       |
+C       |-- SEAICE_FAKE
+C       |-- SEAICE_MODEL
+C       |-- SEAICE_COST_SENSI
+C       |
+C       |-- SHELFICE_THERMODYNAMICS
+C       |
+C       |-- ICEFRONT_THERMODYNAMICS
+C       |
+C       |-- SALT_PLUME_DO_EXCH
+C       |
+C       |-- FREEZE_SURFACE
+C       |
+C       |-- OCN_APPLY_IMPORT
+C       |
+C       |-- EXTERNAL_FORCING_SURF
+C       |
+C       |- k loop (Nr:1):
+C       | - DWNSLP_CALC_RHO
+C       | - BBL_CALC_RHO
+C       | - FIND_RHO_2D @ p(k)
+C       | - FIND_RHO_2D @ p(k-1)
+C       | - GRAD_SIGMA
+C       | - CALC_IVDC
+C       | - DIAGS_RHO_L
+C       |- end k loop.
+C       |
+C       |-- CALC_OCE_MXLAYER
+C       |
+C       |-- SALT_PLUME_CALC_DEPTH
+C       |-- SALT_PLUME_VOLFRAC
+C       |-- SALT_PLUME_APPLY
+C       |-- SALT_PLUME_APPLY
+C       |-- SALT_PLUME_FORCING_SURF
+C       |
+C       |-- KPP_CALC
+C       |-- KPP_CALC_DUMMY
+C       |
+C       |-- PP81_CALC
+C       |
+C       |-- KL10_CALC
+C       |
+C       |-- MY82_CALC
+C       |
+C       |-- GGL90_CALC
+C       |
+C       |-- TIMEAVE_SURF_FLUX
+C       |
+C       |-- GMREDI_CALC_TENSOR
+C       |-- GMREDI_CALC_TENSOR_DUMMY
+C       |
+C       |-- DWNSLP_CALC_FLOW
+C       |-- DWNSLP_CALC_FLOW
+C       |
+C       |-- BBL_CALC_RHS
+C       |
+C       |-- MYPACKAGE_CALC_RHS
+C       |
+C       |-- GMREDI_DO_EXCH
+C       |
+C       |-- KPP_DO_EXCH
+C       |
+C       |-- DIAGS_RHO_G
+C       |-- DIAGS_OCEANIC_SURF_FLUX
+C       |-- SALT_PLUME_DIAGNOSTICS_FILL
+C       |
+C       |-- ECCO_PHYS
 
 C     !USES:
       IMPLICIT NONE
@@ -91,6 +173,11 @@ C     == Global variables ===
 # ifdef ALLOW_SALT_PLUME
 #  include "SALT_PLUME.h"
 # endif
+# ifdef ALLOW_ECCO
+#  ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+#   include "ecco_cost.h"
+#  endif
+# endif
 #endif /* ALLOW_AUTODIFF */
 
 C     !INPUT/OUTPUT PARAMETERS:
@@ -124,7 +211,9 @@ C     i,j,k         :: loop indices
       LOGICAL  DIAGNOSTICS_IS_ON
       EXTERNAL DIAGNOSTICS_IS_ON
 #endif /* ALLOW_DIAGNOSTICS */
-
+#ifdef ALLOW_AUTODIFF
+      _RL thetaRef
+#endif /* ALLOW_AUTODIFF */
 CEOP
 
 #ifdef ALLOW_AUTODIFF_TAMC
@@ -189,6 +278,21 @@ CADJ STORE salt  = comlev1, key=ikey_dynamics, kind=isbyte
         ENDDO
        ENDDO
       ENDDO
+# endif
+# ifdef ALLOW_ECCO
+#  ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      DO bj=myByLo(myThid),myByHi(myThid)
+       DO bi=myBxLo(myThid),myBxHi(myThid)
+        DO k=1,Nr
+         DO j=1-OLy,sNy+OLy
+          DO i=1-OLx,sNx+OLx
+           sigmaRfield(i,j,k,bi,bj) = 0. _d 0
+          ENDDO
+         ENDDO
+        ENDDO
+       ENDDO
+      ENDDO
+#  endif
 # endif
 #endif /* ALLOW_AUTODIFF */
 
@@ -433,6 +537,7 @@ C     ice-front ocean interface
 
 #ifdef ALLOW_SALT_PLUME
       IF ( useSALT_PLUME ) THEN
+Catn: exchanging saltPlumeFlux:
           CALL SALT_PLUME_DO_EXCH( myTime, myIter, myThid )
       ENDIF
 #endif /* ALLOW_SALT_PLUME */
@@ -534,6 +639,12 @@ cph although some of these are re-initialised later.
            GGL90viscArV(i,j,k,bi,bj)  = 0. _d 0
            GGL90diffKr(i,j,k,bi,bj)  = 0. _d 0
 # endif /* ALLOW_GGL90 */
+# ifdef ALLOW_SALT_PLUME
+#  ifdef SALT_PLUME_VOLUME
+           SPforcingS(i,j,k,bi,bj) = 0. _d 0
+           SPforcingT(i,j,k,bi,bj) = 0. _d 0
+#  endif
+# endif /* ALLOW_SALT_PLUME */
           ENDDO
          ENDDO
         ENDDO
@@ -664,9 +775,19 @@ C     dry grid boxes of rhoInSitu.  See BBL_CALC_RHO for details.
         ELSE
 C-        fluid is not water:
           DO k=1,Nr
+           IF ( select_rStar.GE.1 .OR. selectSigmaCoord.GE.1 ) THEN
+C-    isothermal (theta=const) reference state
+             thetaRef = thetaConst
+           ELSE
+C-    horizontally uniform (tRef) reference state
+             thetaRef = tRef(k)
+           ENDIF
            DO j=1-OLy,sNy+OLy
             DO i=1-OLx,sNx+OLx
-              rhoInSitu(i,j,k,bi,bj) = 0.
+             rhoInSitu(i,j,k,bi,bj) =
+     &         ( theta(i,j,k,bi,bj)
+     &              *( salt(i,j,k,bi,bj)*atm_Rq + oneRL )
+     &         - thetaRef )*maskC(i,j,k,bi,bj)
             ENDDO
            ENDDO
           ENDDO
@@ -698,7 +819,8 @@ c#endif /* ALLOW_AUTODIFF_TAMC */
 C--       Calculate gradients of potential density for isoneutral
 C         slope terms (e.g. GM/Redi tensor or IVDC diffusivity)
           IF ( calcGMRedi .OR. (k.GT.1 .AND. calcConvect)
-     &         .OR. usePP81 .OR. useMY82 .OR. useGGL90
+     &         .OR. usePP81 .OR. useKL10
+     &         .OR. useMY82 .OR. useGGL90
      &         .OR. useSALT_PLUME .OR. doDiagsRho.GE.1 ) THEN
             IF (k.GT.1) THEN
 #ifdef ALLOW_AUTODIFF_TAMC
@@ -730,6 +852,15 @@ cph Avoid variable aliasing for adjoint !!!
      I             rhoInSitu(1-OLx,1-OLy,k,bi,bj), rhoKm1, rhoKp1,
      O             sigmaX, sigmaY, sigmaR,
      I             myThid )
+#ifdef ALLOW_ECCO
+# ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+            DO j=jMin,jMax
+             DO i=iMin,iMax
+              sigmaRfield(i,j,k,bi,bj)=sigmaR(i,j,k)
+             ENDDO
+            ENDDO
+# endif
+#endif /* ALLOW_ECCO */
 #ifdef ALLOW_AUTODIFF
 #ifdef GMREDI_WITH_STABLE_ADJOINT
 cgf zero out adjoint fields to stabilize pkg/gmredi adjoint
@@ -782,6 +913,23 @@ C--     Diagnose Mixed Layer Depth:
           CALL SALT_PLUME_CALC_DEPTH(
      I              rhoInSitu(1-OLx,1-OLy,1,bi,bj), sigmaR,
      I              bi, bj, myTime, myIter, myThid )
+#ifdef SALT_PLUME_VOLUME
+          CALL SALT_PLUME_VOLFRAC(
+     I              bi, bj, myTime, myIter, myThid )
+C-- get forcings for kpp
+          CALL SALT_PLUME_APPLY(
+     I              1, bi, bj, recip_hFacC(1-OLx,1-OLy,1,bi,bj),
+     I              theta, 0,
+     I              myTime, myIter, myThid )
+          CALL SALT_PLUME_APPLY(
+     I              2, bi, bj, recip_hFacC(1-OLx,1-OLy,1,bi,bj),
+     I              salt, 0,
+     I              myTime, myIter, myThid )
+C-- need to call this S/R from here to apply just before kpp
+          CALL SALT_PLUME_FORCING_SURF(
+     I              bi, bj, iMin, iMax, jMin, jMax,
+     I              myTime, myIter, myThid )
+#endif /* SALT_PLUME_VOLUME */
         ENDIF
 #endif /* ALLOW_SALT_PLUME */
 
@@ -842,6 +990,17 @@ C--     Compute PP81 mixing coefficients
      I                     bi, bj, sigmaR, myTime, myIter, myThid )
         ENDIF
 #endif /* ALLOW_PP81 */
+
+#ifdef  ALLOW_KL10
+C--     Compute KL10 mixing coefficients
+        IF (useKL10) THEN
+#ifdef ALLOW_DEBUG
+          IF (debugMode) CALL DEBUG_CALL('KL10_CALC',myThid)
+#endif
+          CALL KL10_CALC(
+     I                     bi, bj, sigmaR, myTime, myIter, myThid )
+        ENDIF
+#endif /* ALLOW_KL10 */
 
 #ifdef  ALLOW_MY82
 C--     Compute MY82 mixing coefficients
@@ -979,10 +1138,14 @@ C---  if fluid Is Water: end
         CALL DIAGNOSTICS_FILL( IVDConvCount, 'CONVADJ ',
      &                               0, Nr, 0, 1, 1, myThid )
       ENDIF
+#ifdef ALLOW_SALT_PLUME
+      IF ( useDiagnostics )
+     &      CALL SALT_PLUME_DIAGNOSTICS_FILL(bi,bj,myThid)
+#endif
 #endif
 
 #ifdef ALLOW_ECCO
-      CALL ECCO_PHYS( myThid )
+      IF ( useECCO ) CALL ECCO_PHYS( myThid )
 #endif
 
 #ifdef ALLOW_DEBUG

@@ -2,26 +2,27 @@ C $Header$
 C $Name$
 
 #include "ECCO_OPTIONS.h"
-#include "AD_CONFIG.h"
 
-      subroutine ecco_Summary(
+      subroutine ecco_summary(
      I                         mythid
      &                       )
 
 c     ==================================================================
-c     SUBROUTINE ecco_Summary
+c     SUBROUTINE ecco_summary
 c     ==================================================================
 c
 c     o Summarize the setup of the ECCO release.
 c
+#ifdef ECCO_CTRL_DEPRECATED
 c     started: Christian Eckert eckert@mit.edu 29-Feb-1999
 c
 c              - Introduced to create a package for the MITgcmUV.
 c
 c     changed: Christian Eckert eckert@mit.edu
+#endif
 c
 c     ==================================================================
-c     SUBROUTINE ecco_Summary
+c     SUBROUTINE ecco_summary
 c     ==================================================================
 
       implicit none
@@ -29,10 +30,11 @@ c     ==================================================================
 c     == global variables ==
 
 #include "EEPARAMS.h"
+#include "SIZE.h"
 #include "ecco.h"
 
-#ifdef ALLOW_ECCO_OPTIMIZATION
-#include "optim.h"
+#ifdef ALLOW_CTRL
+# include "optim.h"
 #endif
 
 c     == routine arguments ==
@@ -43,8 +45,14 @@ c     integer mythid - thread number for this instance of the routine.
 c     == local variables ==
 
       character*(max_len_mbuf) msgbuf
+#ifdef ALLOW_GENCOST_CONTRIBUTION
+      integer k, k2, il, msgunit
+#endif
 
 c     == external ==
+
+      integer  ilnblnk
+      external ilnblnk
 
 c     == end of interface ==
 
@@ -64,6 +72,8 @@ c     == end of interface ==
      &'// ======================================================='
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
+
+#ifdef ECCO_CTRL_DEPRECATED
       write(msgbuf,'(a)')
      &' '
       call print_message( msgbuf, standardmessageunit,
@@ -305,6 +315,20 @@ c--   Include code to use the meridional wind stress contribution.
 #else
       write(msgbuf,'(a)')
      &'// ALLOW_VSTRESS_COST_CONTRIBUTION:  NOT defined'
+      call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+#endif
+
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+c--   Enable testing of the 3d sigmaR field contribution
+c--   to the cost function.
+      write(msgbuf,'(a)')
+     &'// ALLOW_SIGMAR_COST_CONTRIBUTION:        defined'
+      call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+#else
+      write(msgbuf,'(a)')
+     &'// ALLOW_SIGMAR_COST_CONTRIBUTION:    NOT defined'
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
 #endif
@@ -755,6 +779,81 @@ c--   Generation of adjoint code not enabled.
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
 #endif
+#endif /* ECCO_CTRL_DEPRECATED */
+
+
+#ifdef ALLOW_GENCOST_CONTRIBUTION
+      msgunit=standardmessageunit
+c--
+      write(msgbuf,'(a)') ' '
+      call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+c--
+      do k = 1, NGENCOST
+       if (using_gencost(k)) then
+c
+        il = ilnblnk(gencost_name(k))
+        write(msgbuf,'(a,i2,a,a)') 'gencost(',k,
+     &        ') = ',gencost_name(k)(1:il)
+        call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+        write(msgbuf,'(a)') '-------------'
+        call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+c
+        if ( gencost_datafile(k) .ne. ' ' ) then
+         il = ilnblnk(gencost_datafile(k))
+         write(msgbuf,'(a,a)') ' data file = ',gencost_datafile(k)(1:il)
+         call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+         write(msgbuf,'(a)') ' starts and ends at : '
+         call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+         CALL CAL_PRINTDATE(gencost_startdate(1,k),mythid)
+         CALL CAL_PRINTDATE(gencost_enddate(1,k),mythid)
+         write(msgbuf,'(a,i5)') ' no. of records = ',
+     &                           gencost_nrec(k)
+         call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+         write(msgbuf,'(a,i5)') ' per. of repeat = ',
+     &                           gencost_nrecperiod(k)
+         call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+        endif
+c
+         il = ilnblnk(gencost_barfile(k))
+         write(msgbuf,'(a,a)') ' model file = ',gencost_barfile(k)(1:il)
+         call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+         il = ilnblnk(gencost_errfile(k))
+         write(msgbuf,'(a,a)') ' error file = ',gencost_errfile(k)(1:il)
+         call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+         il = ilnblnk(gencost_scalefile(k))
+         write(msgbuf,'(a,a)') ' scale file = ',
+     &        gencost_scalefile(k)(1:il)
+         call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+         do k2 = 1, NGENPPROC
+          if (gencost_preproc(k2,k).NE.' ') then
+            il = ilnblnk(gencost_preproc(k2,k))
+            write(msgbuf,'(a,a)') ' preprocess = ',
+     &                            gencost_preproc(k2,k)(1:il)
+            call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+          endif
+          if (gencost_posproc(k2,k).NE.' ') then
+            il = ilnblnk(gencost_posproc(k2,k))
+            write(msgbuf,'(a,a)') ' posprocess = ',
+     &                            gencost_posproc(k2,k)(1:il)
+            call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+          endif
+         enddo
+c
+         write(msgbuf,'(a,i2,L2,i2,L2,L2,i2,a)') ' flags etc. = ',
+     &        gencost_flag(k), gencost_is3d(k),gencost_pointer3d(k),
+     &        gencost_timevaryweight(k), gencost_barskip(k),
+     &        gencost_outputlevel(k)
+         call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+
+        write(msgbuf,'(a)') ' '
+        call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+c
+       endif
+      enddo
+c--
+      write(msgbuf,'(a)') ' '
+      call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+#endif /* ALLOW_GENCOST_CONTRIBUTION */
 
       write(msgbuf,'(a)')
      &' '

@@ -467,6 +467,15 @@ C============== ice growth/melt ==============
       diagCode  = 'SM      M1      '
       CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I     diagName, diagCode, diagUnits, diagTitle, 0, myThid )
+#ifdef SEAICE_GREASE
+
+      diagName  = 'SIgrsLT '
+      diagTitle = 'actual grease ice layer thickness'
+      diagUnits = 'm               '
+      diagCode  = 'SM      M1      '
+      CALL DIAGNOSTICS_ADDTOLIST( diagNum,
+     I     diagName, diagCode, diagUnits, diagTitle, 0, myThid )
+#endif
 
 C=============== expansion/contraction ============
 
@@ -690,6 +699,13 @@ C=============== dynamics ============
       diagName  = 'SIsigII '
       diagTitle = 'SEAICE normalized principle stress, component two'
       diagUnits = 'no units        '
+      diagCode  = 'SM      M1      '
+      CALL DIAGNOSTICS_ADDTOLIST( diagNum,
+     I     diagName, diagCode, diagUnits, diagTitle, 0, myThid )
+
+      diagName  = 'SIdelta '
+      diagTitle = 'SEAICE Delta deformation'
+      diagUnits = 's^{-1}          '
       diagCode  = 'SM      M1      '
       CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I     diagName, diagCode, diagUnits, diagTitle, 0, myThid )

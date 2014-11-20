@@ -8,6 +8,9 @@ C $Name$
 #ifdef ALLOW_SALT_PLUME
 # include "SALT_PLUME_OPTIONS.h"
 #endif
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
 
 CBOP
 C     !ROUTINE: SEAICE_GROWTH
@@ -146,6 +149,13 @@ C     temporary variables available for the various computations
 #ifdef ALLOW_DIAGNOSTICS
       CHARACTER*8   diagName
 #endif
+#ifdef SEAICE_GREASE
+      INTEGER iTrGrease
+      _RL greaseDecayTime
+      _RL greaseNewFrazil
+      _RL THIRD
+      PARAMETER (THIRD = 1.0 _d 0 / 3.0 _d 0)
+#endif
 #endif /* ALLOW_SITRACER */
 #ifdef ALLOW_AUTODIFF_TAMC
       INTEGER ilockey
@@ -181,22 +191,26 @@ C     wind speed
 C     temporary variables available for the various computations
       _RL tmparr1             (1:sNx,1:sNy)
 
-      _RL ticeInMult          (1:sNx,1:sNy,MULTDIM)
-      _RL ticeOutMult         (1:sNx,1:sNy,MULTDIM)
-      _RL heffActualMult      (1:sNx,1:sNy,MULTDIM)
-      _RL hsnowActualMult     (1:sNx,1:sNy,MULTDIM)
+      _RL ticeInMult          (1:sNx,1:sNy,nITD)
+      _RL ticeOutMult         (1:sNx,1:sNy,nITD)
+      _RL heffActualMult      (1:sNx,1:sNy,nITD)
+      _RL hsnowActualMult     (1:sNx,1:sNy,nITD)
 #ifdef SEAICE_ITD
-      _RL recip_heffActualMult(1:sNx,1:sNy,MULTDIM)
+      _RL recip_heffActualMult(1:sNx,1:sNy,nITD)
 #endif
-      _RL a_QbyATMmult_cover  (1:sNx,1:sNy,MULTDIM)
-      _RL a_QSWbyATMmult_cover(1:sNx,1:sNy,MULTDIM)
-      _RL a_FWbySublimMult    (1:sNx,1:sNy,MULTDIM)
+      _RL a_QbyATMmult_cover  (1:sNx,1:sNy,nITD)
+      _RL a_QSWbyATMmult_cover(1:sNx,1:sNy,nITD)
+      _RL a_FWbySublimMult    (1:sNx,1:sNy,nITD)
+#ifdef SEAICE_GREASE
+      _RL greaseLayerThick    (1:sNx,1:sNy)
+      _RL d_HEFFbyGREASE      (1:sNx,1:sNy)
+#endif
 #ifdef SEAICE_ITD
-      _RL r_QbyATMmult_cover  (1:sNx,1:sNy,MULTDIM)
-      _RL r_FWbySublimMult    (1:sNx,1:sNy,MULTDIM)
+      _RL r_QbyATMmult_cover  (1:sNx,1:sNy,nITD)
+      _RL r_FWbySublimMult    (1:sNx,1:sNy,nITD)
 C for lateral melt parameterization:
-      _RL latMeltFrac         (1:sNx,1:sNy,MULTDIM)
-      _RL latMeltRate         (1:sNx,1:sNy,MULTDIM)
+      _RL latMeltFrac         (1:sNx,1:sNy,nITD)
+      _RL latMeltRate         (1:sNx,1:sNy,nITD)
       _RL floeAlpha
       _RL floeDiameter
       _RL floeDiameterMin
@@ -255,7 +269,7 @@ C                     as EVAP (positive upward)
 C     The latent heat flux which will sublimate all snow and ice
 C     over one time step
       _RL latentHeatFluxMax   (1:sNx,1:sNy)
-      _RL latentHeatFluxMaxMult(1:sNx,1:sNy,MULTDIM)
+      _RL latentHeatFluxMaxMult(1:sNx,1:sNy,nITD)
 #endif
 
 #ifdef SEAICE_ITD
@@ -378,6 +392,17 @@ C parameters needed for variable floe diameter following Luepkes et al. (2012):
      &                       + act4*max1*max2*max3
 #endif /* ALLOW_AUTODIFF_TAMC */
 
+#ifdef SEAICE_GREASE
+C time scale of grease ice decline by solidification,
+C with 50% grease ice becoming solid pancake ice within 1 day:
+        greaseDecayTime=1.44*86400. _d 0
+C store position of 'grease' in tracer array
+        iTrGrease=-1
+        DO iTr = 1, SItrNumInUse
+         if (SItrName(iTr).EQ.'grease') iTrGrease=iTr
+        ENDDO
+#endif
+
 C array initializations
 C =====================
 
@@ -419,6 +444,10 @@ C =====================
 #endif
           d_HFRWbyRAIN(I,J)          = 0.0 _d 0
           tmparr1(I,J)               = 0.0 _d 0
+#ifdef SEAICE_GREASE
+          greaseLayerThick(I,J)      = 0.0 _d 0
+          d_HEFFbyGREASE(I,J)        = 0.0 _d 0
+#endif
           DO IT=1,SEAICE_multDim
             ticeInMult(I,J,IT)            = 0.0 _d 0
             ticeOutMult(I,J,IT)           = 0.0 _d 0
@@ -460,7 +489,7 @@ C =====================================================================
 C ===========PART 1: treat pathological cases (post advdiff)===========
 C =====================================================================
 
-C     This part has been mostly moved to S/R seaice_reg_ridge, which is 
+C     This part has been mostly moved to S/R seaice_reg_ridge, which is
 C     called before S/R seaice_growth
 
 C     store regularized values of heff, hsnow, area at the onset of thermo.
@@ -481,7 +510,7 @@ C     store regularized values of heff, hsnow, area at the onset of thermo.
          ENDDO
         ENDDO
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
            HEFFITDpreTH(I,J,IT)=HEFFITD(I,J,IT,bi,bj)
@@ -553,7 +582,7 @@ Cgf no additional dependency of air-sea fluxes to ice
           ENDDO
          ENDDO
 #ifdef SEAICE_ITD
-         DO IT=1,nITD
+         DO IT=1,SEAICE_multDim
           DO J=1,sNy
            DO I=1,sNx
             HEFFITDpreTH(I,J,IT) = 0. _d 0
@@ -583,7 +612,7 @@ CADJ STORE HEFFpreTH = comlev1_bibj, key = iicekey, byte = isbyte
 CADJ STORE HSNWpreTH = comlev1_bibj, key = iicekey, byte = isbyte
 #endif /* ALLOW_AUTODIFF_TAMC */
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
            IF (HEFFITDpreTH(I,J,IT) .GT. ZERO) THEN
@@ -648,7 +677,7 @@ C     The latent heat flux over the sea ice which
 C     will sublimate all of the snow and ice over one time
 C     step (W/m^2)
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
            IF (HEFFITDpreTH(I,J,IT) .GT. ZERO) THEN
@@ -884,7 +913,7 @@ CADJ STORE a_FWbySublim    = comlev1_bibj, key = iicekey, byte = isbyte
 
 C switch heat fluxes from W/m2 to 'effective' ice meters
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
            a_QbyATMmult_cover(I,J,IT)   = a_QbyATMmult_cover(I,J,IT)
@@ -957,7 +986,7 @@ CADJ STORE r_FWbySublim    = comlev1_bibj, key = iicekey, byte = isbyte
 Cgf no additional dependency through ice cover
         IF ( SEAICEadjMODE.GE.3 ) THEN
 #ifdef SEAICE_ITD
-         DO IT=1,nITD
+         DO IT=1,SEAICE_multDim
           DO J=1,sNy
            DO I=1,sNx
             a_QbyATMmult_cover(I,J,IT)   = 0. _d 0
@@ -1027,7 +1056,7 @@ C determine lateral melt rate at floe edges based on an
 C average floe diameter or a floe size distribution
 C following Steele (1992, Tab. 2)
 C ======================================================
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
            tempFrz = SEAICE_tempFrz0 +
@@ -1035,7 +1064,7 @@ C ======================================================
            tmpscal1=(theta(I,J,kSurface,bi,bj)-tempFrz)
            tmpscal2=sqrt(0.87 + 0.067*UG(i,j)) * UG(i,j)
 
-C     variable floe diameter following Luepkes et al. (2012, JGR, Equ. 26) 
+C     variable floe diameter following Luepkes et al. (2012, JGR, Equ. 26)
 C     with beta=1
 CML           tmpscal3=ONE/(ONE-(floeDiameterMin/floeDiameterMax))
 CML           floeDiameter = floeDiameterMin
@@ -1050,10 +1079,10 @@ C     following the idea of SEAICE_areaLossFormula == 1:
      &         a_QbyOCN(i,j)      .LT.ZERO) THEN
 C     lateral melt rate as suggested by Perovich, 1983 (PhD thesis)
             latMeltRate(i,j,it) = 1.6 _d -6 * tmpscal1**1.36
-C     lateral melt rate as suggested by Maykut and Perovich, 1987 
+C     lateral melt rate as suggested by Maykut and Perovich, 1987
 C     (JGR 92(C7)), Equ. 24
 c           latMeltRate(i,j,it) = 13.5 _d -6 * tmpscal2 * tmpscal1**1.3
-C     further suggestion by Maykut and Perovich to avoid 
+C     further suggestion by Maykut and Perovich to avoid
 C     latMeltRate -> 0 for UG -> 0
 c           latMeltRate(i,j,it) = (1.6 _d -6 + 13.5 _d -6 * tmpscal2)
 c    &                          * tmpscal1**1.3
@@ -1080,6 +1109,94 @@ C ===================================================================
 C =========PART 3: determine effective thicknesses increments========
 C ===================================================================
 
+#ifdef SEAICE_GREASE
+C convert SItracer 'grease' from ratio to grease ice volume:
+C ==========================================================
+        DO J=1,sNy
+         DO I=1,sNx
+          SItracer(I,J,bi,bj,iTrGrease) =
+     &     SItracer(I,J,bi,bj,iTrGrease) * HEFF(I,J,bi,bj)
+         ENDDO
+        ENDDO
+C compute actual grease ice layer thickness
+C as a function of wind stress
+C following Smedsrud [2011, Ann.Glac.]
+C =========================================
+         DO J=1,sNy
+          DO I=1,sNx
+C
+C          computing compaction force acting on grease
+C           (= air and water stress acting on ice)
+C          wind stress (using calculation of SPEED_SQ & UG as template)
+C          u_a**2 + v_a**2:
+           tmpscal1 = uWind(I,J,bi,bj)*uWind(I,J,bi,bj)
+     &              + vWind(I,J,bi,bj)*vWind(I,J,bi,bj)
+           IF ( tmpscal1 .LE. SEAICE_EPS_SQ ) THEN
+             tmpscal1=SEAICE_EPS
+           ELSE
+             tmpscal1=SQRT(tmpscal2)
+           ENDIF
+           tmpscal1 = 1.4 _d 0 * 1.3 _d -3 * tmpscal1
+C          water stress
+C          u_w - u_i:
+           tmpscal2 =
+     &        0.5 _d 0*(uVel(i,j,kSurface,bi,bj)
+     &                 +uVel(i+1,j,kSurface,bi,bj))
+     &       -0.5 _d 0*(uice(i,j,bi,bj)+uice(i+1,j,bi,bj))
+C          v_w - v_i:
+           tmpscal3 =
+     &        0.5 _d 0*(vVel(i,j,kSurface,bi,bj)
+     &                 +vVel(i,j+1,kSurface,bi,bj))
+     &       -0.5 _d 0*(vice(i,j,bi,bj)+vice(i,j+1,bi,bj))
+C          (u_w - u_i)**2 + (v_w - v_i)**2:
+           tmpscal4 = (tmpscal2*tmpscal2 + tmpscal3*tmpscal3)
+           IF ( tmpscal4 .LE. SEAICE_EPS_SQ ) THEN
+             tmpscal4=SEAICE_EPS
+           ELSE
+             tmpscal4=SQRT(tmpscal4)
+           ENDIF
+           tmpscal4 = 1027.0 _d 0 * 6.0 _d -3 * tmpscal4
+C          magnitude of compined stresses:
+           tmpscal0 =
+     &         ( tmpscal1 * uWind(I,J,bi,bj) + tmpscal4 * tmpscal2 )**2
+     &       + ( tmpscal1 * vWind(I,J,bi,bj) + tmpscal4 * tmpscal3 )**2
+           IF ( tmpscal0 .LE. SEAICE_EPS_SQ ) THEN
+             tmpscal0=SEAICE_EPS
+           ELSE
+             tmpscal0=SQRT(tmpscal0)
+           ENDIF
+C
+C          mean grid cell width between tracer points
+           tmpscal3 = 0.5 _d 0 * (dxC(I,J,bi,bj)+dyC(I,J,bi,bj))
+C          grease ice volume Vg [m^3/m] as in Smedsrud [2011]
+C           is SItracer * gridcell_area / lead_width
+C           where lead width is lead extent along lead,
+C           i.e. perpendicular to L_lead in Smedsrud (2011),
+C           which is in the absence of lead length statistics
+C           simply the grid cell length
+           tmpscal4 = 4. _d 0 * SItracer(I,J,bi,bj,iTrGrease) * tmpscal3
+C
+C          mean grease ice layer thickness <h_g>, Eq.10 in Smedsrud [2011] but incl. water stress
+           greaseLayerThick(I,J) = 0.763 _d 0
+C          grease ice volume
+     &           * ( tmpscal4
+C          times magnitude of vector sum of air and water stresses
+C          (in fact, only the component perpendicular to the lead edge, i.e. along L_lead counts)
+C          ATTENTION: since we do not have lead orientation with respect to wind
+C                     we use 80% of the total force assuming angles 45-90deg between wind and lead edge
+     &           * 0.8 _d 0 * tmpscal0
+C          devided by K_r = 100 N/m^3 (resistance of grease against compression)
+     &           * 0.01 _d 0 )**THIRD
+C
+C          assure a minimum thickness of 4 cm (equals HO=0.01):
+           greaseLayerThick(I,J)=max(4. _d -2, greaseLayerThick(I,J))
+C          ... and a maximum thickness of 4 m (equals HO=1.0):
+           greaseLayerThick(I,J)=min(4. _d 0 , greaseLayerThick(I,J))
+C
+          ENDDO
+         ENDDO
+#endif /* SEAICE_GREASE */
+
 C compute snow/ice tendency due to sublimation
 C ============================================
 
@@ -1088,7 +1205,7 @@ CADJ STORE hsnow(:,:,bi,bj) = comlev1_bibj,key=iicekey,byte=isbyte
 CADJ STORE r_FWbySublim     = comlev1_bibj,key=iicekey,byte=isbyte
 #endif /* ALLOW_AUTODIFF_TAMC */
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
 #endif /* SEAICE_ITD */
         DO J=1,sNy
          DO I=1,sNx
@@ -1164,7 +1281,7 @@ CADJ STORE r_QbyOCN = comlev1_bibj,key=iicekey,byte=isbyte
        IF (.NOT.SEAICE_growMeltByConv) THEN
 
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
 C          ice growth/melt due to ocean heat r_QbyOCN (W/m^2) is
@@ -1215,7 +1332,7 @@ CADJ STORE r_QbyATM_cover = comlev1_bibj,key=iicekey,byte=isbyte
 #endif /* ALLOW_AUTODIFF_TAMC */
 
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
 C     Convert to standard units (meters of ice) rather than to meters
@@ -1267,7 +1384,7 @@ Cgf the v1.81=>v1.82 revision would change results in
 Cgf warming conditions, the lab_sea results were not changed.
 
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
            tmpscal1 = HEFFITDpreTH(I,J,IT)
@@ -1358,7 +1475,7 @@ C           add precip to the fresh water bucket
          ENDDO
         ENDDO
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
            d_HSNWbyRAIN_ITD(I,J,IT)
@@ -1393,7 +1510,7 @@ CADJ STORE r_QbyOCN = comlev1_bibj,key=iicekey,byte=isbyte
       IF (.NOT.SEAICE_growMeltByConv) THEN
 
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
            tmpscal4 = HSNWITDpreTH(I,J,IT)
@@ -1469,6 +1586,54 @@ C           impose -HEFF as the maxmum melting if SEAICE_doOpenWaterMelt
 C           or 0. otherwise (no melting if not SEAICE_doOpenWaterMelt)
             tmpscal3=facOpenGrow*MAX(tmpscal1-tmpscal2,
      &           -tmpscal4*facOpenMelt)*HEFFM(I,J,bi,bj)
+#ifdef SEAICE_GREASE
+C Grease ice is a tracer or "bucket" for newly formed frazil ice
+C  that instead of becoming solid sea ice instantly has a half-time
+C  of 1 day (see greaseDecayTime) before solidifying.
+C The most important effect is that for fluxes the grease ice area/volume
+C  acts like open water.
+C
+C store freezing/melting condition:
+          greaseNewFrazil = max(0.0 _d 0, tmpscal3)
+C
+C 1) mechanical removal of grease by ridging:
+C    if there is no open water left after advection, there cannot be any grease ice
+          if ((1.0 _d 0 - AREApreTH(I,J)).LE.siEps) then
+           tmpscal3 = tmpscal3 + SItracer(I,J,bi,bj,iTrGrease)
+           SItracer(I,J,bi,bj,iTrGrease) = 0. _d 0
+
+          elseif (greaseNewFrazil .GT. 0. _d 0) then
+C    new ice growth goes into grease tracer not HEFF:
+           tmpscal3=0. _d 0
+C
+C 2) solidification of "old" grease ice
+C    (only when cold enough for ice growth)
+C
+C    time scale dependent solidification
+C    (50%  of grease ice area become solid ice within 24h):
+           tmpscal1=exp(-SEAICE_deltaTtherm/greaseDecayTime)
+C    gain in solid sea ice volume due to solidified grease:
+           d_HEFFbyGREASE(I,J) =
+     &             SItracer(I,J,bi,bj,iTrGrease)
+     &           * (1.0 _d 0 - tmpscal1)
+C    ... and related loss of grease ice (tracer) volume
+           SItracer(I,J,bi,bj,iTrGrease) =
+     &             SItracer(I,J,bi,bj,iTrGrease) * tmpscal1
+C    the solidified grease ice volume needs to be added to HEFF:
+           SItrBucket(I,J,bi,bj,iTrGrease) =
+     &             SItrBucket(I,J,bi,bj,iTrGrease)
+     &           + d_HEFFbyGREASE(I,J)
+C
+C 3) grease ice growth from new frazil ice:
+C
+           SItracer(i,j,bi,bj,iTrGrease) =
+     &      SItracer(i,j,bi,bj,iTrGrease) + greaseNewFrazil
+          endif
+C 4) mapping SItrBucket to external variable, in this case HEFF, ...
+          tmpscal3=tmpscal3+SItrBucket(I,J,bi,bj,iTrGrease)
+C    ... and empty SItrBucket for tracer 'grease'
+          SItrBucket(I,J,bi,bj,iTrGrease)=0. _d 0
+#endif /* SEAICE_GREASE */
 #ifdef SEAICE_ITD
 C         ice growth in open water adds to first category
           d_HEFFbyATMonOCN_open_ITD(I,J,1)=tmpscal3
@@ -1506,7 +1671,7 @@ CADJ STORE hsnow(:,:,bi,bj) = comlev1_bibj,key=iicekey,byte=isbyte
 #endif /* ALLOW_AUTODIFF_TAMC */
         IF ( SEAICEuseFlooding ) THEN
 #ifdef SEAICE_ITD
-         DO IT=1,nITD
+         DO IT=1,SEAICE_multDim
           DO J=1,sNy
            DO I=1,sNx
             tmpscal3 = HEFFITDpreTH(I,J,IT)
@@ -1544,7 +1709,7 @@ CADJ STORE hsnow(:,:,bi,bj) = comlev1_bibj,key=iicekey,byte=isbyte
 #ifdef SEAICE_ITD
 C apply ice and snow thickness changes
 C =================================================================
-         DO IT=1,nITD
+         DO IT=1,SEAICE_multDim
           DO J=1,sNy
            DO I=1,sNx
             HEFFITD(I,J,IT,bi,bj) = HEFFITD(I,J,IT,bi,bj)
@@ -1589,9 +1754,9 @@ CADJ STORE AREA(:,:,bi,bj) = comlev1_bibj,key=iicekey,byte=isbyte
 #endif /* ALLOW_AUTODIFF_TAMC */
 
 #ifdef SEAICE_ITD
-C--   in thinnest category account for lateral ice growth and melt the 
-C--   "non-ITD" way, so that the ITD simulation with nITD=1 is identical 
-C--   with the non-ITD simulation;
+C--   in thinnest category account for lateral ice growth and melt the
+C--   "non-ITD" way, so that the ITD simulation with SEAICE_multDim=1
+C--   is identical with the non-ITD simulation;
 C--   use HEFF, ARE, HSNOW, etc. as temporal storage for 1st category
         DO J=1,sNy
          DO I=1,sNx
@@ -1607,14 +1772,25 @@ C--   use HEFF, ARE, HSNOW, etc. as temporal storage for 1st category
         DO J=1,sNy
          DO I=1,sNx
 
+#ifdef SEAICE_GREASE
+C         grease ice layer thickness (Hg) includes
+C         1 part frazil ice and 3 parts sea water
+C         i.e. HO = 0.25 * Hg
+          recip_HO=4. _d 0 / greaseLayerThick(I,J)
+#else /* SEAICE_GREASE */
           IF ( YC(I,J,bi,bj) .LT. ZERO ) THEN
            recip_HO=1. _d 0 / HO_south
           ELSE
            recip_HO=1. _d 0 / HO
           ENDIF
+#endif /* SEAICE_GREASE */
           recip_HH = recip_heffActual(I,J)
 
 C gain of ice over open water : computed from
+#ifdef SEAICE_GREASE
+C   from growth by ATM with grease ice time delay
+          tmpscal4 = MAX(ZERO,d_HEFFbyGREASE(I,J))
+#else /* SEAICE_GREASE */
 C   (SEAICE_areaGainFormula.EQ.1) from growth by ATM
 C   (SEAICE_areaGainFormula.EQ.2) from predicted growth by ATM
           IF (SEAICE_areaGainFormula.EQ.1) THEN
@@ -1622,6 +1798,7 @@ C   (SEAICE_areaGainFormula.EQ.2) from predicted growth by ATM
           ELSE
             tmpscal4=MAX(ZERO,a_QbyATM_open(I,J))
           ENDIF
+#endif /* SEAICE_GREASE */
 
 C loss of ice cover by melting : computed from
 C   (SEAICE_areaLossFormula.EQ.1) from all but only melt conributions by ATM and OCN
@@ -1679,8 +1856,8 @@ C       transfer 1st category values back into ITD variables
         ENDDO
 C       now melt ice laterally in all other thickness categories
 C       (areal growth, i.e. new ice formation, only occurrs in 1st category)
-        IF (nITD .gt. 1) THEN
-         DO IT=2,nITD
+        IF (SEAICE_multDim .gt. 1) THEN
+         DO IT=2,SEAICE_multDim
           DO J=1,sNy
            DO I=1,sNx
             IF (HEFFITD(I,J,IT,bi,bj).LE.ZERO) THEN
@@ -1712,7 +1889,7 @@ C       limit area reduction so that actual ice thickness does not increase
 Cgf 'bulk' linearization of area=f(HEFF)
         IF ( SEAICEadjMODE.GE.1 ) THEN
 #ifdef SEAICE_ITD
-         DO IT=1,nITD
+         DO IT=1,SEAICE_multDim
           DO J=1,sNy
            DO I=1,sNx
             AREAITD(I,J,IT,bi,bj) = AREAITDpreTH(I,J,IT) + 0.1 _d 0 *
@@ -1738,6 +1915,20 @@ C ... and update total AREA, HEFF, HSNOW
 C     (the updated HEFF is used below for ice salinity increments)
         CALL SEAICE_ITD_SUM(bi, bj, myTime, myIter, myThid)
 #endif /* SEAICE_ITD */
+#ifdef SEAICE_GREASE
+C convert SItracer 'grease' from grease ice volume back to ratio:
+C ===============================================================
+        DO J=1,sNy
+         DO I=1,sNx
+          if (HEFF(I,J,bi,bj).GT.siEps) then
+           SItracer(I,J,bi,bj,iTrGrease) =
+     &      SItracer(I,J,bi,bj,iTrGrease) / HEFF(I,J,bi,bj)
+          else
+           SItracer(I,J,bi,bj,iTrGrease) = 0. _d 0
+          endif
+         ENDDO
+        ENDDO
+#endif /* SEAICE_GREASE */
 
 C ===================================================================
 C =============PART 5: determine ice salinity increments=============
@@ -1773,7 +1964,19 @@ Catn: can not take out more that surface salinity when SSS<SEAICE_salt0
      &            * recip_deltaTtherm * SEAICE_rhoIce
           saltFlux(I,J,bi,bj) = tmpscal2
 #ifdef ALLOW_SALT_PLUME
+#ifdef SALT_PLUME_SPLIT_BASIN
+catn attempt to split East/West basins in Arctic
+          localSPfrac(I,J) = SPsalFRAC(1)
+          IF ( SaltPlumeSplitBasin ) THEN
+            localSPfrac(I,J) = SPsalFRAC(2)
+            IF(YC(I,J,bi,bj).LT. 85.0 .AND. YC(I,J,bi,bj).GT. 71.0
+     &       .AND. XC(I,J,bi,bj) .LT. -90.0) THEN
+             localSPfrac(I,J) = SPsalFRAC(1)
+            ENDIF
+          ENDIF
+#else
           localSPfrac(I,J) = SPsalFRAC
+#endif /* SALT_PLUME_SPLIT_BASIN */
 #ifdef SALT_PLUME_IN_LEADS
 Catn: Only d_HEFFbyATMonOCN should contribute to plume.
 C     By redefining tmpscal1 here, saltPlumeFlux is smaller in case
@@ -1823,13 +2026,26 @@ C tmpscal1 > 0 : m of sea ice that is created
      &            *SEAICE_saltFrac*salt(I,J,kSurface,bi,bj)
      &            *tmpscal1*SEAICE_rhoIce
 #ifdef ALLOW_SALT_PLUME
+#ifdef SALT_PLUME_SPLIT_BASIN
+catn attempt to split East/West basins in Arctic
+             localSPfrac(I,J) = SPsalFRAC(1)
+             IF ( SaltPlumeSplitBasin ) THEN
+               localSPfrac(I,J) = SPsalFRAC(2)
+               IF(YC(I,J,bi,bj).LT. 85.0 .AND. YC(I,J,bi,bj).GT. 71.0
+     &                  .AND. XC(I,J,bi,bj) .LT. -90.0) THEN
+                 localSPfrac(I,J) = SPsalFRAC(1)
+               ENDIF
+             ENDIF
+#else
+             localSPfrac(I,J) = SPsalFRAC
+#endif /* SALT_PLUME_SPLIT_BASIN */
 #ifndef SALT_PLUME_IN_LEADS
 C saltPlumeFlux is defined only during freezing:
              saltPlumeFlux(I,J,bi,bj)=
      &            HEFFM(I,J,bi,bj)*recip_deltaTtherm
      &            *(ONE-SEAICE_saltFrac)*salt(I,J,kSurface,bi,bj)
      &            *tmpscal1*SEAICE_rhoIce
-     &            *SPsalFRAC
+     &            *localSPfrac(I,J)
 #endif /* ndef SALT_PLUME_IN_LEADS */
 #endif /* ALLOW_SALT_PLUME */
 
@@ -1860,7 +2076,7 @@ C     Note: tmpscal1 is defined only after saltFlux is calculated.
           leadPlumeFraction(I,J) =
      &      (ONE + EXP( (SPinflectionPoint - AREApreTH(I,J))*5.0
      &                 /(ONE - SPinflectionPoint) ))**(-ONE)
-          localSPfrac(I,J)=SPsalFRAC*leadPlumeFraction(I,J)
+          localSPfrac(I,J)=localSPfrac(I,J)*leadPlumeFraction(I,J)
           IF ( tmpscal1 .GE. 0.0) THEN
 C saltPlumeFlux is defined only during freezing:
              saltPlumeFlux(I,J,bi,bj)=
@@ -1914,7 +2130,7 @@ C compute total of "mult" fluxes for ocean forcing
           r_FWbySublim(I,J)     = 0.0 _d 0
          ENDDO
         ENDDO
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
 C if fluxes in W/m^2 then use:
@@ -2329,7 +2545,11 @@ C the latent heat flux
          CALL DIAGNOSTICS_FILL(DIAGarrayA,'SIacSubl',0,1,3,bi,bj,myThid)
          CALL DIAGNOSTICS_FILL(DIAGarrayC,'SIrsSubl',0,1,3,bi,bj,myThid)
          CALL DIAGNOSTICS_FILL(DIAGarrayB,'SIhl    ',0,1,3,bi,bj,myThid)
-
+# ifdef SEAICE_GREASE
+C actual grease ice layer thickness
+         CALL DIAGNOSTICS_FILL(greaseLayerThick,
+     &        'SIgrsLT ',0,1,3,bi,bj,myThid)
+# endif /* SEAICE_GREASE */
         ENDIF
 #endif /* ALLOW_DIAGNOSTICS */
 

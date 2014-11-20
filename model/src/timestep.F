@@ -56,24 +56,20 @@ C     gvDissip :: dissipation tendency (all explicit terms), v component
 
 C     !LOCAL VARIABLES:
 C     == Local variables ==
+C     guExt    :: forcing tendency, u component
+C     gvExt    :: forcing tendency, v component
+C     gu_AB    :: tendency increment from Adams-Bashforth, u component
+C     gv_AB    :: tendency increment from Adams-Bashforth, v component
       INTEGER i,j
       _RL phxFac,phyFac, psFac
+      _RL     guExt(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL     gvExt(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL     gUtmp(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL     gVtmp(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL     gu_AB(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL     gv_AB(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
 #ifdef ALLOW_NONHYDROSTATIC
       _RL     nhFac
-#endif
-#ifdef ALLOW_DIAGNOSTICS
-C    Allow diagnosis of external forcing
-      LOGICAL  DIAGNOSTICS_IS_ON
-      EXTERNAL DIAGNOSTICS_IS_ON
-#endif
-      LOGICAL externForcDiagIsOn
-#if (defined ALLOW_DIAGNOSTICS) || (defined CD_CODE_NO_AB_MOMENTUM)
-      _RL     gUext(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
-      _RL     gVext(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
 #endif
 #ifdef ALLOW_CD_CODE
       _RL     guCor(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
@@ -89,19 +85,13 @@ C--  factors for gradient (X & Y directions) of Hydrostatic Potential
       phxFac = pfFacMom
       phyFac = pfFacMom
 
-      externForcDiagIsOn = useDiagnostics .AND. momForcing
-#ifdef ALLOW_DIAGNOSTICS
-      IF ( externForcDiagIsOn ) THEN
-        externForcDiagIsOn = DIAGNOSTICS_IS_ON('Um_Ext  ',myThid)
-     &                  .OR. DIAGNOSTICS_IS_ON('Vm_Ext  ',myThid)
-      ENDIF
-#endif /* ALLOW_DIAGNOSTICS */
-
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
-C-    Initialize local arrays (not really necessary but safer)
+C-    Initialize local arrays (not really necessary for all but safer)
       DO j=1-OLy,sNy+OLy
         DO i=1-OLx,sNx+OLx
+          guExt(i,j) = 0. _d 0
+          gvExt(i,j) = 0. _d 0
           gUtmp(i,j) = 0. _d 0
           gVtmp(i,j) = 0. _d 0
 #ifdef ALLOW_CD_CODE
@@ -110,6 +100,18 @@ C-    Initialize local arrays (not really necessary but safer)
 #endif
         ENDDO
       ENDDO
+
+      IF ( momForcing ) THEN
+C--   Collect forcing term in local array guExt,gvExt:
+        CALL APPLY_FORCING_U(
+     U                        guExt,
+     I                        iMin,iMax,jMin,jMax, k, bi,bj,
+     I                        myTime, myIter, myThid )
+        CALL APPLY_FORCING_V(
+     U                        gvExt,
+     I                        iMin,iMax,jMin,jMax, k, bi,bj,
+     I                        myTime, myIter, myThid )
+      ENDIF
 
       IF ( .NOT.staggerTimeStep .AND. .NOT. implicitIntGravWave ) THEN
 C--   Synchronous time step: add grad Phi_Hyp to gU,gV before doing Adams-Bashforth
@@ -137,38 +139,16 @@ C--   Dissipation term inside the Adams-Bashforth:
 
 C--   Forcing term inside the Adams-Bashforth:
       IF ( momForcing .AND. momForcingOutAB.NE.1 ) THEN
-#ifdef ALLOW_DIAGNOSTICS
-        IF ( externForcDiagIsOn ) THEN
-         DO j=1,sNy+1
-          DO i=1,sNx+1
-           gUext(i,j) = gU(i,j,k,bi,bj)
-           gVext(i,j) = gV(i,j,k,bi,bj)
-          ENDDO
+        DO j=jMin,jMax
+         DO i=iMin,iMax
+           gU(i,j,k,bi,bj) = gU(i,j,k,bi,bj) + guExt(i,j)
+           gV(i,j,k,bi,bj) = gV(i,j,k,bi,bj) + gvExt(i,j)
          ENDDO
-        ENDIF
-#endif /* ALLOW_DIAGNOSTICS */
-
-        CALL EXTERNAL_FORCING_U(
-     I     iMin,iMax,jMin,jMax,bi,bj,k,
-     I     myTime,myThid)
-        CALL EXTERNAL_FORCING_V(
-     I     iMin,iMax,jMin,jMax,bi,bj,k,
-     I     myTime,myThid)
-
-#ifdef ALLOW_DIAGNOSTICS
-        IF ( externForcDiagIsOn ) THEN
-         DO j=1,sNy+1
-          DO i=1,sNx+1
-           gUext(i,j) = gU(i,j,k,bi,bj)-gUext(i,j)
-           gVext(i,j) = gV(i,j,k,bi,bj)-gVext(i,j)
-          ENDDO
-         ENDDO
-        ENDIF
-#endif /* ALLOW_DIAGNOSTICS */
+        ENDDO
       ENDIF
 
 #ifdef CD_CODE_NO_AB_MOMENTUM
-      IF (useCDscheme) THEN
+      IF ( useCDscheme ) THEN
 C-    CD-scheme, before doing AB, store gU,Vtmp = gU,V^n (+dissip. +forcing)
         DO j=jMin,jMax
          DO i=iMin,iMax
@@ -184,20 +164,26 @@ C     and save gU,gV_[n] into guNm1,gvNm1 for the next time step.
 #ifdef ALLOW_ADAMSBASHFORTH_3
       CALL ADAMS_BASHFORTH3(
      I                        bi, bj, k, Nr,
-     U                        gU, guNm, gu_AB,
+     U                        gU(1-OLx,1-OLy,1,bi,bj), guNm,
+     O                        gu_AB,
      I                        mom_StartAB, myIter, myThid )
       CALL ADAMS_BASHFORTH3(
      I                        bi, bj, k, Nr,
-     U                        gV, gvNm, gv_AB,
+     U                        gV(1-OLx,1-OLy,1,bi,bj), gvNm,
+     O                        gv_AB,
      I                        mom_StartAB, myIter, myThid )
 #else /* ALLOW_ADAMSBASHFORTH_3 */
       CALL ADAMS_BASHFORTH2(
      I                        bi, bj, k, Nr,
-     U                        gU, guNm1, gu_AB,
+     U                        gU(1-OLx,1-OLy,1,bi,bj),
+     U                        guNm1(1-OLx,1-OLy,1,bi,bj),
+     O                        gu_AB,
      I                        mom_StartAB, myIter, myThid )
       CALL ADAMS_BASHFORTH2(
      I                        bi, bj, k, Nr,
-     U                        gV, gvNm1, gv_AB,
+     U                        gV(1-OLx,1-OLy,1,bi,bj),
+     U                        gvNm1(1-OLx,1-OLy,1,bi,bj),
+     O                        gv_AB,
      I                        mom_StartAB, myIter, myThid )
 #endif /* ALLOW_ADAMSBASHFORTH_3 */
 #ifdef ALLOW_DIAGNOSTICS
@@ -207,64 +193,66 @@ C     and save gU,gV_[n] into guNm1,gvNm1 for the next time step.
       ENDIF
 #endif /* ALLOW_DIAGNOSTICS */
 
-C--   Forcing term outside the Adams-Bashforth:
-      IF ( momForcing .AND. momForcingOutAB.EQ.1 ) THEN
-
-#if (defined ALLOW_DIAGNOSTICS) || (defined CD_CODE_NO_AB_MOMENTUM)
-        IF ( externForcDiagIsOn .OR. useCDscheme ) THEN
-         DO j=jMin,jMax
-          DO i=iMin,iMax
-           gUext(i,j) = gU(i,j,k,bi,bj)
-           gVext(i,j) = gV(i,j,k,bi,bj)
-          ENDDO
-         ENDDO
-        ENDIF
-#endif /* ALLOW_DIAGNOSTICS or CD_CODE_NO_AB_MOMENTUM */
-
-        CALL EXTERNAL_FORCING_U(
-     I     iMin,iMax,jMin,jMax,bi,bj,k,
-     I     myTime,myThid)
-        CALL EXTERNAL_FORCING_V(
-     I     iMin,iMax,jMin,jMax,bi,bj,k,
-     I     myTime,myThid)
-
-#if (defined ALLOW_DIAGNOSTICS) || (defined CD_CODE_NO_AB_MOMENTUM)
-        IF ( externForcDiagIsOn .OR. useCDscheme ) THEN
-         DO j=jMin,jMax
-          DO i=iMin,iMax
-           gUext(i,j) = gU(i,j,k,bi,bj)-gUext(i,j)
-           gVext(i,j) = gV(i,j,k,bi,bj)-gVext(i,j)
-          ENDDO
-         ENDDO
-        ENDIF
-#endif /* ALLOW_DIAGNOSTICS or CD_CODE_NO_AB_MOMENTUM */
-
-C--   Forcing term outside the Adams-Bashforth: end of if block
-      ENDIF
-
-#ifdef ALLOW_CD_CODE
-      IF (useCDscheme) THEN
+C-     Make a local copy in gU,Vtmp of gU,V^n+1/2 (+dissip. +forcing)
 #ifdef CD_CODE_NO_AB_MOMENTUM
-C-     CD-scheme, add forcing to gU,Vtmp = gU,V^n (+ dissip.)
-        IF ( momForcing .AND. momForcingOutAB.EQ.1 ) THEN
-         DO j=jMin,jMax
-          DO i=iMin,iMax
-           gUtmp(i,j) = gUtmp(i,j) + guExt(i,j)
-           gVtmp(i,j) = gVtmp(i,j) + gvExt(i,j)
-          ENDDO
-         ENDDO
-        ENDIF
-#else /* CD_CODE_NO_AB_MOMENTUM */
-C-     CD-scheme, store gU,Vtmp = gU,V^n+1/2 (+dissip.) +forcing
+      IF ( .NOT.useCDscheme ) THEN
+#endif
         DO j=jMin,jMax
          DO i=iMin,iMax
            gUtmp(i,j) = gU(i,j,k,bi,bj)
            gVtmp(i,j) = gV(i,j,k,bi,bj)
          ENDDO
         ENDDO
-#endif /* CD_CODE_NO_AB_MOMENTUM */
+#ifdef CD_CODE_NO_AB_MOMENTUM
+      ENDIF
+#endif
+
+C--   Forcing term outside the Adams-Bashforth:
+      IF ( momForcing .AND. momForcingOutAB.EQ.1 ) THEN
+        DO j=jMin,jMax
+         DO i=iMin,iMax
+           gUtmp(i,j) = gUtmp(i,j) + guExt(i,j)
+           gVtmp(i,j) = gVtmp(i,j) + gvExt(i,j)
+         ENDDO
+        ENDDO
+      ENDIF
+
+C--   Dissipation term outside the Adams-Bashforth:
+      IF ( momViscosity .AND. .NOT.momDissip_In_AB ) THEN
+        DO j=jMin,jMax
+         DO i=iMin,iMax
+           gUtmp(i,j) = gUtmp(i,j) + guDissip(i,j)
+           gVtmp(i,j) = gVtmp(i,j) + gvDissip(i,j)
+         ENDDO
+        ENDDO
+      ENDIF
+
+#ifdef ALLOW_CD_CODE
+      IF ( useCDscheme ) THEN
+C-     Step forward D-grid velocity using C-grid gU,Vtmp = gU,V +dissip +forcing
+C      and return coriolis terms on C-grid (guCor,gvCor)
+        CALL CD_CODE_SCHEME(
+     I                  bi,bj,k, dPhiHydX,dPhiHydY, gUtmp,gVtmp,
+     O                  guCor,gvCor,
+     I                  myTime, myIter, myThid)
+
+#ifdef CD_CODE_NO_AB_MOMENTUM
+        IF ( momForcing .AND. momForcingOutAB.EQ.1 ) THEN
+         DO j=jMin,jMax
+          DO i=iMin,iMax
+           gUtmp(i,j) = ( gU(i,j,k,bi,bj) + guExt(i,j) ) + guCor(i,j)
+           gVtmp(i,j) = ( gV(i,j,k,bi,bj) + gvExt(i,j) ) + gvCor(i,j)
+          ENDDO
+         ENDDO
+        ELSE
+         DO j=jMin,jMax
+          DO i=iMin,iMax
+           gUtmp(i,j) = gU(i,j,k,bi,bj) + guCor(i,j)
+           gVtmp(i,j) = gV(i,j,k,bi,bj) + gvCor(i,j)
+          ENDDO
+         ENDDO
+        ENDIF
         IF ( momViscosity .AND. .NOT.momDissip_In_AB ) THEN
-C-     CD-scheme, add dissip. to gU,Vtmp = gU,V  + forcing
          DO j=jMin,jMax
           DO i=iMin,iMax
            gUtmp(i,j) = gUtmp(i,j) + guDissip(i,j)
@@ -272,31 +260,18 @@ C-     CD-scheme, add dissip. to gU,Vtmp = gU,V  + forcing
           ENDDO
          ENDDO
         ENDIF
-C-     Step forward D-grid velocity using C-grid gU,Vtmp = gU,V +dissip +forcing
-C      and return coriolis terms on C-grid (guCor,gvCor)
-        CALL CD_CODE_SCHEME(
-     I                  bi,bj,k, dPhiHydX,dPhiHydY, gUtmp,gVtmp,
-     O                  guCor,gvCor,
-     I                  myTime, myIter, myThid)
+#else /* CD_CODE_NO_AB_MOMENTUM */
         DO j=jMin,jMax
          DO i=iMin,iMax
-           gUtmp(i,j) = gU(i,j,k,bi,bj)
-     &                + guCor(i,j)
-           gVtmp(i,j) = gV(i,j,k,bi,bj)
-     &                + gvCor(i,j)
+           gUtmp(i,j) = gUtmp(i,j) + guCor(i,j)
+           gVtmp(i,j) = gVtmp(i,j) + gvCor(i,j)
          ENDDO
         ENDDO
-      ELSE
-#endif /* ALLOW_CD_CODE */
-        DO j=jMin,jMax
-         DO i=iMin,iMax
-           gUtmp(i,j) = gU(i,j,k,bi,bj)
-           gVtmp(i,j) = gV(i,j,k,bi,bj)
-         ENDDO
-        ENDDO
-#ifdef ALLOW_CD_CODE
+#endif /* CD_CODE_NO_AB_MOMENTUM */
       ENDIF
 #endif /* ALLOW_CD_CODE */
+
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 #ifdef NONLIN_FRSURF
       IF ( .NOT. vectorInvariantMomentum
@@ -343,18 +318,6 @@ C      and return coriolis terms on C-grid (guCor,gvCor)
        ENDIF
       ENDIF
 #endif /* NONLIN_FRSURF */
-
-C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
-
-C--   Dissipation term outside the Adams-Bashforth:
-      IF ( momViscosity .AND. .NOT.momDissip_In_AB ) THEN
-        DO j=jMin,jMax
-         DO i=iMin,iMax
-          gUtmp(i,j) = gUtmp(i,j) + guDissip(i,j)
-          gVtmp(i,j) = gVtmp(i,j) + gvDissip(i,j)
-         ENDDO
-        ENDDO
-      ENDIF
 
 #ifdef ALLOW_NONHYDROSTATIC
 C-- explicit part of the NH pressure gradient is added here
@@ -416,9 +379,9 @@ C     Step forward meridional velocity (store in Gv)
       ENDDO
 
 #ifdef ALLOW_DIAGNOSTICS
-      IF ( externForcDiagIsOn ) THEN
-        CALL DIAGNOSTICS_FILL( gUext,'Um_Ext  ',k,1,2,bi,bj,myThid )
-        CALL DIAGNOSTICS_FILL( gVext,'Vm_Ext  ',k,1,2,bi,bj,myThid )
+      IF ( momForcing .AND. useDiagnostics ) THEN
+        CALL DIAGNOSTICS_FILL( guExt,'Um_Ext  ',k,1,2,bi,bj,myThid )
+        CALL DIAGNOSTICS_FILL( gvExt,'Vm_Ext  ',k,1,2,bi,bj,myThid )
       ENDIF
 #ifdef ALLOW_CD_CODE
       IF ( useCDscheme .AND. useDiagnostics ) THEN

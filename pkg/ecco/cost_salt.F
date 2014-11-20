@@ -30,6 +30,7 @@ c     ==================================================================
 
 c     == global variables ==
 
+#ifdef ALLOW_SALT_COST_CONTRIBUTION
 #include "EEPARAMS.h"
 #include "SIZE.h"
 #include "PARAMS.h"
@@ -42,6 +43,7 @@ c     == global variables ==
 #include "ctrl.h"
 #include "ctrl_dummy.h"
 #include "optim.h"
+#endif
 
 c     == routine arguments ==
 
@@ -103,6 +105,8 @@ c     == end of interface ==
 c--   Read tiled data.
       doglobalread = .false.
       ladinit      = .false.
+
+      if ( sdatfile.NE.' ') then
 
       if (optimcycle .ge. 0) then
         ilsalt = ilnblnk( sbarfile )
@@ -223,6 +227,8 @@ cph     &                 diagnosfld3d, irec, optimcycle, mythid )
 
       enddo
 c--   End of loop over records.
+
+      endif !if ( sdatfile.NE.' ') then
 
 #endif /* ALLOW_SALT_COST_CONTRIBUTION */
 

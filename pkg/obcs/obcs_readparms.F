@@ -145,6 +145,11 @@ C     retired parameters
      &          OBNptrFile,OBSptrFile,OBEptrFile,OBWptrFile,
 #endif
      &          useOBCSsponge, useSeaiceSponge,
+     &          OBCSsponge_N , OBCSsponge_S,
+     &          OBCSsponge_E, OBCSsponge_W,
+     &          OBCSsponge_UatNS, OBCSsponge_UatEW,
+     &          OBCSsponge_VatNS, OBCSsponge_VatEW,
+     &          OBCSsponge_Theta, OBCSsponge_Salt, useLinearSponge,
      &          useOBCSbalance, useOBCStides, useOBCSprescribe,
      &          OBCS_balanceFacN, OBCS_balanceFacS,
      &          OBCS_balanceFacE, OBCS_balanceFacW,
@@ -176,7 +181,17 @@ C     retired parameters
      &          SLrelaxobcsinner,SLrelaxobcsbound,
      &          SNrelaxobcsinner,SNrelaxobcsbound,
      &          seaiceSpongeThickness
-#endif 
+#endif
+
+      IF ( .NOT.useOBCS ) THEN
+C-    pkg OBCS is not used
+        _BEGIN_MASTER(myThid)
+C-    Track pkg activation status:
+C     print a (weak) warning if data.obcs is found
+         CALL PACKAGES_UNUSED_MSG( 'useOBCS', ' ', ' ' )
+        _END_MASTER(myThid)
+        RETURN
+      ENDIF
 
       _BEGIN_MASTER(myThid)
 
@@ -217,6 +232,17 @@ C--   Default flags and values for OBCS
       useStevensAdvection=.TRUE.
       useOBCSsponge      =.FALSE.
       useSeaiceSponge    =.FALSE.
+      OBCSsponge_N       =.TRUE.
+      OBCSsponge_S       =.TRUE.
+      OBCSsponge_E       =.TRUE.
+      OBCSsponge_W       =.TRUE.
+      OBCSsponge_UatNS   =.TRUE.
+      OBCSsponge_UatEW   =.TRUE.
+      OBCSsponge_VatNS   =.TRUE.
+      OBCSsponge_VatEW   =.TRUE.
+      OBCSsponge_Theta   =.TRUE.
+      OBCSsponge_Salt    =.TRUE.
+      useLinearSponge    =.FALSE.
       useOBCSbalance     =.FALSE.
       OBCS_balanceFacN   = 1. _d 0
       OBCS_balanceFacS   = 1. _d 0

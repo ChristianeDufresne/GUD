@@ -183,27 +183,5 @@ c     Set switch for reading new record.
       endif
 c     if (fldperiod .eq. 0.)
 
-c     Do some printing for the protocol.
-      IF ( exf_verbose ) THEN
-        _BEGIN_MASTER( myThid )
-        WRITE(msgBuf,'(a)') ' EXF_GetFFieldRec:'
-        CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
-     &                      SQUEEZE_RIGHT, myThid )
-        WRITE(msgBuf,'(a,2x,l2,2x,l2,2x,D15.8)')
-     &    ' EXF_GetFFieldRec: first, changed, fac:',
-     &                        first, changed, fac
-        CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
-     &                      SQUEEZE_RIGHT, myThid )
-        WRITE(msgBuf,'(a,3(1x,i6))')
-     &    ' EXF_GetFFieldRec: myIter, count0, count1:',
-     &                        myIter, count0, count1
-        CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
-     &                      SQUEEZE_RIGHT, myThid )
-        WRITE(msgBuf,'(a)') ' EXF_GetFFieldRec:'
-        CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
-     &                      SQUEEZE_RIGHT, myThid )
-        _END_MASTER( myThid )
-      ENDIF
-
       RETURN
       END

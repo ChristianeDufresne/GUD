@@ -18,6 +18,10 @@ C ********************************************************************
 C ***                         ECCO Package                         ***
 C ********************************************************************
 C
+
+C allow use of legacy ecco/ctrl codes
+#define ECCO_CTRL_DEPRECATED
+
 C       >>> Do a long protocol.
 #undef ECCO_VERBOSE
 C       >>> use model/src/forward_step.F
@@ -63,7 +67,6 @@ C       >>> Atmospheric state and radiation.
 #define ALLOW_ATEMP_COST_CONTRIBUTION
 #define ALLOW_SWDOWN_COST_CONTRIBUTION
 
-#define ALLOW_COST_ICE
 #define ALLOW_THSICE_COST_TEST
 
 C ********************************************************************

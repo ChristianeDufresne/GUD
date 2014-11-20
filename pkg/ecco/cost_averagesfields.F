@@ -46,19 +46,25 @@ c     == global variables ==
 #include "GRID.h"
 #include "CG2D.h"
 
-#include "optim.h"
-#include "ecco_cost.h"
-#include "CTRL_SIZE.h"
-#include "ctrl.h"
-#include "ctrl_dummy.h"
-#include "CTRL_GENARR.h"
-#ifdef ALLOW_EXF
-# include "EXF_FIELDS.h"
-#endif
-#ifdef ALLOW_SEAICE
-# include "SEAICE_SIZE.h"
-# include "SEAICE.h"
-# include "SEAICE_COST.h"
+#ifndef ECCO_CTRL_DEPRECATED
+# include "ecco.h"
+#else
+# include "ecco_cost.h"
+# ifdef ALLOW_CTRL
+#  include "optim.h"
+#  include "CTRL_SIZE.h"
+#  include "ctrl.h"
+#  include "ctrl_dummy.h"
+#  include "CTRL_GENARR.h"
+# endif
+# ifdef ALLOW_EXF
+#  include "EXF_FIELDS.h"
+# endif
+# ifdef ALLOW_SEAICE
+#  include "SEAICE_SIZE.h"
+#  include "SEAICE.h"
+#  include "SEAICE_COST.h"
+# endif
 #endif
 
 c     == routine arguments ==
@@ -69,6 +75,7 @@ c     == routine arguments ==
 c     == local variables ==
 
       integer myiter
+#ifdef ECCO_CTRL_DEPRECATED
       integer bi,bj
       integer i,j,k
       integer ig,jg
@@ -76,7 +83,11 @@ c     == local variables ==
       integer jtlo,jthi
       integer jmin,jmax
       integer imin,imax
-
+      integer ilps, ils,ilt
+      integer locdayrec
+      logical intmp
+#endif
+      integer k
       logical first
       logical startofday
       logical startofmonth
@@ -88,13 +99,13 @@ c     == local variables ==
       logical endofday
       logical endofmonth
       logical endofyear
-      logical intmp
 #ifdef ALLOW_GENCOST_CONTRIBUTION
       logical startofgen(NGENCOST)
       logical endofgen(NGENCOST)
       logical ingen(NGENCOST)
       integer sum1gen(NGENCOST)
       integer genrec(NGENCOST)
+      integer kk
 #endif
 #if (defined (ALLOW_CTRL) && \
      defined (ALLOW_GENTIM2D_CONTROL) && \
@@ -103,8 +114,7 @@ c     == local variables ==
       INTEGER iarr
 #endif
 
-      integer ilps, ils,ilt
-      integer locdayrec
+#ifdef ECCO_CTRL_DEPRECATED
 
       character*(128) fnamepsbar
       character*(128) fnametbar
@@ -148,6 +158,8 @@ c     == end of interface ==
       imin = 1
       imax = snx
 
+#endif /* ECCO_CTRL_DEPRECATED */
+
       myiter = niter0 + INT((mytime-starttime)/deltaTClock+0.5)
 
 c--   Get the time flags and record numbers for the time averaging.
@@ -173,9 +185,11 @@ c--   Get the time flags and record numbers for the time averaging.
      I                    endofday,   endofmonth,   endofyear,
      O                    startofgen, endofgen,     ingen,
      O                    sum1gen,    genrec,
-     I                    mythid )
+     I                    myiter, mythid )
       call cost_gencost_customize( mythid )
 #endif
+
+#ifdef ECCO_CTRL_DEPRECATED
 
 #ifdef ALLOW_SSH_COST_CONTRIBUTION
       IF (using_cost_altim) THEN
@@ -232,6 +246,18 @@ c--   Get the time flags and record numbers for the time averaging.
      &     sum1day, dayrec, 1, mythid )
       ENDIF
 #endif
+
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+#ifdef ALLOW_DEBUG
+      IF ( debugMode )
+     &    CALL DEBUG_CALL('cost_averagesgeneric sigmaRbar',myThid)
+#endif
+      call cost_averagesgeneric(
+     &     sigmaRbarfile,
+     &     sigmaRbar, sigmaRfield, xx_sigmaRbar_mean_dummy,
+     &     first, last, startofmonth, endofmonth, inmonth,
+     &     sum1mon, monrec, nr, mythid )
+#endif /* ALLOW_SIGMAR_COST_CONTRIBUTION */
 
 #if (defined (ALLOW_THETA_COST_CONTRIBUTION) || \
      defined (ALLOW_CTDT_COST_CONTRIBUTION) || \
@@ -657,21 +683,39 @@ cmm   accumulate average
      &     sum1day, dayrec, 1, mythid )
 #endif
 
+#endif /* ECCO_CTRL_DEPRECATED */
+
 #ifdef ALLOW_GENCOST_CONTRIBUTION
-cph currently all assumed to be surface fields, i.e. 2-d
       do k = 1, NGENCOST
-      if ( (using_gencost(k)).AND.(gencost_barfile(k).ne.' ') ) then
-      call cost_averagesgeneric(
-     &     gencost_barfile(k),
-     &     gencost_barfld(1-Olx,1-Oly,1,1,k),
-     &     gencost_modfld(1-Olx,1-Oly,1,1,k),
-     &     xx_genbar_dummy(k),
-     &     first, last,
-     &     startofgen(k), endofgen(k), ingen(k),
-     &     sum1gen(k), genrec(k), 1, mythid )
+      if ( (using_gencost(k)).AND.(.NOT.gencost_barskip(k)) ) then
+      if ( .NOT.gencost_is3d(k) ) then
+        call cost_averagesgeneric(
+     &       gencost_barfile(k),
+     &       gencost_barfld(1-Olx,1-Oly,1,1,k),
+     &       gencost_modfld(1-Olx,1-Oly,1,1,k),
+     &       gencost_dummy(k),
+     &       first, last,
+     &       startofgen(k), endofgen(k), ingen(k),
+     &       sum1gen(k), genrec(k), 1, mythid )
+#ifdef ALLOW_GENCOST3D
+      else
+        kk=gencost_pointer3d(k)
+        call cost_averagesgeneric(
+     &       gencost_barfile(k),
+     &       gencost_bar3d(1-Olx,1-Oly,1,1,1,kk),
+     &       gencost_mod3d(1-Olx,1-Oly,1,1,1,kk),
+     &       gencost_dummy(k),
+     &       first, last,
+     &       startofgen(k), endofgen(k), ingen(k),
+     &       sum1gen(k), genrec(k), nr, mythid )
+#endif
+      endif
+
       endif
       end do
 #endif /* ALLOW_GENCOST_CONTRIBUTION */
+
+#ifdef ECCO_CTRL_DEPRECATED
 
 #ifdef ALLOW_TRANSPORT_COST_CONTRIBUTION
 c--   Currently hard-coded Florida Strait transport for 1x1 deg.
@@ -720,6 +764,8 @@ c--   Compute meridional heat transport
       call timer_stop ('cost_atlantic      [ECCO SPIN-DOWN]', mythid)
 #endif
 #endif
+
+#endif /* ECCO_CTRL_DEPRECATED */
 
 #ifdef ALLOW_DEBUG
       IF ( debugMode ) CALL DEBUG_LEAVE('cost_averagesfields',myThid)

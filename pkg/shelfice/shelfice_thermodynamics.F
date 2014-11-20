@@ -2,6 +2,12 @@ C $Header$
 C $Name$
 
 #include "SHELFICE_OPTIONS.h"
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
+#ifdef ALLOW_CTRL
+# include "CTRL_OPTIONS.h"
+#endif
 
 CBOP
 C     !ROUTINE: SHELFICE_THERMODYNAMICS
@@ -30,6 +36,7 @@ C     === Global variables ===
 #include "DYNVARS.h"
 #include "FFIELDS.h"
 #include "SHELFICE.h"
+#include "SHELFICE_COST.h"
 #ifdef ALLOW_AUTODIFF
 # include "CTRL_SIZE.h"
 # include "ctrl.h"
@@ -108,7 +115,7 @@ C     drKp1, recip_drLoc
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 #ifdef SHI_ALLOW_GAMMAFRICT
-#ifdef ALLOW_AUTODIFF_TAMC
+#ifdef ALLOW_AUTODIFF
 C     re-initialize here again, curtesy to TAF
       DO bj = myByLo(myThid), myByHi(myThid)
        DO bi = myBxLo(myThid), myBxHi(myThid)
@@ -120,7 +127,7 @@ C     re-initialize here again, curtesy to TAF
         ENDDO
        ENDDO
       ENDDO
-#endif /* ALLOW_AUTODIFF_TAMC */
+#endif /* ALLOW_AUTODIFF */
       IF ( SHELFICEuseGammaFrict ) THEN
 C     Implement friction velocity-dependent transfer coefficient
 C     of Holland and Jenkins, JPO, 1999
@@ -136,7 +143,7 @@ C     instead of etastar = sqrt(1+zetaN*ustar./(f*Lo*Rc))
        etastar = 1. _d 0
        gammaTurbConst  = 1. _d 0 / (2. _d 0 * shiZetaN*etastar)
      &      - recip_shiKarman
-#ifdef ALLOW_AUTODIFF_TAMC
+#ifdef ALLOW_AUTODIFF
        DO bj = myByLo(myThid), myByHi(myThid)
         DO bi = myBxLo(myThid), myBxHi(myThid)
          DO J = 1-OLy,sNy+OLy
@@ -147,7 +154,7 @@ C     instead of etastar = sqrt(1+zetaN*ustar./(f*Lo*Rc))
          ENDDO
         ENDDO
        ENDDO
-#endif /* ALLOW_AUTODIFF_TAMC */
+#endif /* ALLOW_AUTODIFF */
       ENDIF
 #endif /* SHI_ALLOW_GAMMAFRICT */
 
@@ -207,12 +214,15 @@ C     where this value is part of the protocol
         ENDDO
        ENDDO
       ENDDO
-      CALL CTRL_GET_GEN (
+#ifdef ALLOW_CTRL
+      if (useCTRL) CALL CTRL_GET_GEN (
      &     xx_shifwflx_file, xx_shifwflxstartdate, xx_shifwflxperiod,
      &     maskSHI, xx_shifwflx_loc, xx_shifwflx0, xx_shifwflx1,
      &     xx_shifwflx_dummy,
      &     xx_shifwflx_remo_intercept, xx_shifwflx_remo_slope,
+     &     wshifwflx,
      &     myTime, myIter, myThid )
+#endif
 #endif /* ALLOW_SHIFWFLX_CONTROL */
       DO bj = myByLo(myThid), myByHi(myThid)
        DO bi = myBxLo(myThid), myBxHi(myThid)

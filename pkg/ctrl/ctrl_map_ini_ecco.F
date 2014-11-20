@@ -36,6 +36,7 @@ c     ==================================================================
 
       implicit none
 
+#ifdef ECCO_CTRL_DEPRECATED
 c     == global variables ==
 
 #include "EEPARAMS.h"
@@ -44,20 +45,24 @@ c     == global variables ==
 #include "GRID.h"
 #include "DYNVARS.h"
 #include "FFIELDS.h"
-#include "CTRL_SIZE.h"
-#include "ctrl.h"
-#include "CTRL_FIELDS.h"
-#include "CTRL_GENARR.h"
-#include "ctrl_dummy.h"
-#include "optim.h"
+#ifdef ALLOW_CTRL
+# include "CTRL_SIZE.h"
+# include "ctrl.h"
+# include "CTRL_FIELDS.h"
+# include "CTRL_GENARR.h"
+# include "ctrl_dummy.h"
+# include "optim.h"
+#endif
 #ifdef ALLOW_ECCO
 # include "ecco_cost.h"
 #endif
+#endif /* ECCO_CTRL_DEPRECATED */
 
 c     == routine arguments ==
 
       integer mythid
 
+#ifdef ECCO_CTRL_DEPRECATED
 #ifdef ALLOW_ECCO
 c     == local variables ==
 
@@ -89,12 +94,6 @@ c     == end of interface ==
       jthi = mybyhi(mythid)
       itlo = mybxlo(mythid)
       ithi = mybxhi(mythid)
-
-      CALL ECCO_PHYS(mythid)
-#ifdef ALLOW_PSBAR_STERIC
-      RHOsumGlob_0=RHOsumGlob
-      VOLsumGlob_0=VOLsumGlob
-#endif
 
 c--   only do interior, and exchange at the end
       jmin = 1
@@ -220,10 +219,6 @@ c--   SSS relaxation coefficient.
       _EXCH_XY_RS( lambdaSaltClimRelax, mythid)
 #endif
 
-#ifdef ALLOW_SEAICE
-      call seaice_ctrl_map_ini( mythid )
-#endif
-
 #ifdef ALLOW_BOTTOMDRAG_CONTROL
       boundsVec(1)=0.
       boundsVec(2)=1. _d -4
@@ -310,6 +305,7 @@ c-- exchange UV:
 #endif
 
 #endif /* ALLOW_ECCO */
+#endif /* ECCO_CTRL_DEPRECATED */
 
       return
       end

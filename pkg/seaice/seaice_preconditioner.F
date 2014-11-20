@@ -70,7 +70,7 @@ C     du/vIce :: solution vector
       _RL dvIce(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 CEOP
 
-#ifdef SEAICE_ALLOW_JFNK
+#if (defined SEAICE_ALLOW_DYNAMICS && defined SEAICE_ALLOW_JFNK)
 C     !FUNCTIONS:
       LOGICAL  DIFFERENT_MULTIPLE
       EXTERNAL DIFFERENT_MULTIPLE
@@ -517,8 +517,8 @@ C     contribution to the rhs part of grad(sigma)_x
      &       - _dxV(I  ,J  ,bi,bj)*sig12(I  ,J  ) )
        ENDDO
       ENDDO
-      IF ( fricFac+coriFac .NE. 0. _d 0 ) THEN
 C     neglected for preconditioning step
+      IF ( fricFac+coriFac .NE. 0. _d 0 ) THEN
        DO J=jMin,jMax
         DO I=iMin,iMax
          rhsU(I,J,bi,bj) = rhsU(I,J,bi,bj)

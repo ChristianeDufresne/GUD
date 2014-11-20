@@ -33,6 +33,9 @@ c#endif
 #ifdef ALLOW_CTRL
 # include "CTRL_OPTIONS.h"
 #endif
+c#ifdef ALLOW_ECCO
+c# include "ECCO_OPTIONS.h"
+c#endif
 
 CBOP
 C     !ROUTINE: MAIN_DO_LOOP
@@ -137,6 +140,7 @@ c# endif
 #  include "ctrl.h"
 #  include "ctrl_dummy.h"
 #  include "CTRL_GENARR.h"
+#  include "CTRL_OBCS.h"
 # endif
 # ifdef ALLOW_COST
 #  include "cost.h"

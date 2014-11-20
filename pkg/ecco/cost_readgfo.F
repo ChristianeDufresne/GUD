@@ -27,6 +27,7 @@ c     ==================================================================
 
 c     == global variables ==
 
+#ifdef ALLOW_SSH_GFOANOM_COST_CONTRIBUTION
 #include "EEPARAMS.h"
 #include "SIZE.h"
 #include "PARAMS.h"
@@ -34,6 +35,7 @@ c     == global variables ==
 
 #include "cal.h"
 #include "ecco_cost.h"
+#endif
 
 c     == routine arguments ==
 
@@ -160,7 +162,11 @@ c read data:
                 gfomask(i,j,bi,bj) = 0. _d 0
               endif
 #endif
-
+#ifndef ALLOW_HIGHLAT_ALTIMETRY
+              if ( abs(YC(i,j,bi,bj)) .GT. 66. ) then
+                gfomask(i,j,bi,bj) = 0. _d 0
+              endif
+#endif
               gfomask(i,j,bi,bj) = gfomask(i,j,bi,bj)*frame(i,j)
               gfoobs(i,j,bi,bj)  = gfomask(i,j,bi,bj)*factor*
      &             ( gfoobs(i,j,bi,bj) -

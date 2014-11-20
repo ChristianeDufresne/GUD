@@ -5,6 +5,9 @@ C $Name$
 #ifdef ALLOW_EXF
 # include "EXF_OPTIONS.h"
 #endif
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
 
 CBOP
 C     !ROUTINE: SEAICE_REG_RIDGE
@@ -15,12 +18,12 @@ C     *=================================================================*
 C     | SUBROUTINE seaice_reg_ridge
 C     | o this routine has two purposes:
 C     |   (1) clean up after advection (undershoots etc.);
-C     |       after advection, the sea ice variables may have unphysical 
-C     |       values, e.g. < 0 or very thin ice, that are regularized 
-C     |       here. 
+C     |       after advection, the sea ice variables may have unphysical
+C     |       values, e.g. < 0 or very thin ice, that are regularized
+C     |       here.
 C     |   (2) driver for ice ridging;
 C     |       concentration as a special case may be > 1 in convergent
-C     |       motion and a ridging algorithm redistributes the ice to 
+C     |       motion and a ridging algorithm redistributes the ice to
 C     |       limit the concentration to 1.
 C     | o called after S/R seaice_advdiff
 C     *=================================================================*
@@ -96,8 +99,8 @@ C
      &                       + act4*max1*max2*max3
 #endif /* ALLOW_AUTODIFF_TAMC */
 
-        DO J=1-Oly,sNy+Oly
-         DO I=1-Olx,sNx+Olx
+        DO J=1-OLy,sNy+OLy
+         DO I=1-OLx,sNx+OLx
           d_HEFFbyNEG(I,J,bi,bj)    = 0.0 _d 0
           d_HSNWbyNEG(I,J,bi,bj)    = 0.0 _d 0
 #ifdef EXF_SEAICE_FRACTION
@@ -109,7 +112,6 @@ C
 #endif /* SEAICE_VARIABLE_SALINITY */
          ENDDO
         ENDDO
-
 
 C =====================================================================
 C ========== PART 1: treat pathological cases (post advdiff) ==========
@@ -153,7 +155,7 @@ C           d_HEFFbyRLX(i,j,bi,bj) = 1. _d 1 * siEps * d_AREAbyRLX(i,j,bi,bj)
 C--   (1) treat the case of negative values:
 
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
            tmpscal1=0. _d 0
@@ -170,6 +172,9 @@ C     by calling SEAICE_ITD_SUM
           ENDDO
          ENDDO
         ENDDO
+C     update mean thicknesses HEFF and HSNOW and total ice
+C     concentration AREA to match single category values
+        CALL SEAICE_ITD_SUM   ( bi, bj, myTime, myIter, myThid )
 #else /* ndef SEAICE_ITD */
 #ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE heff(:,:,bi,bj)  = comlev1_bibj, key = iicekey,byte=isbyte
@@ -190,25 +195,22 @@ CADJ STORE area(:,:,bi,bj)  = comlev1_bibj, key = iicekey,byte=isbyte
 C--   (2) treat the case of very thin ice:
 
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+C     Here we risk that even though HEFF may be larger than siEps (=1e-5)
+C     HEFFITD can have classes with very small (< siEps) non-zero ice volume.
+C     We avoid applying the correction to each class because that leads to
+C     funny structures in the net heat and freshwater flux into the ocean.
+C     Let us keep our fingers crossed, that the model will be benign!
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
-           tmpscal1=0. _d 0
-           tmpscal2=0. _d 0
-           IF (HEFFITD(I,J,IT,bi,bj).LE.siEps) THEN
-            tmpscal1=-HEFFITD(I,J,IT,bi,bj)
-            tmpscal2=-HSNOWITD(I,J,IT,bi,bj)
-            TICES(I,J,IT,bi,bj)=celsius2K
-C     TICE will be updated at end of Part 1 together with AREA and HEFF
+           IF (HEFF(I,J,bi,bj).LE.siEps) THEN
+            HEFFITD(I,J,IT,bi,bj) = 0. _d 0
+            HSNOWITD(I,J,IT,bi,bj) = 0. _d 0
            ENDIF
-           HEFFITD(I,J,IT,bi,bj) =HEFFITD (I,J,IT,bi,bj) + tmpscal1
-           HSNOWITD(I,J,IT,bi,bj)=HSNOWITD(I,J,IT,bi,bj) + tmpscal2
-           d_HEFFbyNEG(I,J,bi,bj)=d_HEFFbyNEG(I,J,bi,bj) + tmpscal1
-           d_HSNWbyNEG(I,J,bi,bj)=d_HSNWbyNEG(I,J,bi,bj) + tmpscal2
           ENDDO
          ENDDO
         ENDDO
-#else /* ndef SEAICE_ITD */
+#endif /* SEAICE_ITD */
 #ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE heff(:,:,bi,bj)  = comlev1_bibj, key = iicekey,byte=isbyte
 #endif /* ALLOW_AUTODIFF_TAMC */
@@ -229,12 +231,11 @@ CADJ STORE heff(:,:,bi,bj)  = comlev1_bibj, key = iicekey,byte=isbyte
           d_HSNWbyNEG(I,J,bi,bj)=d_HSNWbyNEG(I,J,bi,bj)+tmpscal2
          ENDDO
         ENDDO
-#endif /* SEAICE_ITD */
 
 C--   (3) treat the case of area but no ice/snow:
 
 #ifdef SEAICE_ITD
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
            IF ( (HEFFITD(I,J,IT,bi,bj) .EQ.0. _d 0).AND.
@@ -260,14 +261,14 @@ C--   (4) treat the case of very small area:
 
 #ifndef DISABLE_AREA_FLOOR
 #ifdef SEAICE_ITD
-        recip_nitd = 1. _d 0 / float(nITD)
-        DO IT=1,nITD
+        recip_nitd = 1. _d 0 / float(SEAICE_multDim)
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
            IF ((HEFFITD(I,J,IT,bi,bj).GT.0).OR.
      &          (HSNOWITD(I,J,IT,bi,bj).GT.0)) THEN
-C     SEAICE_area_floor*nITD cannot be allowed to exceed 1
-C     hence use SEAICE_area_floor devided by nITD
+C     SEAICE_area_floor*SEAICE_multDim cannot be allowed to exceed 1
+C     hence use SEAICE_area_floor devided by SEAICE_multDim
 C     (or install a warning in e.g. seaice_readparms.F)
             AREAITD(I,J,IT,bi,bj)=
      &        MAX(AREAITD(I,J,IT,bi,bj),SEAICE_area_floor*recip_nitd)
@@ -323,7 +324,7 @@ C     catch up with item (2) that involves category sums AREA and HEFF
           tmpscal3itd(i,j) = 0. _d 0
          ENDDO
         ENDDO
-        DO IT=1,nITD
+        DO IT=1,SEAICE_multDim
          DO J=1,sNy
           DO I=1,sNx
 C     TICES was changed above (item 2), now update TICE as ice volume
@@ -356,7 +357,7 @@ C     Thorndyke et al. (1975), Hibler (1980)
 C     check that all ice thickness categories meet their limits
 C     (includes Hibler-type ridging)
         CALL SEAICE_ITD_REDIST( bi, bj, myTime, myIter, myThid )
-C     update mean thicknesses HEFF and HSNOW and total ice 
+C     update mean thicknesses HEFF and HSNOW and total ice
 C     concentration AREA to match single category values
         CALL SEAICE_ITD_SUM   ( bi, bj, myTime, myIter, myThid )
 
@@ -374,7 +375,7 @@ C     save pre-ridging ice concentration for diagnostics
 #ifdef ALLOW_SITRACER
           SItrAREA(I,J,bi,bj,1)=AREA(I,J,bi,bj)
 #endif /*  ALLOW_SITRACER */
-C     this is the simple Hibler (1979)-type ridging (capping of 
+C     this is the simple Hibler (1979)-type ridging (capping of
 C     concentrations > 1) for the non-ITD sea ice model
           AREA(I,J,bi,bj)=MIN(AREA(I,J,bi,bj),SEAICE_area_max)
          ENDDO

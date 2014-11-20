@@ -2,6 +2,9 @@ C $Header$
 C $Name$
 
 #include "SEAICE_OPTIONS.h"
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
 
 CBOP
 C !ROUTINE: SEAICE_DO_RIDGING
@@ -68,7 +71,7 @@ C     hrExp      :: ridge e-folding scale (SEAICEredistFunc = 1)
       _RL hrExp           (1-OLx:sNx+OLx,1-OLy:sNy+OLy,1:nITD)
       _RL ridgeRatio      (1-OLx:sNx+OLx,1-OLy:sNy+OLy,1:nITD)
 C     computed and returned by S/R seaice_prepare_ridging, but not needed here
-      _RL hActual         (1-OLx:sNx+OLx,1-OLy:sNy+OLy,1:nITD) 
+      _RL hActual         (1-OLx:sNx+OLx,1-OLy:sNy+OLy,1:nITD)
 C
       _RL openWater       (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL netArea         (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
@@ -83,19 +86,20 @@ C     amount of ice that participates in ridging (according to partFunc)
 C     fractions of deformed/ridged ice
       _RL areaFraction    (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL volFraction     (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
-      _RL areaScaling     (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
 C     absolute area/concentration of deformed/ridged ice
       _RL ridgedArea      (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       LOGICAL doRidging   (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       LOGICAL doRidgeAgain, areaTooLarge
 C
       _RL recip_deltaT, convergence, divergence, shear, divAdv
-      _RL ridgingIce
       _RL tmp, tmpFac, hL, hR, expL, expR
-      _RL areaPR          (1-OLx:sNx+OLx,1-OLy:sNy+OLy,1:nITD) 
+      _RL areaPR          (1-OLx:sNx+OLx,1-OLy:sNy+OLy,1:nITD)
+      _RL heffPR          (1-OLx:sNx+OLx,1-OLy:sNy+OLy,1:nITD)
+      _RL hsnwPR          (1-OLx:sNx+OLx,1-OLy:sNy+OLy,1:nITD)
+C
+      CHARACTER*(MAX_LEN_MBUF) msgBuf
 #endif /* SEAICE_ITD */
 CEOP
-
 
 C---+-|--1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
@@ -103,7 +107,7 @@ C---+-|--1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
       iMax=sNx
       jMin=1
       jMax=sNy
-#ifndef SEAICE_ITD 
+#ifndef SEAICE_ITD
 C     Hiblers "ridging function" for single category ice
       DO j=jMin,jMax
        DO i=iMin,iMax
@@ -128,7 +132,7 @@ C     calculate area of open water
 C--   Hibler-type "ridging", i.e. cut back excessive ice area fraction ---
 C     in case ice concentration exceeds 100% assume that
 C     convergence of floe field has eliminated all open water
-C     and eventual rafting occured in thinnest category:      
+C     and eventual rafting occured in thinnest category:
        DO j=jMin,jMax
         DO i=iMin,iMax
          IF (openWater(i,j) .lt. 0.0)
@@ -146,6 +150,7 @@ C     initialisation
         areaFraction(i,j)      = 0. _d 0
         volFraction(i,j)       = 0. _d 0
         fw2ObyRidge(i,j,bi,bj) = 0. _d 0
+        ridgedArea(i,j)        = 0. _d 0
        ENDDO
       ENDDO
       CALL SEAICE_PREPARE_RIDGING(
@@ -163,7 +168,7 @@ C     energy dissipation by shearing    = (1/2) * (Delta - abs(divergence))
         closingRate(i,j) = SEAICEshearParm*shear + convergence
        ENDDO
       ENDDO
-C     we need a new estimate of the total AREA (including the open water 
+C     we need a new estimate of the total AREA (including the open water
 C     fraction, but for computational reason it is not included here)
       DO j=jMin,jMax
        DO i=iMin,iMax
@@ -180,13 +185,15 @@ C     fraction, but for computational reason it is not included here)
       recip_DeltaT = 1. _d 0/SEAICE_deltaTtherm
       DO j=jMin,jMax
        DO i=iMin,iMax
-C     divergence rate due to advection; this term need not be zero due 
-C     to numerical effects 
+C     divergence rate due to advection; this term need not be zero due
+C     to numerical effects
 C     (this is copied from CICE but I am not sure about that)
         divAdv = (1. _d 0-netArea(i,j)-opnWtrFrac(i,j,bi,bj))
      &       *recip_deltaT
-        IF (divAdv .LT. 0. _d 0) 
+        IF (divAdv .LT. 0. _d 0)
      &       closingRate(i,j) = MAX(closingRate(i,j), -divAdv)
+C     finally compute a non-negative opening rate that will lead to
+C     a net area of 1
         openingRate(i,j) = closingRate(i,j) + divAdv
        ENDDO
       ENDDO
@@ -201,13 +208,15 @@ C     save pre-ridging ice concentration and ridged ice volume
        DO j=jMin,jMax
         DO i=iMin,iMax
          areaPR(i,j,k) = AREAITD(i,j,k,bi,bj)
-C        ridgeFrac(i,j,k) = 0. _d 0 
+         heffPR(i,j,k) = HEFFITD(i,j,k,bi,bj)
+         hsnwPR(i,j,k) = HSNOWITD(i,j,k,bi,bj)
+C        ridgeFrac(i,j,k) = 0. _d 0
 C        IF (HEFFITD(i,j,k,bi,bj) .GT. 0. _d 0 )
 C   &     ridgeFrac(i,j,k) = ridgedHeff/HEFF
         ENDDO
        ENDDO
       ENDDO
-C     
+C
       DO j=jMin,jMax
        DO i=iMin,iMax
 C     Based on the ITD of ridging and ridged ice, convert the net
@@ -230,7 +239,7 @@ C     reduce rates in case more than 100% of open water would be removed
        DO j=jMin,jMax
         DO i=iMin,iMax
 C     reduce rates in case more than 100% of any ice categroy would be removed
-         IF ( areaPR(i,j,k) > SEAICE_area_reg 
+         IF ( areaPR(i,j,k) .GT. SEAICE_area_reg
      &        .AND. partFunc(i,j,k) .GT. 0. _d 0 ) THEN
           tmp = partFunc(i,j,k)*grossClosing(i,j)
           IF ( tmp .GT. AREAITD(i,j,k,bi,bj) ) THEN
@@ -244,38 +253,16 @@ C     reduce rates in case more than 100% of any ice categroy would be removed
       ENDDO
 C
 C     start redistribution
-C       
+C
       DO j=jMin,jMax
        DO i=iMin,iMax
 C     open water first
-        opnWtrFrac(i,j,bi,bj) = opnWtrFrac(i,j,bi,bj) 
+        opnWtrFrac(i,j,bi,bj) = opnWtrFrac(i,j,bi,bj)
      &       - partFunc(i,j,0)*grossClosing(i,j)
      &       + openingRate(i,j)*SEAICE_deltaTtherm
-       ENDDO
-      ENDDO
-C     need to catch openWater < 0 properly
-C     
-C     After reducing the open water fraction new net area = opnWtrFrac 
-C     + sum(AREAITD) may still be larger than one. If this is the case,
-C     the ridged ice that is taken away from category k is still distributed
-C     to categories l, but the distributed area should be reduced so that 
-C     the net area after ridging equals one (or SEAICE_area_max):
-C     opnWtrFrac+sum(AREAITD) - ridgingIce + ridgedIce/Norm = 1
-C     since ridgingIce = ridgedIce, the latter does not need to be computed
-C     and 
-C     1/Norm = 1 - (opnWtrFrac+sum(AREAITD)-1)/ridgingIce
-      DO j=jMin,jMax
-       DO i=iMin,iMax
-        areaScaling(i,j) = 1. _d 0
-C     use divAdv again as a temporary variable now with a different sign
-        divAdv = netArea(i,j) + opnWtrFrac(i,j,bi,bj) - 1. _d 0
-        ridgingIce = grossClosing(i,j)*(1. _d 0 - partFunc(i,j,0))
-        areaTooLarge = divAdv .GT. 0. _d 0 
-     &       .AND. netArea(i,j) .GT. SEAICE_area_reg
-     &       .AND. ridgingIce .GT. 0. _d 0
-CML        IF ( SEAICE_area_max .LT. 1. _d 0 )
-CML     &       areaTooLarge = areaTooLarge.OR.netArea(i,j).GT.SEAICE_area_max 
-        IF (areaTooLarge) areaScaling(i,j) = 1. _d 0 - divAdv/ridgingIce
+C     need to catch openWater << 0 properly
+C     negative open water it not allowed
+        opnWtrFrac(i,j,bi,bj) = MAX( 0. _d 0, opnWtrFrac(i,j,bi,bj) )
        ENDDO
       ENDDO
 C
@@ -284,7 +271,7 @@ C     need to catch partFunc*grossClosing > AREAITD (or areaPR)
        DO j=jMin,jMax
         DO i=iMin,iMax
          doRidging(i,j) = areaPR(i,j,k) .GT. SEAICE_area_reg
-     &        .AND. partFunc(i,j,k) .GT. 0. _d 0 
+     &        .AND. partFunc(i,j,k) .GT. 0. _d 0
      &        .AND. grossClosing(i,j) .GT. 0. _d 0
      &        .AND. HEFFM(i,j,bi,bj) .GT. 0. _d 0
 C     this would be safety catch only
@@ -293,19 +280,19 @@ C     &        .AND. netArea(i,j) .GT. 1. _d 0
 CML          ridgingArea(i,j) = MIN(partFunc(i,j,k)*grossClosing(i,j),
 CML     &         areaPR(i,j,k))
           ridgingArea(i,j) = partFunc(i,j,k)*grossClosing(i,j)
-          IF ( ridgingArea(i,j)>areaPR(i,j,k) ) THEN
+          IF ( ridgingArea(i,j) .GT. areaPR(i,j,k) ) THEN
            ridgingArea(i,j) = areaPR(i,j,k)
           ENDIF
           areaFraction(i,j) = ridgingArea(i,j)/areaPR(i,j,k)
           ridgedArea(i,j)   = ridgingArea(i,j)/ridgeRatio(i,j,k)
 C     compute ice volume (HEFF) and snow volume to be removed from this
 C     ridging category
-          ridgingHEFF(i,j) =  HEFFITD(i,j,k,bi,bj) * areaFraction(i,j)
-          ridgingHsnw(i,j) = HSNOWITD(i,j,k,bi,bj) * areaFraction(i,j)
+          ridgingHEFF(i,j) = heffPR(i,j,k) * areaFraction(i,j)
+          ridgingHsnw(i,j) = hsnwPR(i,j,k) * areaFraction(i,j)
 C     part of the snow mass is pushed into the ocean during ridging;
-C     this freshwater flux will be added to the net feshwater flux into 
+C     this freshwater flux will be added to the net feshwater flux into
 C     the ocean in seaice_growth
-          fw2ObyRidge(i,j,bi,bj) = fw2ObyRidge(i,j,bi,bj) 
+          fw2ObyRidge(i,j,bi,bj) = fw2ObyRidge(i,j,bi,bj)
      &         + SEAICE_rhoSnow*ridgingHsnw(i,j)
      &         *(1. _d 0 - SEAICEsnowFracRidge)
 C     reduce the snow volume that is left for redistribution
@@ -318,9 +305,11 @@ C     this ridging category
          ENDIF
         ENDDO
        ENDDO
-C     inner loop over categories: distribute what has been removed from the 
+C     inner loop over categories: distribute what has been removed from the
 C     kth category to all categories according to area/volFraction
        DO l=1,nITD
+C     initialising these is essential, because here the ridging-mask doRidging
+C     to area/volFraction, and applied via these fields
         DO j=jMin,jMax
          DO i=iMin,iMax
           areaFraction(i,j) = 0. _d 0
@@ -342,11 +331,11 @@ CML             hR = 0. _d 0
             ELSE
              hL = MAX(hrMin(i,j,k), hLimit(l-1))
              hR = MIN(hrMax(i,j,k), hLimit(l))
-             areaFraction(i,j) = ( hR - hL ) 
+             areaFraction(i,j) = ( hR - hL )
      &            / ( hrMax(i,j,k) - hrMin(i,j,k) )
-CML             volFraction (i,j) = ( hR*hR - hL*hL ) 
+CML             volFraction (i,j) = ( hR*hR - hL*hL )
 CML     &            / ( hrMax(i,j,k)**2 - hrMin(i,j,k)**2 )
-             volFraction (i,j) = areaFraction(i,j)*( hR + hL ) 
+             volFraction (i,j) = areaFraction(i,j)*( hR + hL )
      &            / ( hrMax(i,j,k) + hrMin(i,j,k) )
             ENDIF
            ENDIF
@@ -358,8 +347,8 @@ C     decaying function, see also s/r seaice_prepare_ridging.
          IF ( l.LT.nITD ) THEN
           DO j=jMin,jMax
            DO i=iMin,iMax
-            IF ( doRidging(i,j) 
-     &           .AND. hrMin(i,j,k) .LT. hLimit(l) 
+            IF ( doRidging(i,j)
+     &           .AND. hrMin(i,j,k) .LT. hLimit(l)
      &           .AND. hrExp(i,j,k) .NE. 0. _d 0 ) THEN
              hL   = MAX( hrMin(i,j,k), hLimit(l-1) )
              hR   = hLimit(l)
@@ -386,16 +375,16 @@ C     decaying function, see also s/r seaice_prepare_ridging.
            ENDDO
           ENDDO
          ENDIF
-        ENDIF 
-C     after computing the fraction ridged ice for this category, apply it 
+        ENDIF
+C     after computing the fraction ridged ice for this category, apply it
         DO j=jMin,jMax
          DO i=iMin,iMax
           AREAITD(i,j,l,bi,bj) = AREAITD(i,j,l,bi,bj)
-     &         +areaFraction(i,j)*ridgingArea(i,j)*areaScaling(i,j)
+     &         +areaFraction(i,j)*ridgedArea(i,j)
           HEFFITD(i,j,l,bi,bj) = HEFFITD(i,j,l,bi,bj)
      &         +volFraction(i,j)*ridgingHeff(i,j)
           HSNOWITD(i,j,l,bi,bj) = HSNOWITD(i,j,l,bi,bj)
-     &         +volFraction(i,j)*ridgingHsnw(i,j)
+     &         +volFraction(i,j)*ridgingHsnw(i,j)*SEAICEsnowFracRidge
          ENDDO
         ENDDO
 C     category l-loop
@@ -416,7 +405,6 @@ C     we need a new estimate of the total AREA
         ENDDO
        ENDDO
       ENDDO
-      doRidging(i,j) = .FALSE.
       doRidgeAgain   = .FALSE.
       DO j=jMin,jMax
        DO i=iMin,iMax
@@ -426,12 +414,37 @@ C     we need a new estimate of the total AREA
          doRidging(i,j) = .TRUE.
          doRidgeAgain   = .TRUE.
          divAdv = (1. _d 0-tmp)*recip_deltaT
-         closingRate(I,J) = MAX( 0.D0, -divAdv)
-         openingRate(I,J) = MAX( 0.D0,  divAdv)
+         closingRate(i,j) = MAX( 0. _d 0, -divAdv)
+         openingRate(i,j) = MAX( 0. _d 0,  divAdv)
+        ELSE
+C     set to zero avoid going through this grid point again
+         closingRate(i,j) = 0. _d 0
+         openingRate(i,j) = 0. _d 0
+         doRidging(i,j)   = .FALSE.
         ENDIF
        ENDDO
       ENDDO
+      IF ( doRidgeAgain .AND. n.GE.SEAICEridgingIterMax ) THEN
+C     some debugging information
+       WRITE(msgBuf,'(A)') 'SEAICE_DO_RIDGING: *** WARNING ***'
+       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &      SQUEEZE_RIGHT, myThid )
+       WRITE(msgBuf,'(A,I2,A)') 'SEAICE_DO_RIDGING: '//
+     &      'did not converge in SEAICEridgingIterMax = ',
+     &      SEAICEridgingIterMax, ' iterations.'
+       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &      SQUEEZE_RIGHT, myThid )
+CML       CALL PRINT_ERROR( msgBuf, myThid )
+      ENDIF
       doRidgeAgain = doRidgeAgain .AND. n.LT.SEAICEridgingIterMax
+      IF ( doRidgeAgain .AND. debugLevel .GE. debLevA ) THEN
+C     some debugging information
+       WRITE(msgBuf,'(A,I2,A,I10)')
+     &      'SEAICE_DO_RIDGING: Repeat ridging after iteration ',
+     &      n, ' in timestep ', myIter
+       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &      SQUEEZE_RIGHT, myThid )
+      ENDIF
       IF ( doRidgeAgain ) CALL SEAICE_PREPARE_RIDGING(
      O     hActual,
      O     hrMin, hrMax, hrExp, ridgeRatio, ridgingModeNorm, partFunc,
@@ -443,8 +456,8 @@ C     .not. SEAICEsimpleRidging
       ENDIF
 #endif /* SEAICE_ITD */
 
-C     after ridging is complete, the critical variables need to be 
-C     regularized and checked for consistency. This is done in a separate 
+C     after ridging is complete, the critical variables need to be
+C     regularized and checked for consistency. This is done in a separate
 C     routine
 CML      CALL SEAICE_REGULARIZE( bi, bj, myTime, myIter, myThid )
 

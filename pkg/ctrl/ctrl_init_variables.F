@@ -25,14 +25,18 @@ c     == global variables ==
 #include "EEPARAMS.h"
 #include "SIZE.h"
 #include "PARAMS.h"
-c#include "GRID.h"
-c#include "DYNVARS.h"
-#include "ctrl.h"
-#include "CTRL_FIELDS.h"
+#ifdef ALLOW_CTRL
+# include "CTRL_SIZE.h"
+# include "ctrl.h"
+# include "CTRL_FIELDS.h"
+# include "CTRL_GENARR.h"
+#endif
 
 c     == routine arguments ==
 
       integer myThid
+
+#ifdef ALLOW_CTRL
 
 c     == local variables ==
 
@@ -360,6 +364,65 @@ c     == end of interface ==
 #ifdef ALLOW_OBCS_CONTROL
       IF (useOBCS) CALL CTRL_INIT_OBCS_VARIABLES( myThid )
 #endif
+
+C--   Map the control variables onto the model state.
+C-    Needs to be called after few {PKG}_init_varia (e.g., PTRACERS_INIT_VARIA)
+      IF ( .NOT. ctrlUseGen ) THEN
+# ifdef ALLOW_ECCO
+#  ifdef ALLOW_DEBUG
+      IF (debugMode) CALL DEBUG_CALL('CTRL_MAP_INI_ECCO',myThid)
+#  endif
+      CALL CTRL_MAP_INI_ECCO( myThid )
+# else
+#  ifdef ALLOW_DEBUG
+      IF (debugMode) CALL DEBUG_CALL('CTRL_MAP_INI',myThid)
+#  endif
+      CALL CTRL_MAP_INI( myThid )
+# endif
+      ENDIF !IF ( .NOT. ctrlUseGen ) THEN
+
+      IF ( ctrlUseGen ) THEN
+#if (defined (ALLOW_GENARR2D_CONTROL) || defined (ALLOW_GENARR3D_CONTROL))
+      CALL CTRL_MAP_INI_GENARR( myThid )
+#endif
+
+#ifdef ALLOW_GENTIM2D_CONTROL
+      do bj = jtlo,jthi
+        do bi = itlo,ithi
+          do k=1,maxCtrlTim2D
+            objf_gentim2d(bi,bj,k)    = 0. _d 0
+            num_gentim2d(bi,bj,k)    = 0. _d 0
+          enddo
+        enddo
+      enddo
+#endif
+#ifdef ALLOW_GENARR2D_CONTROL
+      do bj = jtlo,jthi
+        do bi = itlo,ithi
+          do k=1,maxCtrlArr2D
+            objf_genarr2d(bi,bj,k)    = 0. _d 0
+            num_genarr2d(bi,bj,k)    = 0. _d 0
+          enddo
+        enddo
+      enddo
+#endif
+#ifdef ALLOW_GENARR3D_CONTROL
+      do bj = jtlo,jthi
+        do bi = itlo,ithi
+          do k=1,maxCtrlArr3D
+            objf_genarr3d(bi,bj,k)    = 0. _d 0
+            num_genarr3d(bi,bj,k)    = 0. _d 0
+          enddo
+        enddo
+      enddo
+#endif
+      ENDIF !IF ( .NOT. ctrlUseGen ) THEN
+
+#ifdef ALLOW_SEAICE
+      CALL SEAICE_CTRL_MAP_INI( myThid )
+#endif
+
+#endif /* ALLOW_CTRL */
 
       RETURN
       END

@@ -16,6 +16,9 @@ C ********************************************************************
 C ***                         ECCO Package                         ***
 C ********************************************************************
 
+C allow use of legacy ecco/ctrl codes
+#define ECCO_CTRL_DEPRECATED
+
 cph >>>>>> !!!!!! SPECIAL SEAICE FLAG FOR TESTING !!!!!! <<<<<<
 cph#define  SEAICE_EXCLUDE_FOR_EXACT_AD_TESTING
 cph >>>>>> !!!!!! SPECIAL SEAICE FLAG FOR TESTING !!!!!! <<<<<<
@@ -122,12 +125,6 @@ c       >>> Make sure that ALLOW_OBCS is defined
       defined (ALLOW_OBCSE_COST_CONTRIBUTION))
 #  define ALLOW_OBCS_COST_CONTRIBUTION
 # endif
-
-c       >>> Sea-ice volume
-# undef ALLOW_COST_ICE
-
-c       >>> Sea-ice misfit to obs
-# define ALLOW_SEAICE_COST_SMR_AREA
 
 C ********************************************************************
 C ***               Control vector Package                         ***

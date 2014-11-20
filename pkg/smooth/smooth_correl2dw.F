@@ -5,6 +5,9 @@ C $Name$
 #ifdef ALLOW_CTRL
 # include "CTRL_OPTIONS.h"
 #endif
+#ifdef ALLOW_ECCO
+# include "ECCO_OPTIONS.h"
+#endif
 
       subroutine smooth_correl2Dw (
      U     fld_in,mask_in,xx_gen_file,mythid)
@@ -22,12 +25,12 @@ C     *==========================================================*
 #include "GRID.h"
 #include "PARAMS.h"
 #include "SMOOTH.h"
-#ifdef ALLOW_CTRL
+#if (defined (ALLOW_CTRL) && defined (ECCO_CTRL_DEPRECATED))
 # include "ctrl.h"
 # include "CTRL_SIZE.h"
 # include "CTRL_GENARR.h"
 #endif
-#ifdef ALLOW_ECCO
+#if (defined (ALLOW_ECCO) && defined (ECCO_CTRL_DEPRECATED))
 # include "ecco_cost.h"
 #endif
 
@@ -35,6 +38,8 @@ C     *==========================================================*
       _RL fld_in(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       character*(MAX_LEN_FNAM) xx_gen_file
       integer myThid
+
+#ifdef ECCO_CTRL_DEPRECATED
 
 # if (defined ALLOW_CTRL) || (defined ALLOW_ECCO)
 
@@ -129,5 +134,7 @@ C     *==========================================================*
      &       'WARNING: no weights found for ',xx_gen_file
 
 #endif /* ALLOW_ECCO or ALLOW_CTRL */
+
+#endif /* ECCO_CTRL_DEPRECATED */
        
       end

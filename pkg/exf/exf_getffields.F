@@ -2,6 +2,12 @@ C $Header$
 C $Name$
 
 #include "EXF_OPTIONS.h"
+#ifdef ALLOW_CTRL
+# include "CTRL_OPTIONS.h"
+#endif
+#ifdef ALLOW_ECCO
+# include "ECCO_OPTIONS.h"
+#endif
 
       SUBROUTINE EXF_GETFFIELDS( myTime, myIter, myThid )
 
@@ -32,10 +38,16 @@ C     == global variables ==
 #include "EXF_FIELDS.h"
 #include "EXF_CONSTANTS.h"
 
-#ifdef ALLOW_AUTODIFF
+#ifdef ALLOW_CTRL
 # include "CTRL_SIZE.h"
 # include "ctrl.h"
 # include "ctrl_dummy.h"
+# ifdef ALLOW_GENTIM2D_CONTROL
+#  include "CTRL_GENARR.h"
+# endif
+#endif
+#if (defined (ALLOW_ECCO) && defined (ECCO_CTRL_DEPRECATED))
+#  include "ecco_cost.h"
 #endif
 
 C     == routine arguments ==
@@ -50,6 +62,10 @@ C     == local variables ==
       _RL     tmpVN(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nsx,nsy)
       _RL     tmpUX(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nsx,nsy)
       _RL     tmpVY(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nsx,nsy)
+#endif
+#if (defined (ALLOW_CTRL) && \
+     defined (ALLOW_GENTIM2D_CONTROL))
+      INTEGER iarr
 #endif
 
 C     == end of interface ==
@@ -375,14 +391,18 @@ C     Runoff temperature
      &     myTime, myIter, myThid )
 #endif /* ALLOW_RUNOFTEMP */
 
+# if (!defined (ALLOW_ECCO) || defined (ECCO_CTRL_DEPRECATED))
+
 C-- Control variables for atmos. state
+#ifdef ALLOW_CTRL
+      if (.NOT.ctrlUseGen) then
 
 #ifdef ALLOW_ATEMP_CONTROL
       CALL CTRL_GET_GEN (
      &     xx_atemp_file, xx_atempstartdate, xx_atempperiod,
      &     maskc, atemp, xx_atemp0, xx_atemp1, xx_atemp_dummy,
      &     xx_atemp_remo_intercept, xx_atemp_remo_slope,
-     &     myTime, myIter, myThid )
+     &     watemp, myTime, myIter, myThid )
 #endif
 
 #ifdef ALLOW_AQH_CONTROL
@@ -390,7 +410,7 @@ C-- Control variables for atmos. state
      &     xx_aqh_file, xx_aqhstartdate, xx_aqhperiod,
      &     maskc, aqh, xx_aqh0, xx_aqh1, xx_aqh_dummy,
      &     xx_aqh_remo_intercept, xx_aqh_remo_slope,
-     &     myTime, myIter, myThid )
+     &     waqh, myTime, myIter, myThid )
 #endif
 
 #ifdef ALLOW_PRECIP_CONTROL
@@ -398,15 +418,7 @@ C-- Control variables for atmos. state
      &     xx_precip_file, xx_precipstartdate, xx_precipperiod,
      &     maskc, precip, xx_precip0, xx_precip1, xx_precip_dummy,
      &     xx_precip_remo_intercept, xx_precip_remo_slope,
-     &     myTime, myIter, myThid )
-#endif
-
-#ifdef ALLOW_SWFLUX_CONTROL
-      CALL CTRL_GET_GEN (
-     &     xx_swflux_file, xx_swfluxstartdate, xx_swfluxperiod,
-     &     maskc, swflux, xx_swflux0, xx_swflux1, xx_swflux_dummy,
-     &     xx_swflux_remo_intercept, xx_swflux_remo_slope,
-     &     myTime, myIter, myThid )
+     &     wprecip, myTime, myIter, myThid )
 #endif
 
 #ifdef ALLOW_SWDOWN_CONTROL
@@ -414,15 +426,7 @@ C-- Control variables for atmos. state
      &     xx_swdown_file, xx_swdownstartdate, xx_swdownperiod,
      &     maskc, swdown, xx_swdown0, xx_swdown1, xx_swdown_dummy,
      &     xx_swdown_remo_intercept, xx_swdown_remo_slope,
-     &     myTime, myIter, myThid )
-#endif
-
-#ifdef ALLOW_LWFLUX_CONTROL
-      CALL CTRL_GET_GEN (
-     &     xx_lwflux_file, xx_lwfluxstartdate, xx_lwfluxperiod,
-     &     maskc, lwflux, xx_lwflux0, xx_lwflux1, xx_lwflux_dummy,
-     &     xx_lwflux_remo_intercept, xx_lwflux_remo_slope,
-     &     myTime, myIter, myThid )
+     &     wswdown, myTime, myIter, myThid )
 #endif
 
 #ifdef ALLOW_LWDOWN_CONTROL
@@ -430,7 +434,25 @@ C-- Control variables for atmos. state
      &     xx_lwdown_file, xx_lwdownstartdate, xx_lwdownperiod,
      &     maskc, lwdown, xx_lwdown0, xx_lwdown1, xx_lwdown_dummy,
      &     xx_lwdown_remo_intercept, xx_lwdown_remo_slope,
-     &     myTime, myIter, myThid )
+     &     wlwdown, myTime, myIter, myThid )
+#endif
+
+      endif !if (.NOT.ctrlUseGen) then
+
+#ifdef ALLOW_SWFLUX_CONTROL
+      CALL CTRL_GET_GEN (
+     &     xx_swflux_file, xx_swfluxstartdate, xx_swfluxperiod,
+     &     maskc, swflux, xx_swflux0, xx_swflux1, xx_swflux_dummy,
+     &     xx_swflux_remo_intercept, xx_swflux_remo_slope,
+     &     wswflux, myTime, myIter, myThid )
+#endif
+
+#ifdef ALLOW_LWFLUX_CONTROL
+      CALL CTRL_GET_GEN (
+     &     xx_lwflux_file, xx_lwfluxstartdate, xx_lwfluxperiod,
+     &     maskc, lwflux, xx_lwflux0, xx_lwflux1, xx_lwflux_dummy,
+     &     xx_lwflux_remo_intercept, xx_lwflux_remo_slope,
+     &     wswflux, myTime, myIter, myThid )
 #endif
 
 #ifdef ALLOW_EVAP_CONTROL
@@ -438,7 +460,7 @@ C-- Control variables for atmos. state
      &     xx_evap_file, xx_evapstartdate, xx_evapperiod,
      &     maskc, evap, xx_evap0, xx_evap1, xx_evap_dummy,
      &     xx_evap_remo_intercept, xx_evap_remo_slope,
-     &     myTime, myIter, myThid )
+     &     wevap, myTime, myIter, myThid )
 #endif
 
 #ifdef ALLOW_SNOWPRECIP_CONTROL
@@ -448,7 +470,7 @@ C-- Control variables for atmos. state
      &     maskc, snowprecip, xx_snowprecip0, xx_snowprecip1,
      &     xx_snowprecip_dummy,
      &     xx_snowprecip_remo_intercept, xx_snowprecip_remo_slope,
-     &     myTime, myIter, myThid )
+     &     wsnowprecip, myTime, myIter, myThid )
 #endif
 
 #ifdef ALLOW_APRESSURE_CONTROL
@@ -458,7 +480,7 @@ C-- Control variables for atmos. state
      &     maskc, apressure, xx_apressure0, xx_apressure1,
      &     xx_apressure_dummy,
      &     xx_apressure_remo_intercept, xx_apressure_remo_slope,
-     &     myTime, myIter, myThid )
+     &     wapressure, myTime, myIter, myThid )
 #endif
 
       IF ( useAtmWind ) THEN
@@ -469,7 +491,7 @@ C-- Control variables for atmos. state
      &     xx_uwind_file, xx_uwindstartdate, xx_uwindperiod,
      &     maskc, uwind, xx_uwind0, xx_uwind1, xx_uwind_dummy,
      &     xx_uwind_remo_intercept, xx_uwind_remo_slope,
-     &     myTime, myIter, myThid )
+     &     wuwind, myTime, myIter, myThid )
 #endif /* ALLOW_UWIND_CONTROL */
 
 #ifdef ALLOW_VWIND_CONTROL
@@ -477,7 +499,7 @@ C-- Control variables for atmos. state
      &     xx_vwind_file, xx_vwindstartdate, xx_vwindperiod,
      &     maskc, vwind, xx_vwind0, xx_vwind1, xx_vwind_dummy,
      &     xx_vwind_remo_intercept, xx_vwind_remo_slope,
-     &     myTime, myIter, myThid )
+     &     wvwind, myTime, myIter, myThid )
 #endif /* ALLOW_VWIND_CONTROL */
 
 #else
@@ -500,13 +522,13 @@ C-- Control variables for atmos. state
      &     xx_uwind_file, xx_uwindstartdate, xx_uwindperiod,
      &     maskc, tmpUE, xx_uwind0, xx_uwind1, xx_uwind_dummy,
      &     xx_uwind_remo_intercept, xx_uwind_remo_slope,
-     &     myTime, myIter, myThid )
+     &     wuwind, myTime, myIter, myThid )
 
       CALL CTRL_GET_GEN (
      &     xx_vwind_file, xx_vwindstartdate, xx_vwindperiod,
      &     maskc, tmpVN, xx_vwind0, xx_vwind1, xx_vwind_dummy,
      &     xx_vwind_remo_intercept, xx_vwind_remo_slope,
-     &     myTime, myIter, myThid )
+     &     wvwind, myTime, myIter, myThid )
 
       CALL ROTATE_UV2EN_RL(tmpUX,tmpVY,tmpUE,tmpVN,
      &     .FALSE.,.FALSE.,.TRUE.,1,myThid)
@@ -562,8 +584,42 @@ cdm       CALL CTRL_GET_GEN (
 cdm      &     xx_runoff_file, xx_runoffstartdate, xx_runoffperiod,
 cdm      &     maskc, runoff, xx_runoff0, xx_runoff1, xx_runoff_dummy,
 cdm      &     xx_runoff_remo_intercept, xx_runoff_remo_slope,
-cdm      &     0., 0., myThid )
+cdm      &     wrunoff, 0., 0., myThid )
 cdm #endif
+
+#endif /* ALLOW_CTRL */
+
+#endif /* undef ALLOW_ECCO) || def ECCO_CTRL_DEPRECATED */
+
+#if (defined (ALLOW_CTRL) && defined (ALLOW_GENTIM2D_CONTROL))
+      if ( useCTRL.AND.ctrlUseGen ) then
+      DO bj = myByLo(myThid),myByHi(myThid)
+       DO bi = myBxLo(myThid),mybxhi(myThid)
+        DO j = 1,sNy
+         DO i = 1,sNx
+           do iarr = 1, maxCtrlTim2D
+           if (xx_gentim2d_file(iarr).EQ.'xx_atemp')
+     &       atemp(i,j,bi,bj)=atemp(i,j,bi,bj)+
+     &                         xx_gentim2d(i,j,bi,bj,iarr)
+           if (xx_gentim2d_file(iarr).EQ.'xx_aqh')
+     &       aqh(i,j,bi,bj)=aqh(i,j,bi,bj)+
+     &                         xx_gentim2d(i,j,bi,bj,iarr)
+           if (xx_gentim2d_file(iarr).EQ.'xx_swdown')
+     &       swdown(i,j,bi,bj)=swdown(i,j,bi,bj)+
+     &                         xx_gentim2d(i,j,bi,bj,iarr)
+           if (xx_gentim2d_file(iarr).EQ.'xx_lwdown')
+     &       lwdown(i,j,bi,bj)=lwdown(i,j,bi,bj)+
+     &                         xx_gentim2d(i,j,bi,bj,iarr)
+           if (xx_gentim2d_file(iarr).EQ.'xx_precip')
+     &       precip(i,j,bi,bj)=precip(i,j,bi,bj)+
+     &                         xx_gentim2d(i,j,bi,bj,iarr)
+           enddo
+         ENDDO
+        ENDDO
+       ENDDO
+      ENDDO
+      endif !if (ctrlUseGen) then
+#endif
 
       RETURN
       END

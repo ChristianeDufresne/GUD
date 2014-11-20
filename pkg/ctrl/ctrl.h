@@ -60,10 +60,12 @@ C     doPackDiag             ::   output diag_pack*/diag_unpack* files during ct
 C     doSinglePrecTapelev    ::   reduce precision of ad tape files to float32 (only used in pkg/autodiff ...)
 C     ctrlSmoothCorrel2D     ::   use pkg/smooth correlation operator (incl. smoother) for 2D controls (Weaver, Courtier 01)
 C     ctrlSmoothCorrel3D     ::   use pkg/smooth correlation operator (incl. smoother) for 3D controls (Weaver, Courtier 01)
+C     ctrlUseGen             ::   use generic control approach rather than old codes from pkg/ecco
 
       common /controlvars_l /
      &                       ctrlSmoothCorrel2D,
      &                       ctrlSmoothCorrel3D,
+     &                       ctrlUseGen,
      &                       doInitXX,
      &                       doAdmTlm,
      &                       doPackDiag,
@@ -75,6 +77,7 @@ C     ctrlSmoothCorrel3D     ::   use pkg/smooth correlation operator (incl. smo
      &                       doAdmtlmBypassAD
 
       logical ctrlSmoothCorrel2D, ctrlSmoothCorrel3D
+      logical ctrlUseGen
       logical doInitXX
       logical doAdmTlm
       logical doPackDiag
@@ -130,35 +133,6 @@ C     ctrlSmoothCorrel3D     ::   use pkg/smooth correlation operator (incl. smo
       integer nwetiglobal     ( nr )
       integer filenWetiGlobal(nr)
 #endif /* ALLOW_SHIFWFLX_CONTROL */
-
-#ifdef ALLOW_OBCSN_CONTROL
-      common /controlvars_i_obcsn/
-     &                       nwetobcsn,
-     &                       nwetobcsnglo
-      integer nwetobcsn     ( nsx,nsy,nr,nobcs )
-      integer nwetobcsnglo  ( nr,nobcs )
-#endif
-#ifdef ALLOW_OBCSS_CONTROL
-      common /controlvars_i_obcss/
-     &                       nwetobcss,
-     &                       nwetobcssglo
-      integer nwetobcss     ( nsx,nsy,nr,nobcs )
-      integer nwetobcssglo  ( nr,nobcs )
-#endif
-#ifdef ALLOW_OBCSW_CONTROL
-      common /controlvars_i_obcsw/
-     &                       nwetobcsw,
-     &                       nwetobcswglo
-      integer nwetobcsw     ( nsx,nsy,nr,nobcs )
-      integer nwetobcswglo  ( nr,nobcs )
-#endif
-#ifdef ALLOW_OBCSE_CONTROL
-      common /controlvars_i_obcse/
-     &                       nwetobcse,
-     &                       nwetobcseglo
-      integer nwetobcse     ( nsx,nsy,nr,nobcs )
-      integer nwetobcseglo  ( nr,nobcs )
-#endif
 
       common /controlvars_c/
      &                       ncvargrd
@@ -225,6 +199,45 @@ c     Define unit weight as a placeholder
       _RL wunit     (nr,nsx,nsy)
       _RL wareaunit (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
 
+      common /controlvars_r/
+     &                        tmpfld2d
+     &                      , tmpfld3d
+      _RL tmpfld2d
+     &    (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
+      _RL tmpfld3d
+     &    (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+
+      common /packnames_c/
+     &                      yadmark,
+     &                      ctrlname,
+     &                      costname,
+     &                      scalname,
+     &                      maskname,
+     &                      metaname,
+     &                      yctrlid,
+     &                      yctrlposunpack,
+     &                      yctrlpospack
+      character*2 yadmark
+      character*9 ctrlname
+      character*9 costname
+      character*9 scalname
+      character*9 maskname
+      character*9 metaname
+      character*10 yctrlid
+      character*4 yctrlposunpack
+      character*4 yctrlpospack
+
+#ifdef ALLOW_ADMTLM
+      integer          maxm, maxn
+      parameter       ( maxm = Nx*Ny*(4*Nr+1), maxn=Nx*Ny*(4*Nr+1) )
+
+      common /admtlm_i/ nveccount
+      integer nveccount
+
+      common /admtlm_r/ phtmpadmtlm
+      double precision phtmpadmtlm(maxn)
+#endif
+
 #ifndef ALLOW_ECCO
       common /ctrl_weights_atmos_r/
      &                      whflux,
@@ -245,9 +258,7 @@ c     Define unit weight as a placeholder
      &                      wapressure,
      &                      wrunoff,
      &                      wsst,
-     &                      wsss,
-     &                      wbp,
-     &                      wies
+     &                      wsss
       _RL whflux  (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL wsflux  (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL wtauu   (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
@@ -267,8 +278,6 @@ c     Define unit weight as a placeholder
       _RL wrunoff (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL wsst    (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL wsss    (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-      _RL wbp     (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-      _RL wies    (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
 #endif
 
 c     Control variables:
@@ -285,34 +294,30 @@ c     xx_... are to be replaced by tmpfld2d/3d throughout the code;
 c     control variables are written to / read from active files
 c     TAMC sees xx_..._dummy
 
-      common /controlvars_r/
-     &                        tmpfld2d
-     &                      , tmpfld3d
-      _RL tmpfld2d
-     &    (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-      _RL tmpfld3d
-     &    (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
-
 #ifdef ALLOW_OPENAD
 C
       common /controlvars_r_openad/
+     &        xx_place_holder
+# ifdef ECCO_CTRL_DEPRECATED
      &        xx_theta
      &      , xx_salt
      &      , xx_uvel
      &      , xx_vvel
      &      , xx_etan
-# ifdef ALLOW_DIFFKR_CONTROL
+#  ifdef ALLOW_DIFFKR_CONTROL
      &      , xx_diffkr
-# endif
-# ifdef ALLOW_KAPGM_CONTROL
+#  endif
+#  ifdef ALLOW_KAPGM_CONTROL
      &      , xx_kapgm
-# endif
-# ifdef ALLOW_TR10_CONTROL
+#  endif
+#  ifdef ALLOW_TR10_CONTROL
      &      , xx_tr1
-# endif
-# ifdef ALLOW_HFLUXM_CONTROL
+#  endif
+#  ifdef ALLOW_HFLUXM_CONTROL
      &      , xx_hfluxm
-# endif
+#  endif
+# endif /* ECCO_CTRL_DEPRECATED */
+
 # ifdef ALLOW_GENARR2D_CONTROL
      &      , xx_genarr2d
 # endif
@@ -320,23 +325,28 @@ C
      &      , xx_genarr3d
 # endif
 C
+# ifdef ECCO_CTRL_DEPRECATED
       _RL xx_theta(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
       _RL xx_salt(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
       _RL xx_uvel(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
       _RL xx_vvel(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
       _RL xx_etan(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-# ifdef ALLOW_DIFFKR_CONTROL
+#  ifdef ALLOW_DIFFKR_CONTROL
       _RL xx_diffkr(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
-# endif
-# ifdef ALLOW_KAPGM_CONTROL
+#  endif
+#  ifdef ALLOW_KAPGM_CONTROL
       _RL xx_kapgm(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
-# endif
-# ifdef ALLOW_TR10_CONTROL
+#  endif
+#  ifdef ALLOW_TR10_CONTROL
       _RL xx_tr1(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
-# endif
-# ifdef ALLOW_HFLUXM_CONTROL
+#  endif
+#  ifdef ALLOW_HFLUXM_CONTROL
       _RL xx_hfluxm(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-# endif
+#  endif
+# endif /* ECCO_CTRL_DEPRECATED */
+
+      _RL xx_place_holder
+
 # ifdef ALLOW_GENARR2D_CONTROL
       _RL xx_genarr2d(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy,
      &                maxCtrlArr2D)
@@ -345,6 +355,7 @@ C
       _RL xx_genarr3d(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy,
      &                maxCtrlArr3D)
 # endif
+
 #endif
 
 c     Auxiliary storage arrays for the control variables:
@@ -359,27 +370,28 @@ c     xx_tauu1 - zonal wind stress record after  current date.
 c     xx_tauv0 - meridional wind stress record before current date.
 c     xx_tauv1 - meridional wind stress record after  current date.
 
-#if     (defined  (ALLOW_HFLUX_CONTROL) || (defined (ALLOW_OPENAD) && defined  (ALLOW_HFLUX0_CONTROL)))
+#ifdef ECCO_CTRL_DEPRECATED
+# if     (defined  (ALLOW_HFLUX_CONTROL) || (defined (ALLOW_OPENAD) && defined  (ALLOW_HFLUX0_CONTROL)))
       common /controlaux_hflux_r/
      &                      xx_hflux0,
      &                      xx_hflux1
-#elif   (defined  (ALLOW_ATEMP_CONTROL))
+# elif   (defined  (ALLOW_ATEMP_CONTROL))
       common /controlaux_atemp_r/
      &                      xx_atemp0,
      &                      xx_atemp1
-#endif
+# endif
 
-#if     (defined  (ALLOW_SFLUX_CONTROL) || (defined (ALLOW_OPENAD) && defined  (ALLOW_SFLUX0_CONTROL)))
+# if     (defined  (ALLOW_SFLUX_CONTROL) || (defined (ALLOW_OPENAD) && defined  (ALLOW_SFLUX0_CONTROL)))
       common /controlaux_swflux_r/
      &                      xx_sflux0,
      &                      xx_sflux1
-#elif   (defined  (ALLOW_AQH_CONTROL))
+# elif   (defined  (ALLOW_AQH_CONTROL))
       common /controlaux_aqh_r/
      &                      xx_aqh0,
      &                      xx_aqh1
-#endif
+# endif
 
-#if (defined (ALLOW_ATM_MEAN_CONTROL))
+# if (defined (ALLOW_ATM_MEAN_CONTROL))
       common /controlaux_atm_mean_r/
      &                      xx_atemp_mean,
      &                      xx_aqh_mean,
@@ -387,237 +399,194 @@ c     xx_tauv1 - meridional wind stress record after  current date.
      &                      xx_vwind_mean,
      &                      xx_precip_mean,
      &                      xx_swdown_mean
-#endif
+# endif
 
-#if     (defined  (ALLOW_USTRESS_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_TAUU0_CONTROL)))
+# if     (defined  (ALLOW_USTRESS_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_TAUU0_CONTROL)))
       common /controlaux_ustress_r/
      &                      xx_tauu0,
      &                      xx_tauu1
-#endif
+# endif
 
-#if     (defined  (ALLOW_UWIND_CONTROL))
+# if     (defined  (ALLOW_UWIND_CONTROL))
       common /controlaux_uwind_r/
      &                      xx_uwind0,
      &                      xx_uwind1
-#endif
+# endif
 
-#if     (defined  (ALLOW_VSTRESS_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_TAUV0_CONTROL)))
+# if     (defined  (ALLOW_VSTRESS_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_TAUV0_CONTROL)))
       common /controlaux_vstress_r/
      &                      xx_tauv0,
      &                      xx_tauv1
-#endif
+# endif
 
-#if   (defined  (ALLOW_VWIND_CONTROL))
+# if   (defined  (ALLOW_VWIND_CONTROL))
       common /controlaux_vwind_r/
      &                      xx_vwind0,
      &                      xx_vwind1
-#endif
+# endif
 
-#ifdef ALLOW_OBCS_CONTROL
-#if     (defined (ALLOW_OBCSN_CONTROL))
-      common /controlaux_obcsn_r/
-     &                      xx_obcsn0,
-     &                      xx_obcsn1
-#endif
-
-#if     (defined (ALLOW_OBCSS_CONTROL))
-      common /controlaux_obcss_r/
-     &                      xx_obcss0,
-     &                      xx_obcss1
-#endif
-#if     (defined (ALLOW_OBCSW_CONTROL))
-      common /controlaux_obcsw_r/
-     &                      xx_obcsw0,
-     &                      xx_obcsw1
-#endif
-#if     (defined (ALLOW_OBCSE_CONTROL))
-      common /controlaux_obcse_r/
-     &                      xx_obcse0,
-     &                      xx_obcse1
-#endif
-#ifdef ALLOW_OBCS_CONTROL_MODES
-       common /ih_modes/ modesv
-       _RL modesv (nr,nr,nr)
-#endif
-#endif
-
-#if (defined  (ALLOW_PRECIP_CONTROL))
+# if (defined  (ALLOW_PRECIP_CONTROL))
       common /controlaux_precip_r/
      &                      xx_precip0,
      &                      xx_precip1
-#endif
+# endif
 
-#if (defined  (ALLOW_SWFLUX_CONTROL))
+# if (defined  (ALLOW_SWFLUX_CONTROL))
       common /controlaux_swflux_r/
      &                      xx_swflux0,
      &                      xx_swflux1
-#endif
+# endif
 
-#if (defined  (ALLOW_SWDOWN_CONTROL))
+# if (defined  (ALLOW_SWDOWN_CONTROL))
       common /controlaux_swdown_r/
      &                      xx_swdown0,
      &                      xx_swdown1
-#endif
+# endif
 
-#if (defined  (ALLOW_LWFLUX_CONTROL))
+# if (defined  (ALLOW_LWFLUX_CONTROL))
       common /controlaux_lwflux_r/
      &                      xx_lwflux0,
      &                      xx_lwflux1
-#endif
+# endif
 
-#if (defined  (ALLOW_LWDOWN_CONTROL))
+# if (defined  (ALLOW_LWDOWN_CONTROL))
       common /controlaux_lwdown_r/
      &                      xx_lwdown0,
      &                      xx_lwdown1
-#endif
+# endif
 
-#if (defined  (ALLOW_EVAP_CONTROL))
+# if (defined  (ALLOW_EVAP_CONTROL))
       common /controlaux_evap_r/
      &                      xx_evap0,
      &                      xx_evap1
-#endif
+# endif
 
-#if (defined  (ALLOW_SNOWPRECIP_CONTROL))
+# if (defined  (ALLOW_SNOWPRECIP_CONTROL))
       common /controlaux_snowprecip_r/
      &                      xx_snowprecip0,
      &                      xx_snowprecip1
-#endif
+# endif
 
-#if (defined  (ALLOW_APRESSURE_CONTROL))
+# if (defined  (ALLOW_APRESSURE_CONTROL))
       common /controlaux_apressure_r/
      &                      xx_apressure0,
      &                      xx_apressure1
-#endif
+# endif
 
-#if (defined  (ALLOW_RUNOFF_CONTROL))
+# if (defined  (ALLOW_RUNOFF_CONTROL))
       common /controlaux_runoff_r/
      &                      xx_runoff0,
      &                      xx_runoff1
-#endif
+# endif
 
-#if (defined  (ALLOW_SST_CONTROL))
+# if (defined  (ALLOW_SST_CONTROL))
       common /controlaux_sst_r/
      &                      xx_sst0,
      &                      xx_sst1
-#endif
-#if (defined  (ALLOW_SSS_CONTROL))
+# endif
+# if (defined  (ALLOW_SSS_CONTROL))
       common /controlaux_sss_r/
      &                      xx_sss0,
      &                      xx_sss1
-#endif
+# endif
 
-#ifdef ALLOW_SHIFWFLX_CONTROL
+# ifdef ALLOW_SHIFWFLX_CONTROL
       common /controlaux_shifwflx_r/
      &                      xx_shifwflx0,
      &                      xx_shifwflx1
       _RL xx_shifwflx0(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_shifwflx1(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif /* ALLOW_SHIFWFLX_CONTROL */
+# endif /* ALLOW_SHIFWFLX_CONTROL */
 
-#if     (defined  (ALLOW_HFLUX_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_HFLUX0_CONTROL)))
+# if     (defined  (ALLOW_HFLUX_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_HFLUX0_CONTROL)))
       _RL xx_hflux0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_hflux1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#elif   (defined  (ALLOW_ATEMP_CONTROL))
+# elif   (defined  (ALLOW_ATEMP_CONTROL))
       _RL xx_atemp0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_atemp1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if     (defined  (ALLOW_SFLUX_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_SFLUX0_CONTROL)))
+# endif
+# if     (defined  (ALLOW_SFLUX_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_SFLUX0_CONTROL)))
       _RL xx_sflux0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_sflux1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#elif   (defined  (ALLOW_AQH_CONTROL))
+# elif   (defined  (ALLOW_AQH_CONTROL))
       _RL xx_aqh0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_aqh1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if     (defined  (ALLOW_USTRESS_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_TAUU0_CONTROL)))
+# endif
+# if     (defined  (ALLOW_USTRESS_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_TAUU0_CONTROL)))
       _RL xx_tauu0(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_tauu1(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if     (defined  (ALLOW_UWIND_CONTROL))
+# endif
+# if     (defined  (ALLOW_UWIND_CONTROL))
       _RL xx_uwind0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_uwind1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if     (defined  (ALLOW_VSTRESS_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_TAUV0_CONTROL)))
+# endif
+# if     (defined  (ALLOW_VSTRESS_CONTROL) || (defined (ALLOW_OPENAD) && defined (ALLOW_TAUV0_CONTROL)))
       _RL xx_tauv0(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_tauv1(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if     (defined  (ALLOW_VWIND_CONTROL))
+# endif
+# if     (defined  (ALLOW_VWIND_CONTROL))
       _RL xx_vwind0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_vwind1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
+# endif
 #if (defined  (ALLOW_PRECIP_CONTROL))
       _RL xx_precip0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_precip1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
+# endif
 #if (defined  (ALLOW_SWFLUX_CONTROL))
       _RL xx_swflux0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_swflux1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
 #endif
-#if (defined  (ALLOW_SWDOWN_CONTROL))
+# if (defined  (ALLOW_SWDOWN_CONTROL))
       _RL xx_swdown0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_swdown1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if (defined  (ALLOW_LWFLUX_CONTROL))
+# endif
+# if (defined  (ALLOW_LWFLUX_CONTROL))
       _RL xx_lwflux0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_lwflux1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if (defined  (ALLOW_LWDOWN_CONTROL))
+# endif
+# if (defined  (ALLOW_LWDOWN_CONTROL))
       _RL xx_lwdown0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_lwdown1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if (defined  (ALLOW_EVAP_CONTROL))
+# endif
+# if (defined  (ALLOW_EVAP_CONTROL))
       _RL xx_evap0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_evap1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if (defined  (ALLOW_SNOWPRECIP_CONTROL))
+# endif
+# if (defined  (ALLOW_SNOWPRECIP_CONTROL))
       _RL xx_snowprecip0
      &    (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_snowprecip1
      &    (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if (defined  (ALLOW_APRESSURE_CONTROL))
+# endif
+# if (defined  (ALLOW_APRESSURE_CONTROL))
       _RL xx_apressure0
      &    (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_apressure1
      &    (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if (defined  (ALLOW_RUNOFF_CONTROL))
+# endif
+# if (defined  (ALLOW_RUNOFF_CONTROL))
       _RL xx_runoff0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_runoff1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if (defined  (ALLOW_SST_CONTROL))
+# endif
+# if (defined  (ALLOW_SST_CONTROL))
       _RL xx_sst0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_sst1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if (defined  (ALLOW_SSS_CONTROL))
+# endif
+# if (defined  (ALLOW_SSS_CONTROL))
       _RL xx_sss0 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_sss1 (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
-#if     (defined (ALLOW_ATM_MEAN_CONTROL))
+# endif
+# if     (defined (ALLOW_ATM_MEAN_CONTROL))
       _RL xx_atemp_mean (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_aqh_mean   (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_uwind_mean (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_vwind_mean (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_precip_mean(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       _RL xx_swdown_mean(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-#endif
+# endif
+#endif /* ECCO_CTRL_DEPRECATED */
 
-#ifdef ALLOW_OBCSN_CONTROL
-      _RL xx_obcsn0 (1-Olx:sNx+Olx,Nr,nSx,nSy,nobcs)
-      _RL xx_obcsn1 (1-Olx:sNx+Olx,Nr,nSx,nSy,nobcs)
-#endif
-#ifdef ALLOW_OBCSS_CONTROL
-      _RL xx_obcss0 (1-Olx:sNx+Olx,Nr,nSx,nSy,nobcs)
-      _RL xx_obcss1 (1-Olx:sNx+Olx,Nr,nSx,nSy,nobcs)
-#endif
-#ifdef ALLOW_OBCSW_CONTROL
-      _RL xx_obcsw0 (1-Oly:sNy+Oly,Nr,nSx,nSy,nobcs)
-      _RL xx_obcsw1 (1-Oly:sNy+Oly,Nr,nSx,nSy,nobcs)
-#endif
-#ifdef ALLOW_OBCSE_CONTROL
-      _RL xx_obcse0 (1-Oly:sNy+Oly,Nr,nSx,nSy,nobcs)
-      _RL xx_obcse1 (1-Oly:sNy+Oly,Nr,nSx,nSy,nobcs)
-#endif
-
+#ifdef ECCO_CTRL_DEPRECATED
 c     Files where the control variables are stored:
 c     =============================================
 c
@@ -627,10 +596,6 @@ c     xx_hflux_file - control vector surface heat flux file.
 c     xx_sflux_file - control vector surface salt flux file.
 c     xx_tauu_file  - control vector zonal wind stress file.
 c     xx_tauv_file  - control vector meridional wind stress file.
-c     xx_obcsn_file - control vector Uvel at boundary
-c     xx_obcss_file - control vector Vvel at boundary
-c     xx_obcsw_file - control vector temp. at boundary
-c     xx_obcse_file - control vector salin. at boundary
       common /controlfiles_c/
      &                      xx_theta_file
      &                    , xx_salt_file
@@ -657,10 +622,6 @@ c     xx_obcse_file - control vector salin. at boundary
      &                    , xx_swdown_mean_file
      &                    , xx_uwind_mean_file
      &                    , xx_vwind_mean_file
-     &                    , xx_obcsn_file
-     &                    , xx_obcss_file
-     &                    , xx_obcsw_file
-     &                    , xx_obcse_file
      &                    , xx_diffkr_file
      &                    , xx_kapgm_file
      &                    , xx_kapredi_file
@@ -715,10 +676,6 @@ cHFLUXM_CONTROL
       character*(MAX_LEN_FNAM) xx_swdown_mean_file
       character*(MAX_LEN_FNAM) xx_uwind_mean_file
       character*(MAX_LEN_FNAM) xx_vwind_mean_file
-      character*(MAX_LEN_FNAM) xx_obcsn_file
-      character*(MAX_LEN_FNAM) xx_obcss_file
-      character*(MAX_LEN_FNAM) xx_obcsw_file
-      character*(MAX_LEN_FNAM) xx_obcse_file
       character*(MAX_LEN_FNAM) xx_diffkr_file
       character*(MAX_LEN_FNAM) xx_kapgm_file
       character*(MAX_LEN_FNAM) xx_kapredi_file
@@ -748,26 +705,6 @@ cHFLUXM_CONTROL
 cHFLUXM_CONTROL
       character*(MAX_LEN_FNAM) xx_shifwflx_file
 
-      common /packnames_c/
-     &                      yadmark,
-     &                      ctrlname,
-     &                      costname,
-     &                      scalname,
-     &                      maskname,
-     &                      metaname,
-     &                      yctrlid,
-     &                      yctrlposunpack,
-     &                      yctrlpospack
-      character*2 yadmark
-      character*9 ctrlname
-      character*9 costname
-      character*9 scalname
-      character*9 maskname
-      character*9 metaname
-      character*10 yctrlid
-      character*4 yctrlposunpack
-      character*4 yctrlpospack
-
 c     Calendar information for the control variables:
 c     ===============================================
 c
@@ -789,14 +726,6 @@ c                      stress control part.
 c     xx_tauvperiod  - sampling interval for the meridional wind
 c                      stress control part.
 c     ...
-c     xx_obcsuperiod - sampling interval for open boundary u-velocity
-c                      control part.
-c     xx_obcsvperiod - sampling interval for open boundary v-velocity
-c                      control part.
-c     xx_obcstperiod - sampling interval for open boundary temperature
-c                      control part.
-c     xx_obcssperiod - sampling interval for open boundary salinity
-c                      control part.
 
       common /controltimes_r/
      &                        xx_hfluxperiod
@@ -818,10 +747,6 @@ c                      control part.
      &                      , xx_vwindperiod
      &                      , xx_sstperiod
      &                      , xx_sssperiod
-     &                      , xx_obcsnperiod
-     &                      , xx_obcssperiod
-     &                      , xx_obcswperiod
-     &                      , xx_obcseperiod
      &                      , xx_shifwflxperiod
       _RL     xx_hfluxperiod
       _RL     xx_sfluxperiod
@@ -842,10 +767,6 @@ c                      control part.
       _RL     xx_vwindperiod
       _RL     xx_sstperiod
       _RL     xx_sssperiod
-      _RL     xx_obcsnperiod
-      _RL     xx_obcssperiod
-      _RL     xx_obcswperiod
-      _RL     xx_obcseperiod
       _RL     xx_shifwflxperiod
 
       common /ctrl_param_trend_removal/
@@ -960,18 +881,6 @@ c                         control part.
      &                      , xx_vwindstartdate
      &                      , xx_sststartdate
      &                      , xx_sssstartdate
-     &                      , xx_obcsnstartdate1
-     &                      , xx_obcsnstartdate2
-     &                      , xx_obcssstartdate1
-     &                      , xx_obcssstartdate2
-     &                      , xx_obcswstartdate1
-     &                      , xx_obcswstartdate2
-     &                      , xx_obcsestartdate1
-     &                      , xx_obcsestartdate2
-     &                      , xx_obcsnstartdate
-     &                      , xx_obcssstartdate
-     &                      , xx_obcswstartdate
-     &                      , xx_obcsestartdate
      &                      , xx_shifwflxstartdate1
      &                      , xx_shifwflxstartdate2
      &                      , xx_shifwflxstartdate
@@ -1013,14 +922,6 @@ c                         control part.
       integer xx_sststartdate2
       integer xx_sssstartdate1
       integer xx_sssstartdate2
-      integer xx_obcsnstartdate1
-      integer xx_obcsnstartdate2
-      integer xx_obcssstartdate1
-      integer xx_obcssstartdate2
-      integer xx_obcswstartdate1
-      integer xx_obcswstartdate2
-      integer xx_obcsestartdate1
-      integer xx_obcsestartdate2
       integer xx_shifwflxstartdate1
       integer xx_shifwflxstartdate2
 
@@ -1043,10 +944,6 @@ c                         control part.
       integer xx_vwindstartdate(4)
       integer xx_sststartdate(4)
       integer xx_sssstartdate(4)
-      integer xx_obcsnstartdate(4)
-      integer xx_obcssstartdate(4)
-      integer xx_obcswstartdate(4)
-      integer xx_obcsestartdate(4)
       integer xx_shifwflxstartdate(4)
 
       character*( 80)   fname_theta(3)
@@ -1074,10 +971,6 @@ c                         control part.
       character*( 80)   fname_swdown_mean(3)
       character*( 80)   fname_uwind_mean(3)
       character*( 80)   fname_vwind_mean(3)
-      character*( 80)   fname_obcsn(3)
-      character*( 80)   fname_obcss(3)
-      character*( 80)   fname_obcsw(3)
-      character*( 80)   fname_obcse(3)
       character*( 80)   fname_diffkr(3)
       character*( 80)   fname_kapgm(3)
       character*( 80)   fname_kapredi(3)
@@ -1106,17 +999,8 @@ cHFLUXM_CONTROL
 cHFLUXM_CONTROL
       character*( 80)   fname_shifwflx(3)
 
-#ifdef ALLOW_ADMTLM
-      integer          maxm, maxn
-      parameter       ( maxm = Nx*Ny*(4*Nr+1), maxn=Nx*Ny*(4*Nr+1) )
-
-      common /admtlm_i/ nveccount
-      integer nveccount
-
-      common /admtlm_r/ phtmpadmtlm
-      double precision phtmpadmtlm(maxn)
-#endif
-
+#endif /* ECCO_CTRL_DEPRECATED */
+    
 c     ==================================================================
 c     END OF HEADER CONTROLVARS ctrl.h
 c     ==================================================================

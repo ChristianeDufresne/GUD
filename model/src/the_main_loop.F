@@ -33,6 +33,9 @@ C $Name$
 #ifdef ALLOW_CTRL
 # include "CTRL_OPTIONS.h"
 #endif
+#ifdef ALLOW_ECCO
+# include "ECCO_OPTIONS.h"
+#endif
 
 CBOP
 C     !ROUTINE: THE_MAIN_LOOP
@@ -188,6 +191,7 @@ c They provide the fields to be stored.
 # include "ctrl.h"
 # include "ctrl_dummy.h"
 # include "CTRL_GENARR.h"
+# include "CTRL_OBCS.h"
 # endif
 # ifdef ALLOW_COST
 #  include "cost.h"
@@ -257,9 +261,6 @@ CADJ  INIT tapelev3 = USER
 CADJ STORE hFacC = tapelev_init, key = 1
 CADJ STORE recip_hFacC = tapelev_init, key = 1
 # endif
-# ifdef ALLOW_SEAICE
-CADJ STORE heffm = tapelev_init, key = 1
-# endif
 #endif
 
 #ifdef ALLOW_OPENAD
@@ -301,6 +302,7 @@ c$openad INDEPENDENT(xx_genarr3d)
 # endif
 # ifdef ALLOW_GENTIM2D_CONTROL
 c$openad INDEPENDENT(xx_gentim2d)
+c$openad INDEPENDENT(xx_gentim2d_dummy)
 # endif
 #endif /* ALLOW_OPENAD */
 
@@ -311,7 +313,7 @@ C--   Set initial conditions (variable arrays)
       CALL TIMER_START('INITIALISE_VARIA    [THE_MAIN_LOOP]', myThid)
       CALL INITIALISE_VARIA( myThid )
       CALL TIMER_STOP ('INITIALISE_VARIA    [THE_MAIN_LOOP]', myThid)
-#ifdef ALLOW_ECCO_EVOLUTION
+#if (defined (ALLOW_ECCO_EVOLUTION) && defined (ECCO_CTRL_DEPRECATED))
 #ifdef ALLOW_ECCO
 cph: avoid renewed call of initialise_varia in recomputation loop
 cph: in some circumstances
@@ -452,18 +454,23 @@ c--
 #   ifdef ALLOW_SEAICE
 #    ifdef SEAICE_ALLOW_DYNAMICS
 CADJ INIT comlev1_dynsol = COMMON,nchklev_1*MPSEUDOTIMESTEPS
-#    ifdef SEAICE_LSR_ADJOINT_ITER
-CADJ INIT comlev1_dyniter =
-CADJ &    COMMON,nchklev_1*MPSEUDOTIMESTEPS*SOLV_MAX_FIXED
+#     ifdef SEAICE_LSR_ADJOINT_ITER
+CADJ INIT comlev1_lsr = COMMON,nchklev_1*MPSEUDOTIMESTEPS*SOLV_MAX_FIXED
+CADJ INIT comlev1_bibj_lsr = COMMON,
+CADJ &  nchklev_1*nsx*nsy*nthreads_chkpt*MPSEUDOTIMESTEPS*SOLV_MAX_FIXED
+#     else /* make the common blocks smaller to reduce memory footprint */
+CADJ INIT comlev1_lsr = COMMON,nchklev_1*MPSEUDOTIMESTEPS
+CADJ INIT comlev1_bibj_lsr = COMMON,
+CADJ &  nsx*nsy*nthreads_chkpt*nchklev_1*MPSEUDOTIMESTEPS
+#     endif
 #    endif
-#    endif
-#   ifdef SEAICE_ALLOW_EVP
+#    ifdef SEAICE_ALLOW_EVP
 CADJ INIT comlev1_evp = COMMON,nEVPstepMax*nchklev_1
-#   endif
-#   ifdef SEAICE_MULTICATEGORY
-CADJ INIT comlev1_multdim
-CADJ &    = COMMON,nchklev_1*nsx*nsy*nthreads_chkpt*multdim
-#   endif
+#    endif
+CML#   ifdef SEAICE_MULTICATEGORY
+CMLCADJ INIT comlev1_multdim
+CMLCADJ &    = COMMON,nchklev_1*nsx*nsy*nthreads_chkpt*nitd
+CML#   endif
 #    ifndef DISABLE_MULTIDIM_ADVECTION
 CADJ INIT comlev1_bibj_k_gadice = COMMON,
 CADJ &    nchklev_1*nsx*nsy*nthreads_chkpt*maxpass
@@ -557,13 +564,15 @@ C--   Reset the model iteration counter and the model time.
 #endif
 
 #if (defined (ALLOW_ECCO) && defined (ALLOW_ECCO_EVOLUTION))
+      IF ( useECCO ) then
 # ifdef ALLOW_DEBUG
-      IF (debugMode) CALL DEBUG_CALL('cost_averagesfields',myThid)
+        IF (debugMode) CALL DEBUG_CALL('cost_averagesfields',myThid)
 # endif
 c--   Accumulate time averages of temperature, salinity
-      CALL TIMER_START('COST_AVERAGESFIELDS [MAIN_DO_LOOP]',myThid)
-      CALL COST_AVERAGESFIELDS( myTime, myThid )
-      CALL TIMER_STOP ('COST_AVERAGESFIELDS [MAIN_DO_LOOP]',myThid)
+        CALL TIMER_START('COST_AVERAGESFIELDS [MAIN_DO_LOOP]',myThid)
+        CALL COST_AVERAGESFIELDS( myTime, myThid )
+        CALL TIMER_STOP ('COST_AVERAGESFIELDS [MAIN_DO_LOOP]',myThid)
+      ENDIF
 #endif /* ALLOW_ECCO_EVOLUTION */
 
 #ifdef ALLOW_PROFILES
@@ -634,10 +643,12 @@ c--   Accumulate in-situ time averages of temperature, salinity, SSH.
 
 #ifdef ALLOW_ECCO
 #ifdef ALLOW_ECCO_EVOLUTION
+      IF ( useECCO ) then
 c--   Compute all ecco cost function contributions.
-      CALL TIMER_START('ECCO_COST_DRIVER   [THE_MAIN_LOOP]', myThid)
-      CALL ECCO_COST_DRIVER ( endTime, myIter, myThid )
-      CALL TIMER_STOP ('ECCO_COST_DRIVER   [THE_MAIN_LOOP]', myThid)
+        CALL TIMER_START('ECCO_COST_DRIVER   [THE_MAIN_LOOP]', myThid)
+        CALL ECCO_COST_DRIVER ( endTime, myIter, myThid )
+        CALL TIMER_STOP ('ECCO_COST_DRIVER   [THE_MAIN_LOOP]', myThid)
+      ENDIF
 #endif /* ALLOW_ECCO_EVOLUTION */
 #endif /* ALLOW_ECCO */
 

@@ -66,11 +66,24 @@ CEOP
      &     , mult_shifwflx, wshifwflx0, shifwflx_errfile
 #endif
 
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+
+      IF ( .NOT.useShelfIce ) THEN
+C-    pkg SHELFICE is not used
+        _BEGIN_MASTER(myThid)
+C-    Track pkg activation status:
+         SHELFICEisOn = .FALSE.
+C     print a (weak) warning if data.shelfice is found
+         CALL PACKAGES_UNUSED_MSG( 'useShelfIce', ' ', ' ' )
+        _END_MASTER(myThid)
+        RETURN
+      ENDIF
+
       _BEGIN_MASTER(myThid)
 
 C This routine has been called by the main model so we set our
 C internal flag to indicate we are in business
-      SHELFICEisON=.TRUE.
+      SHELFICEisOn = .TRUE.
 
 C Set defaults values for parameters in SHELFICE.h
       useISOMIPTD              = .FALSE.

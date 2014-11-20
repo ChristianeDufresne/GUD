@@ -84,7 +84,6 @@ C     stat_fName  :: List of statistics output Filename
       INTEGER ku, stdUnit
       INTEGER j,k,l,n,m,nf
       INTEGER iLen, regionCount
-      LOGICAL existing
 
 C--   full level output:
       NAMELIST / DIAGNOSTICS_LIST /
@@ -94,7 +93,7 @@ C--   full level output:
      &     levels, fields, fileName, fileFlags,
      &     dumpAtLast, diag_mnc, useMissingValue,
      &     diagCG_maxIters, diagCG_resTarget,
-     &     diagCG_prtResFrq, xPsi0, yPsi0,
+     &     diagCG_pcOffDFac, diagCG_prtResFrq, xPsi0, yPsi0,
      &     diag_pickup_read,     diag_pickup_write,
      &     diag_pickup_read_mnc, diag_pickup_write_mnc
 
@@ -105,23 +104,13 @@ C--   per level statistics output:
      &     set_regMask, val_regMask,
      &     diagSt_regMaskFile, nSetRegMskFile
 
-C-    PKG diagnostics is not used
       IF ( .NOT.useDiagnostics ) THEN
+C-    pkg DIAGNOSTICS is not used
         _BEGIN_MASTER(myThid)
 C-    Track diagnostics pkg activation status:
          diag_pkgStatus = -1
 C     print a (weak) warning if data.diagnostics is found
-         INQUIRE( FILE='data.diagnostics', EXIST=existing )
-         IF ( existing ) THEN
-           WRITE(msgBuf,'(2A)') '** Warning ** DIAGNOSTICS_READPARMS:',
-     &       ' ignores "data.diagnostics" file since'
-           CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
-     &                         SQUEEZE_RIGHT, myThid )
-           WRITE(msgBuf,'(2A)') '** Warning ** DIAGNOSTICS_READPARMS:',
-     &       ' useDiagnostics= F (set from "data.pkg")'
-           CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
-     &                         SQUEEZE_RIGHT, myThid )
-         ENDIF
+         CALL PACKAGES_UNUSED_MSG( 'useDiagnostics', ' ', ' ' )
         _END_MASTER(myThid)
         RETURN
       ENDIF
@@ -168,6 +157,9 @@ c       missing_value(l)     = UNSET_RL
       diagCG_maxIters  = cg2dMaxIters
       diagCG_resTarget = cg2dTargetResidual
       diagCG_prtResFrq = printResidualFreq
+      diagCG_pcOffDFac = 1.
+      IF ( cg2dpcOffDFac.GT.zeroRL )
+     &  diagCG_pcOffDFac = 0.25 _d 0 /( cg2dpcOffDFac*cg2dpcOffDFac )
       xPsi0 = UNSET_RS
       yPsi0 = UNSET_RS
 
@@ -519,6 +511,9 @@ C     Echo History List Data Structure
      & ' diagCG_maxIters =', ' /* max number of iters in diag_cg2d */')
       CALL WRITE_0D_RL( diagCG_resTarget, INDEX_NONE,
      & ' diagCG_resTarget =', ' /* residual target for diag_cg2d */')
+      CALL WRITE_0D_RL( diagCG_pcOffDFac, INDEX_NONE,
+     & ' diagCG_pcOffDFac =',
+     & ' /* preconditioner off-diagonal factor */')
       WRITE(msgBuf,'(A)')
      & '-----------------------------------------------------'
       CALL PRINT_MESSAGE( msgBuf, stdUnit,SQUEEZE_RIGHT, myThid)

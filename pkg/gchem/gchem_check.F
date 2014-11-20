@@ -36,17 +36,33 @@ C     msgBuf   :: Informational/error message buffer
 
 #ifdef GCHEM_SEPARATE_FORCING
       IF ( useCFC ) THEN
-         WRITE(msgBuf,'(A)') 'GCHEM_SEPARATE_FORCING not coded for CFC'
-         CALL PRINT_ERROR( msgBuf , myThid )
-         STOP 'ABNORMAL END: S/R GCHEM_CHECK'
+        WRITE(msgBuf,'(A)') 'GCHEM_SEPARATE_FORCING not coded for CFC'
+        CALL PRINT_ERROR( msgBuf , myThid )
+        STOP 'ABNORMAL END: S/R GCHEM_CHECK'
       ENDIF
-#endif
+#else  /* GCHEM_SEPARATE_FORCING */
+      IF ( useDIC ) THEN
+        WRITE(msgBuf,'(A)') 'GCHEM_SEPARATE_FORCING needed to use DIC'
+        CALL PRINT_ERROR( msgBuf , myThid )
+        STOP 'ABNORMAL END: S/R GCHEM_CHECK'
+      ENDIF
+      IF ( useDARWIN ) THEN
+        WRITE(msgBuf,'(A)') 'GCHEM_SEPARATE_FORCING needed for DARWIN'
+        CALL PRINT_ERROR( msgBuf , myThid )
+        STOP 'ABNORMAL END: S/R GCHEM_CHECK'
+      ENDIF
+      IF ( useGUD ) THEN
+        WRITE(msgBuf,'(A)') 'GCHEM_SEPARATE_FORCING needed for GUD'
+        CALL PRINT_ERROR( msgBuf , myThid )
+        STOP 'ABNORMAL END: S/R GCHEM_CHECK'
+      ENDIF
+#endif /* GCHEM_SEPARATE_FORCING */
 
 C     GCHEM needs passive tracer package
       IF ( .NOT.usePTRACERS) THEN
-         WRITE(msgBuf,'(A)') 'usePTRACERS has to be .TRUE. for GCHEM'
-         CALL PRINT_ERROR( msgBuf , myThid )
-         STOP 'ABNORMAL END: S/R GCHEM_CHECK'
+        WRITE(msgBuf,'(A)') 'usePTRACERS has to be .TRUE. for GCHEM'
+        CALL PRINT_ERROR( msgBuf , myThid )
+        STOP 'ABNORMAL END: S/R GCHEM_CHECK'
       ENDIF
 
 C check that we are not running multiple incompatible packages
@@ -61,6 +77,8 @@ C check that we are not running multiple incompatible packages
         CALL PRINT_ERROR( msgBuf , myThid )
         STOP 'ABNORMAL END: S/R GCHEM_CHECK'
       ENDIF
+
+      _END_MASTER(myThid)
 
 #ifdef ALLOW_CFC
 C     run checks specific to CFC
@@ -82,8 +100,6 @@ C     run checks specific to gud
         CALL GUD_CHECK( myThid )
       ENDIF
 #endif
-
-      _END_MASTER(myThid)
 
 #endif /* ALLOW_GCHEM */
 

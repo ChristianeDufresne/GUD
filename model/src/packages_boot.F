@@ -52,6 +52,7 @@ C     data.pkg namelists
      &          useZONAL_FILT,
      &          useOPPS,
      &          usePP81,
+     &          useKL10,
      &          useMY82,
      &          useGGL90,
      &          useKPP,
@@ -67,6 +68,7 @@ C     data.pkg namelists
      &          useSMOOTH,
      &          usePROFILES,
      &          useECCO,
+     &          useCTRL,
      &          useSBO,
      &          useFLT,
      &          usePTRACERS,
@@ -113,6 +115,7 @@ c     useGAD          =.FALSE.
       useZONAL_FILT   =.FALSE.
       useOPPS         =.FALSE.
       usePP81         =.FALSE.
+      useKL10         =.FALSE.
       useMY82         =.FALSE.
       useGGL90        =.FALSE.
       useKPP          =.FALSE.
@@ -127,7 +130,16 @@ c     useGAD          =.FALSE.
       useGrdchk       =.FALSE.
       useSMOOTH       =.FALSE.
       usePROFILES     =.FALSE.
+#ifdef ALLOW_ECCO
+      useECCO         =.TRUE.
+#else
       useECCO         =.FALSE.
+#endif
+#ifdef ALLOW_CTRL
+      useCTRL         =.TRUE.
+#else
+      useCTRL         =.FALSE.
+#endif
       useSBO          =.FALSE.
       useFLT          =.FALSE.
       usePTRACERS     =.FALSE.
@@ -194,7 +206,11 @@ C--   packages with hard-coded switch
 #endif
 
 #ifdef ALLOW_ECCO
-      useCAL = .TRUE.
+      IF (useECCO) useCAL = .TRUE.
+#endif
+
+#ifdef ALLOW_CTRL
+      IF (useGrdchk) useCTRL = .TRUE.
 #endif
 
 C--   packages with an implied switch
@@ -223,6 +239,9 @@ C----- pkgs with a standard "usePKG" On/Off switch in "data.pkg":
 #endif
 #ifdef ALLOW_PP81
       CALL PACKAGES_PRINT_MSG( usePP81,       'PP81',        ' ' )
+#endif
+#ifdef ALLOW_KL10
+      CALL PACKAGES_PRINT_MSG( useKL10,       'KL10',        ' ' )
 #endif
 #ifdef ALLOW_MY82
       CALL PACKAGES_PRINT_MSG( useMY82,       'MY82',        ' ' )
@@ -268,6 +287,9 @@ C----- pkgs with a standard "usePKG" On/Off switch in "data.pkg":
 #endif
 #ifdef ALLOW_ECCO
       CALL PACKAGES_PRINT_MSG( useECCO,       'ECCO',        ' ' )
+#endif
+#ifdef ALLOW_CTRL
+      CALL PACKAGES_PRINT_MSG( useCTRL,       'CTRL',        ' ' )
 #endif
 #ifdef ALLOW_SBO
       CALL PACKAGES_PRINT_MSG( useSBO,        'SBO',         ' ' )
@@ -428,9 +450,6 @@ C----- AD related pkgs:
 #endif
 #ifdef ALLOW_COST
       CALL PACKAGES_PRINT_MSG( locFlag, 'COST',       'Used' )
-#endif
-#ifdef ALLOW_CTRL
-      CALL PACKAGES_PRINT_MSG( locFlag, 'CTRL',       'Used' )
 #endif
 C----- mysterious pkgs:
 #ifdef ALLOW_SPHERE

@@ -46,6 +46,8 @@ C       |-- OPPS_INIT
 C       |
 C       |-- PP81_INIT_FIXED
 C       |
+C       |-- KL10_INIT_FIXED
+C       |
 C       |-- MY82_INIT_FIXED
 C       |
 C       |-- GGL90_INIT_FIXED
@@ -93,7 +95,7 @@ C       |-- ICEFRONT_INIT_FIXED
 C       |
 C       |-- THSICE_INIT_FIXED
 C       |
-C       |-- LAND_INITIALISE
+C       |-- LAND_INIT_FIXED
 C       |
 C       |-- ATM2D_INIT_FIXED
 C       |
@@ -120,7 +122,6 @@ C       |
 C       |-- MYPACKAGE_INIT_FIXED
 C       |
 C       |-- DIAGNOSTICS_INIT_FIXED
-
 
 C     !USES:
       IMPLICIT NONE
@@ -267,6 +268,16 @@ C--   Initialize fixed arrays for PP81
       ENDIF
 #endif
 
+#ifdef ALLOW_KL10
+C--   Initialize fixed arrays for KL10
+      IF ( useKL10 ) THEN
+# ifdef ALLOW_DEBUG
+        IF (debugMode) CALL DEBUG_CALL('KL10_INIT_FIXED',myThid)
+# endif
+        CALL KL10_INIT_FIXED( myThid )
+      ENDIF
+#endif /* ALLOW_KL10 */
+
 #ifdef ALLOW_MY82
 C--   Initialize fixed arrays for MY82
       IF ( useMY82 ) THEN
@@ -347,13 +358,15 @@ C--   in order to provide the weight files
 #endif /* ALLOW_SMOOTH */
 
 #ifdef ALLOW_ECCO
+      IF (useECCO) THEN
 C--   Initialise ecco-specific cost function.
 C--   This needs to preceed the call ctrl_init
 C--   in order to provide the weight files
 # ifdef ALLOW_DEBUG
         IF (debugMode) CALL DEBUG_CALL('ECCO_COST_INIT_FIXED',myThid)
 # endif
-      CALL ECCO_COST_INIT_FIXED( myThid )
+        CALL ECCO_COST_INIT_FIXED( myThid )
+      ENDIF
 #endif
 
 #ifdef ALLOW_PROFILES
@@ -365,20 +378,26 @@ C--   in order to provide the weight files
       ENDIF
 #endif
 
-#ifdef ALLOW_AUTODIFF
+#ifdef ALLOW_CTRL
+      IF (useCTRL) THEN
 C--   Initialise the control variables
 # ifdef ALLOW_DEBUG
         IF (debugMode) CALL DEBUG_CALL('CTRL_INIT',myThid)
 # endif
-      CALL CTRL_INIT( myThid )
+        CALL CTRL_INIT( myThid )
+      ENDIF
 #endif
 
 #ifdef ALLOW_ADMTLM
+#ifdef ALLOW_CTRL
+      IF (useCTRL) THEN
 C--   Initialise ADMTLM
 # ifdef ALLOW_DEBUG
         IF (debugMode) CALL DEBUG_CALL('CTRL_ADMTLM',myThid)
 # endif
-      CALL CTRL_ADMTLM( myThid )
+        CALL CTRL_ADMTLM( myThid )
+      ENDIF
+#endif
 #endif
 
 #ifdef ALLOW_FLT
@@ -491,12 +510,12 @@ C--   Initialise fixed array for Float pkg
 #endif
 
 #ifdef ALLOW_LAND
-C--   Initialise & Read Land package parameters
-      IF (useLand) THEN
+C--   Initialise Land package
+      IF ( useLand ) THEN
 # ifdef ALLOW_DEBUG
-        IF (debugMode) CALL DEBUG_CALL('LAND_INITIALISE',myThid)
+        IF (debugMode) CALL DEBUG_CALL('LAND_INIT_FIXED',myThid)
 # endif
-        CALL LAND_INITIALISE( myThid )
+        CALL LAND_INIT_FIXED( myThid )
       ENDIF
 #endif
 

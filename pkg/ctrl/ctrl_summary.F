@@ -9,11 +9,7 @@ c     ==================================================================
 c     SUBROUTINE ctrl_Summary
 c     ==================================================================
 c
-c     o Summarize the control vector part of the ECCO release.
-c
-c     started: Christian Eckert eckert@mit.edu 06-Mar-2000
-c
-c     changed: Christian Eckert eckert@mit.edu
+c     o Summarize the control vector settings.
 c
 c     ==================================================================
 c     SUBROUTINE ctrl_Summary
@@ -29,7 +25,16 @@ c     == global variables ==
 #ifdef ALLOW_CAL
 # include "cal.h"
 #endif
-#include "ctrl.h"
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_PARAMS.h"
+#endif
+#ifdef ALLOW_CTRL
+# include "ctrl.h"
+# include "CTRL_SIZE.h"
+# if (defined (ALLOW_GENARR2D_CONTROL) || defined (ALLOW_GENARR3D_CONTROL) || defined (ALLOW_GENTIM2D_CONTROL))
+#  include "CTRL_GENARR.h"
+# endif
+#endif
 
 c     == routine arguments ==
 
@@ -47,6 +52,10 @@ c     == local variables ==
 
       character*(max_len_mbuf) msgbuf
 
+#if (defined (ALLOW_GENARR2D_CONTROL) || defined (ALLOW_GENARR3D_CONTROL) || defined (ALLOW_GENTIM2D_CONTROL))
+      INTEGER iarr, jarr
+#endif
+
 c     == external ==
 
       integer  ilnblnk
@@ -63,7 +72,7 @@ c     == end of interface ==
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
       write(msgbuf,'(a)')
-     &'// ECCO control vector configuration  >>> START <<<'
+     &'// control vector configuration  >>> START <<<'
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
       write(msgbuf,'(a)')
@@ -81,10 +90,6 @@ c     == end of interface ==
      &                    SQUEEZE_RIGHT , mythid)
       write(msgbuf,'(a)')
      &' --------------------------------------'
-      call print_message( msgbuf, standardmessageunit,
-     &                    SQUEEZE_RIGHT , mythid)
-      write(msgbuf,'(a)')
-     &' '
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
       write(msgbuf,'(a,i8)') ' snx*sny*nr = ',snx*sny*nr
@@ -120,6 +125,8 @@ c     == end of interface ==
      &                        SQUEEZE_RIGHT , mythid)
         enddo
       enddo
+
+#ifndef PHASE_OUT_OUT_CODES
 
 #ifdef ALLOW_THETA0_CONTROL
       write(msgbuf,'(a)')
@@ -313,18 +320,204 @@ c     == end of interface ==
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
 #endif
+
+#endif /* PHASE_OUT_OUT_CODES */
+
+
+#ifdef ALLOW_SMOOTH
+
+      write(msgbuf,'(a)') ' '
+      call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
+      write(msgbuf,'(a)')
+     &' Settings of diffusion based correlation operators:'
+      call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+      write(msgbuf,'(a)')
+     &' --------------------------------------------------'
+      call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
 #ifdef ALLOW_SMOOTH_CORREL3D
-      write(msgbuf,'(a,L5)')
-     &'ctrlSmoothCorrel3D: ',ctrlSmoothCorrel3D
+      write(msgbuf,'(a,L5,a)')
+     &' ctrlSmoothCorrel3D        = ',ctrlSmoothCorrel3D,
+     &' /* use 3D controls correlation */'
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
 #endif /* ALLOW_SMOOTH_CORREL3D */
+
 #ifdef ALLOW_SMOOTH_CORREL2D
-      write(msgbuf,'(a,L5)')
-     &'ctrlSmoothCorrel2D: ',ctrlSmoothCorrel2D
+      write(msgbuf,'(a,L5,a)')
+     &' ctrlSmoothCorrel2D        = ',ctrlSmoothCorrel3D,
+     &' /* use 2D controls correlation */'
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
 #endif /* ALLOW_SMOOTH_CORREL2D */
+
+#ifdef ALLOW_AUTODIFF
+c allow for switching off correl2d in adjoint
+      write(msgbuf,'(a,L5,a)')
+     &' useSmoothCorrel2DinAdMode = ',useSmoothCorrel2DinAdMode,
+     &' /* use in adjoint mode */'
+      call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+#endif
+
+#endif /* ALLOW_SMOOTH */
+
+
+#if (defined (ALLOW_GENARR2D_CONTROL) || defined (ALLOW_GENARR3D_CONTROL) || defined (ALLOW_GENTIM2D_CONTROL))
+
+      write(msgbuf,'(a)') ' '
+      call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+      write(msgbuf,'(a)')
+     &' Settings of generic controls:'
+      call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+      write(msgbuf,'(a)')
+     &' -----------------------------'
+      call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+      write(msgbuf,'(a)') ' '
+      call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+      write(msgbuf,'(a,L5,a)')
+     &' ctrlUseGen  = ',ctrlUseGen,
+     &' /* use generic controls */'
+      call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
+
+#ifdef ALLOW_GENARR2D_CONTROL
+      do iarr = 1, maxCtrlArr2D
+       if (xx_genarr2d_weight(iarr).NE.' ') then
+
+        write(msgbuf,'(a,i2,a)')
+     &' -> 2D control, genarr2d no. ',iarr,
+     &' is in use'
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
+        il   = ILNBLNK( xx_genarr2d_file(iarr) )
+        write(msgbuf,'(a,a)')
+     &'      file       = ',xx_genarr2d_file(iarr)(1:il)
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+        il   = ILNBLNK( xx_genarr2d_weight(iarr) )
+        write(msgbuf,'(a,a)')
+     &'      weight     = ',xx_genarr2d_weight(iarr)(1:il)
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
+         do jarr=1,maxCtrlProc
+          if (xx_genarr2d_preproc(jarr,iarr).NE.' ') then
+            il = ilnblnk(xx_genarr2d_preproc(jarr,iarr))
+            write(msgbuf,'(a,a)') ' preprocess = ',
+     &                            xx_genarr2d_preproc(jarr,iarr)(1:il)
+            call print_message( msgbuf, standardmessageunit,
+     &                        SQUEEZE_RIGHT , mythid)
+          endif
+         enddo
+
+       endif
+      enddo
+#endif
+
+
+#ifdef ALLOW_GENARR3D_CONTROL
+      do iarr = 1, maxCtrlArr3D
+       if (xx_genarr3d_weight(iarr).NE.' ') then
+
+        write(msgbuf,'(a,i2,a)')
+     &' -> 3d control, genarr3d no. ',iarr,
+     &' is in use'
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
+        il   = ILNBLNK( xx_genarr3d_file(iarr) )
+        write(msgbuf,'(a,a)')
+     &'      file       = ',xx_genarr3d_file(iarr)(1:il)
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+        il   = ILNBLNK( xx_genarr3d_weight(iarr) )
+        write(msgbuf,'(a,a)')
+     &'      weight     = ',xx_genarr3d_weight(iarr)(1:il)
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
+         do jarr=1,maxCtrlProc
+          if (xx_genarr3d_preproc(jarr,iarr).NE.' ') then
+            il = ilnblnk(xx_genarr3d_preproc(jarr,iarr))
+            write(msgbuf,'(a,a)') ' preprocess = ',
+     &                            xx_genarr3d_preproc(jarr,iarr)(1:il)
+            call print_message( msgbuf, standardmessageunit,
+     &                        SQUEEZE_RIGHT , mythid)
+          endif
+         enddo
+
+       endif
+      enddo
+#endif
+
+#ifdef ALLOW_GENTIM2D_CONTROL
+      do iarr = 1, maxCtrlTim2D
+       if (xx_gentim2d_weight(iarr).NE.' ') then
+
+        write(msgbuf,'(a,i2,a)')
+     &' -> time variable 2D control, gentim2d no. ',iarr,
+     &' is in use'
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
+        il   = ILNBLNK( xx_gentim2d_file(iarr) )
+        write(msgbuf,'(a,a)')
+     &'      file       = ',xx_gentim2d_file(iarr)(1:il)
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
+        il   = ILNBLNK( xx_gentim2d_weight(iarr) )
+        write(msgbuf,'(a,a)')
+     &'      weight     = ',xx_gentim2d_weight(iarr)(1:il)
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
+#ifdef ALLOW_CAL
+        call cal_TimeInterval( xx_gentim2d_period(iarr),
+     &                         'secs', timeint, mythid )
+        write(msgbuf,'(a,i9.8,i7.6)')
+     &'      period     = ',(timeint(i), i=1,2)
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+#endif
+
+        write(msgbuf,'(a,L5)')
+     &'      cumsum     = ',xx_gentim2d_cumsum(iarr)
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
+        write(msgbuf,'(a,L5)')
+     &'      glosum     = ',xx_gentim2d_glosum(iarr)
+        call print_message( msgbuf, standardmessageunit,
+     &                    SQUEEZE_RIGHT , mythid)
+
+         do jarr=1,maxCtrlProc
+          if (xx_gentim2d_preproc(jarr,iarr).NE.' ') then
+            il = ilnblnk(xx_gentim2d_preproc(jarr,iarr))
+            write(msgbuf,'(a,a)') ' preprocess = ',
+     &                            xx_gentim2d_preproc(jarr,iarr)(1:il)
+            call print_message( msgbuf, standardmessageunit,
+     &                        SQUEEZE_RIGHT , mythid)
+          endif
+         enddo
+
+       endif
+      enddo
+#endif
+
+
+#endif
 
       write(msgbuf,'(a)')
      &' '
@@ -335,7 +528,7 @@ c     == end of interface ==
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
       write(msgbuf,'(a)')
-     &'// ECCO control vector configuration  >>> END <<<'
+     &'// control vector configuration  >>> END <<<'
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
       write(msgbuf,'(a)')

@@ -252,8 +252,8 @@ C-   write out logical parameters
      & ' streamice_dump_mnc =', ' /* user defined parameter */')
        CALL WRITE_0D_L( STREAMICE_tave_mnc, INDEX_NONE,
      & ' streamice_tave_mnc =', ' /* user defined parameter */')
-       CALL WRITE_0D_L( STREAMICE_GL_regularize, INDEX_NONE,
-     & ' streamice_GL_regularize =', ' /* user defined parameter */')
+!       CALL WRITE_0D_L( STREAMICE_GL_regularize, INDEX_NONE,
+!     & ' streamice_GL_regularize =', ' /* user defined parameter */')
        CALL WRITE_0D_L( STREAMICE_move_front, INDEX_NONE,
      & ' streamice_move_front =', ' /* user defined parameter */')
        CALL WRITE_0D_L( STREAMICE_calve_to_mask, INDEX_NONE,
@@ -289,16 +289,16 @@ C    write init_thickness array to a binary file
 !        CALL WRITE_FLD_XY_RL ( "ssurf_el_streamice", "init",
 !      & surf_el_streamice, 0, myThid )
 
-       DO m=1,4
-        DO n=1,4
-         DO k=1,2
-          WRITE(fname,'(A,I1,A,I1,A,I1)')
-     &     "Dphi_", m, "_", n, "_", k
-          CALL WRITE_FLD_XY_RL (fname, "",
-     &     Dphi(:,:,:,:,m,n,k),0,myThid)
-         ENDDO
-        ENDDO
-       ENDDO
+!       DO m=1,4
+!        DO n=1,4
+!         DO k=1,2
+!          WRITE(fname,'(A,I1,A,I1,A,I1)')
+!     &     "Dphi_", m, "_", n, "_", k
+!          CALL WRITE_FLD_XY_RL (fname, "",
+!     &     Dphi(:,:,:,:,m,n,k),0,myThid)
+!         ENDDO
+!        ENDDO
+!       ENDDO
 
        CALL WRITE_FLD_XY_RL ( "k1AtC_str", "out",
      & k1AtC_str, 0, myThid )

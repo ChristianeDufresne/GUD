@@ -2,7 +2,9 @@ C $Header$
 C $Name$
 
 #include "ECCO_OPTIONS.h"
-
+#ifdef ALLOW_SEAICE
+# include "SEAICE_OPTIONS.h"
+#endif
 
       subroutine cost_hyd( myiter, mytime, mythid )
 
@@ -27,6 +29,7 @@ c     ==================================================================
       implicit none
 
 c     == global variables ==
+#ifdef ECCO_CTRL_DEPRECATED
 #include "EEPARAMS.h"
 #include "SIZE.h"
 #include "PARAMS.h"
@@ -40,6 +43,7 @@ c     == global variables ==
 #ifdef ALLOW_SEAICE
 # include "SEAICE_COST.h"
 #endif
+#endif
 
 c     == routine arguments ==
 
@@ -47,12 +51,14 @@ c     == routine arguments ==
       _RL     mytime
       integer mythid
 
+#ifdef ECCO_CTRL_DEPRECATED
 c     == local variables ==
       character*(max_len_mbuf) msgbuf
 
       integer nnzbar
       integer nnzobs
       integer nrecloc
+      integer nmonsloc
       _RL spminloc
       _RL spmaxloc
       _RL spzeroloc
@@ -72,13 +78,15 @@ c     == end of interface ==
       spmaxloc = 40.
       spzeroloc = 0.
       localperiod = 0.
+      nmonsloc=nmonsrec
       call cost_generic(
      &     nnzbar, tbarfile, tbar, xx_tbar_mean_dummy,
      &     nnzobs, sstdatfile, mult_sst,
-     &     nmonsrec, sststartdate, localperiod,
-     &     'C', wsst,
-     &     spminloc, spmaxloc, spzeroloc,
-     &     objf_sst, num_sst,
+     &     nmonsloc, nmonsloc, sststartdate, localperiod,
+     &     'C', wsst, spminloc, spmaxloc, spzeroloc,
+     &     no_preproc, no_preproc_c, no_preproc_i, no_preproc_r, 
+     &     no_posproc, no_posproc_c, no_posproc_i, no_posproc_r,
+     &     0, sstdatfile, objf_sst, num_sst,
      &     myiter, mytime, mythid )
 c
 #elif (defined (ALLOW_DAILYSST_COST_CONTRIBUTION))
@@ -93,13 +101,15 @@ c
       spmaxloc = 40.
       spzeroloc = 0.
       localperiod = 86400.
+      nmonsloc=nmonsrec
       call cost_generic(
      &     nnzbar, sstbarfile, sstbar, xx_sstbar_mean_dummy,
      &     nnzobs, sstdatfile, mult_sst,
-     &     nrecloc, sststartdate, localperiod,
-     &     'C', wsst,
-     &     spminloc, spmaxloc, spzeroloc,
-     &     objf_sst, num_sst,
+     &     nrecloc, nmonsloc, sststartdate, localperiod,
+     &     'C', wsst, spminloc, spmaxloc, spzeroloc, 
+     &     no_preproc, no_preproc_c, no_preproc_i, no_preproc_r,
+     &     no_posproc, no_posproc_c, no_posproc_i, no_posproc_r,
+     &     0, sstdatfile, objf_sst, num_sst,
      &     myiter, mytime, mythid )
 cph      call cost_sst   ( myiter, mytime, mythid )
 #endif
@@ -137,13 +147,15 @@ cph      call cost_sst   ( myiter, mytime, mythid )
       spmaxloc = 40.
       spzeroloc = 0.
       localperiod = 0.
+      nmonsloc=nmonsrec
       call cost_generic(
      &     nnzbar, tbarfile, tbar, xx_tbar_mean_dummy,
      &     nnzobs, tmidatfile, mult_tmi,
-     &     nmonsrec, tmistartdate, localperiod,
-     &     'C', wsst,
-     &     spminloc, spmaxloc, spzeroloc,
-     &     objf_tmi, num_tmi,
+     &     nmonsloc, nmonsloc, tmistartdate, localperiod,
+     &     'C', wsst, spminloc, spmaxloc, spzeroloc, 
+     &     no_preproc, no_preproc_c, no_preproc_i, no_preproc_r,
+     &     no_posproc, no_posproc_c, no_posproc_i, no_posproc_r,
+     &     0, tmidatfile, objf_tmi, num_tmi,
      &     myiter, mytime, mythid )
 cph      call cost_tmi( myiter, mytime, mythid )
 #endif
@@ -159,13 +171,15 @@ cph      call cost_tmi( myiter, mytime, mythid )
       spmaxloc = 40.
       spzeroloc = 0.
       localperiod = 0.
+      nmonsloc=nmonsrec
       call cost_generic(
      &     nnzbar, sbarfile, sbar, xx_sbar_mean_dummy,
      &     nnzobs, sssdatfile, mult_sss,
-     &     nmonsrec, sssstartdate, localperiod,
-     &     'C', wsss,
-     &     spminloc, spmaxloc, spzeroloc,
-     &     objf_sss, num_sss,
+     &     nmonsloc, nmonsloc, sssstartdate, localperiod,
+     &     'C', wsss, spminloc, spmaxloc, spzeroloc, 
+     &     no_preproc, no_preproc_c, no_preproc_i, no_preproc_r,
+     &     no_posproc, no_posproc_c, no_posproc_i, no_posproc_r,
+     &     0, sssdatfile, objf_sss, num_sss,
      &     myiter, mytime, mythid )
 cph      call cost_sss   ( myiter, mytime, mythid )
 #endif
@@ -185,17 +199,21 @@ cph      call cost_sss   ( myiter, mytime, mythid )
 #endif
 
 #ifdef ALLOW_THETA0_COST_CONTRIBUTION
+      if (.NOT.ctrlUseGen) then
       write(msgbuf,'(a)') 'ph-cost call cost_theta0'
       call print_message( msgbuf, standardmessageunit,
      &     SQUEEZE_RIGHT , mythid)
       call cost_theta0 ( myiter, mytime, mythid )
+      endif
 #endif
 
 #ifdef ALLOW_SALT0_COST_CONTRIBUTION
+      if (.NOT.ctrlUseGen) then
       write(msgbuf,'(a)') 'ph-cost call cost_salt0'
       call print_message( msgbuf, standardmessageunit,
      &     SQUEEZE_RIGHT , mythid)
       call cost_salt0  ( myiter, mytime, mythid )
+      endif
 #endif
 
 #ifdef ALLOW_THETA_COST_CONTRIBUTION
@@ -212,15 +230,18 @@ cph      call cost_sss   ( myiter, mytime, mythid )
       call cost_salt  ( myiter, mytime, mythid )
 #endif
 
+#ifdef ALLOW_SIGMAR_COST_CONTRIBUTION
+      write(msgbuf,'(a)') 'ph-cost call cost_sigmar'
+      call print_message( msgbuf, standardmessageunit,
+     &     SQUEEZE_RIGHT , mythid)
+      call cost_sigmar  ( myiter, mytime, mythid )
+#endif
+
 #ifdef ALLOW_TRANSPORT_COST_CONTRIBUTION
       write(msgbuf,'(a)') 'ph-cost call cost_gen_transport'
       call print_message( msgbuf, standardmessageunit,
      &     SQUEEZE_RIGHT , mythid)
       call cost_gen_transport  ( myiter, mytime, mythid )
-#endif
-
-#if (defined (ALLOW_PROFILES) && defined (ALLOW_PROFILES_CONTRIBUTION))
-      if ( usePROFILES ) CALL cost_profiles( myiter, mytime, mythid)
 #endif
 
 #ifdef ALLOW_ETAN0_COST_CONTRIBUTION
@@ -276,5 +297,7 @@ cph and extended using I. Fenty SST, SSS extensions
 
 # endif /* ALLOW_SEAICE_COST_AREASST */
 #endif
+
+#endif /* ECCO_CTRL_DEPRECATED */
 
       end

@@ -7,12 +7,17 @@ C $Name$
 #else
 # define OBCS_UVICE_OLD
 #endif
+#ifdef ALLOW_AUTODIFF
+# include "AUTODIFF_OPTIONS.h"
+#endif
 
 C--  File seaice_lsr.F: seaice LSR dynamical solver S/R:
 C--   Contents
 C--   o SEAICE_LSR
 C--   o SEAICE_RESIDUAL
 C--   o SEAICE_LSR_CALC_COEFFS
+C--   o SEAICE_LSR_RHSU
+C--   o SEAICE_LSR_RHSV
 C--   o SEAICE_LSR_TRIDIAGU
 C--   o SEAICE_LSR_TRIDIAGV
 
@@ -74,7 +79,7 @@ C     !LOCAL VARIABLES:
 C     === Local variables ===
 C     i,j,bi,bj  :: Loop counters
 
-      INTEGER ilcall
+      INTEGER ipass, ipass0
       INTEGER i, j, m, bi, bj
       INTEGER iMin, iMax, jMin, jMax
       INTEGER ICOUNT1, ICOUNT2
@@ -85,7 +90,6 @@ C     i,j,bi,bj  :: Loop counters
 
       _RL WFAU, WFAV, WFAU2, WFAV2
       _RL S1, S2, S1A, S2A
-      _RL hFacM
       _RL eplus, eminus
 
 C     diagonals of coefficient matrices
@@ -118,11 +122,14 @@ C     contribution of sigma on righ hand side
       _RL sig11(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL sig22(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL sig12(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+C     intermediate time level centered (C) between n and n-1
+      _RL uIceC(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL vIceC(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 C     auxillary fields
       _RL uTmp (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL vTmp (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 #ifdef ALLOW_AUTODIFF_TAMC
-      INTEGER itmpkey, itmpkey2
+      INTEGER itmpkey, itmpkey2, itmpkey3
 #endif
       _RL COSWAT
       _RS SINWAT
@@ -161,21 +168,29 @@ cph break artificial dependencies
        DO bi=myBxLo(myThid),myBxHi(myThid)
         DO j=1-OLy,sNy+OLy
          DO i=1-OLx,sNx+OLx
-          press(i,j,bi,bj)=0. _d 0
-          zeta(i,j,bi,bj)=0. _d 0
-          eta(i,j,bi,bj)=0. _d 0
-          etaZ(i,j,bi,bj)=0. _d 0
+          press  (i,j,bi,bj )= 0. _d 0
+          zeta   (i,j,bi,bj) = 0. _d 0
+          eta    (i,j,bi,bj) = 0. _d 0
+          etaZ   (i,j,bi,bj) = 0. _d 0
+          uIceC  (i,j,bi,bj) = 0. _d 0
+          vIceC  (i,j,bi,bj) = 0. _d 0
+          uIceNm1(i,j,bi,bj) = 0. _d 0
+          vIceNm1(i,j,bi,bj) = 0. _d 0
          ENDDO
         ENDDO
        ENDDO
       ENDDO
 #endif
 
+      ipass0 = 2
+C     modify time stepping a little if more than the default 
+C     modified Eulerian time step is used.
+      IF ( NPSEUDOTIMESTEPS.GT.2 ) ipass0 = 1
 #ifdef ALLOW_AUTODIFF_TAMC
-        DO ilcall=1,MPSEUDOTIMESTEPS
-         itmpkey = (ikey_dynamics-1)*MPSEUDOTIMESTEPS + ilcall
+      DO ipass=1,MPSEUDOTIMESTEPS
+       itmpkey = (ikey_dynamics-1)*MPSEUDOTIMESTEPS + ipass
 #else
-        DO ilcall=1,NPSEUDOTIMESTEPS
+      DO ipass=1,NPSEUDOTIMESTEPS
 #endif
 
 #ifdef ALLOW_AUTODIFF_TAMC
@@ -189,7 +204,7 @@ CADJ STORE utmp,vtmp = comlev1_dynsol, kind=isbyte,
 CADJ &     key = itmpkey
 #endif /* ALLOW_AUTODIFF_TAMC */
 
-         IF ( ilcall .LE. NPSEUDOTIMESTEPS ) THEN
+      IF ( ipass .LE. NPSEUDOTIMESTEPS ) THEN
 #ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE uice = comlev1_dynsol, kind=isbyte,
 CADJ &     key = itmpkey
@@ -217,7 +232,7 @@ C SET SOME VALUES
       S1A=0.80 _d 0
       S2A=0.80 _d 0
 
-      IF ( ilcall .EQ. 1 ) THEN
+      IF ( ipass .EQ. 1 ) THEN
 C NOW DO PREDICTOR TIME STEP
        DO bj=myByLo(myThid),myByHi(myThid)
         DO bi=myBxLo(myThid),myBxHi(myThid)
@@ -231,12 +246,6 @@ C NOW DO PREDICTOR TIME STEP
          ENDDO
         ENDDO
        ENDDO
-#ifdef ALLOW_AUTODIFF_TAMC
-cphCADJ STORE uicec = comlev1_dynsol, kind=isbyte,
-cphCADJ &     key = itmpkey
-cphCADJ STORE vicec = comlev1_dynsol, kind=isbyte,
-cphCADJ &     key = itmpkey
-#endif
       ELSE
 C NOW DO MODIFIED EULER STEP
        DO bj=myByLo(myThid),myByHi(myThid)
@@ -252,7 +261,7 @@ C NOW DO MODIFIED EULER STEP
         ENDDO
        ENDDO
       ENDIF
-      IF ( ilcall .GT. 2 ) THEN
+      IF ( ipass .GT. ipass0 ) THEN
 C     for additional (pseudo-time)steps update u/vIceNm1
        DO bj=myByLo(myThid),myByHi(myThid)
         DO bi=myBxLo(myThid),myBxHi(myThid)
@@ -267,9 +276,10 @@ C     for additional (pseudo-time)steps update u/vIceNm1
       ENDIF
 
 #ifdef ALLOW_AUTODIFF_TAMC
-cph That is an important one! Note, that
-cph * lsr is called twice, thus the icall index
-cph * this storing is still outside the iteration loop
+C     That is an important one! Note, that
+C     * lsr is called multiple times (twice by default), thus the 
+C       ipass index is part of itmpkey
+C     * this storing is still outside the lsr iteration loop
 CADJ STORE uice = comlev1_dynsol, kind=isbyte,
 CADJ &     key = itmpkey
 CADJ STORE vice = comlev1_dynsol, kind=isbyte,
@@ -279,17 +289,34 @@ CADJ &     key = itmpkey
       CALL SEAICE_CALC_STRAINRATES(
      I     uIceC, vIceC,
      O     e11, e22, e12,
-     I     ilcall, myTime, myIter, myThid )
+     I     ipass, myTime, myIter, myThid )
 
       CALL SEAICE_CALC_VISCOSITIES(
      I     e11, e22, e12, zMin, zMax, hEffM, press0,
      O     eta, etaZ, zeta, press, deltaC,
-     I     ilcall, myTime, myIter, myThid )
+     I     ipass, myTime, myIter, myThid )
 
       CALL SEAICE_OCEANDRAG_COEFFS(
      I     uIceC, vIceC,
      O     DWATN,
-     I     ilcall, myTime, myIter, myThid )
+     I     ipass, myTime, myIter, myThid )
+C
+C     some abbreviations
+C
+      DO bj=myByLo(myThid),myByHi(myThid)
+       DO bi=myBxLo(myThid),myBxHi(myThid)
+        DO J=jMin-1,jMax
+         DO I=iMin-1,iMax
+          etaPlusZeta (I,J,bi,bj) = ETA (I,J,bi,bj)+ZETA(I,J,bi,bj)
+          zetaMinusEta(I,J,bi,bj) = ZETA(I,J,bi,bj)-ETA (I,J,bi,bj)
+         ENDDO
+        ENDDO
+       ENDDO
+      ENDDO
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+C
+C     Set up of right hand sides of momentum equations starts here
+C
       DO bj=myByLo(myThid),myByHi(myThid)
        DO bi=myBxLo(myThid),myBxHi(myThid)
         DO J=jMin,jMax
@@ -348,39 +375,36 @@ C      this is the rhs contribution of the time derivative
           FORCEY(I,J,bi,bj)=FORCEY(I,J,bi,bj)* seaiceMaskV(I,J,bi,bj)
          ENDDO
         ENDDO
-#ifdef SEAICE_ALLOW_FREEDRIFT
-        IF ( LSR_mixIniGuess.GE.1 ) THEN
-         DO j=jMin,jMax
-          DO i=iMin,iMax
-          uIce_fd(i,j,bi,bj) = FORCEX(i,j,bi,bj)
-     &       / ( 1. _d 0 - seaiceMaskU(i,j,bi,bj)
-     &         + seaiceMassU(i,j,bi,bj)/SEAICE_deltaTdyn
-     &         + HALF*( DWATN(i,j,bi,bj) + DWATN(i-1,j,bi,bj) ) * COSWAT
-     &         )
-          vIce_fd(i,j,bi,bj) = FORCEY(i,j,bi,bj)
-     &       / ( 1. _d 0 - seaiceMaskV(i,j,bi,bj)
-     &         + seaiceMassV(i,j,bi,bj)/SEAICE_deltaTdyn
-     &         + HALF*( DWATN(i,j,bi,bj) + DWATN(i,j-1,bi,bj) ) * COSWAT
-     &         )
-          ENDDO
-         ENDDO
-        ENDIF
-#endif /* SEAICE_ALLOW_FREEDRIFT */
-       ENDDO
-      ENDDO
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C
-C     some abbreviations
+C     u-equation
 C
-      DO bj=myByLo(myThid),myByHi(myThid)
-       DO bi=myBxLo(myThid),myBxHi(myThid)
-        DO J=jMin-1,jMax
-         DO I=iMin-1,iMax
-          etaPlusZeta (I,J,bi,bj) = ETA (I,J,bi,bj)+ZETA(I,J,bi,bj)
-          zetaMinusEta(I,J,bi,bj) = ZETA(I,J,bi,bj)-ETA (I,J,bi,bj)
+        DO j=jMin,jMax
+         DO i=iMin,iMax
+          rhsU(I,J,bi,bj) = FORCEX(I,J,bi,bj) 
          ENDDO
         ENDDO
+        CALL SEAICE_LSR_RHSU(
+     I       zetaMinusEta, etaPlusZeta, etaZ, press, vIceC, 
+     U       rhsU,
+     I       iMin, iMax, jMin, jMax, bi, bj, myThid )
+C
+C     v-equation
+C
+        DO j=jMin,jMax
+         DO i=iMin,iMax
+          rhsV(I,J,bi,bj) = FORCEY(I,J,bi,bj) 
+         ENDDO
+        ENDDO
+        CALL SEAICE_LSR_RHSV(
+     I       zetaMinusEta, etaPlusZeta, etaZ, press, uIceC, 
+     U       rhsV,
+     I       iMin, iMax, jMin, jMax, bi, bj, myThid )
        ENDDO
       ENDDO
+C
+C     Set up of right hand sides of momentum equations ends here
+C
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C
 C     calculate coefficients of tridiagonal matrices for both u- and
@@ -390,107 +414,6 @@ C
      I     etaPlusZeta, zetaMinusEta, etaZ, dwatn,
      O     AU, BU, CU, AV, BV, CV, uRt1, uRt2, vRt1, vRt2,
      I     iMin, iMax, jMin, jMax, myTime, myIter, myThid )
-C
-C     Set up right hand sides of momentum equations
-C
-      DO bj=myByLo(myThid),myByHi(myThid)
-       DO bi=myBxLo(myThid),myBxHi(myThid)
-C
-C     u-equation
-C
-C     contribution of sigma11 to rhs
-        DO J=jMin,jMax
-         DO I=iMin-1,iMax
-          sig11(I,J) = zetaMinusEta(I,J,bi,bj)
-     &         * ( vIceC(I,J+1,bi,bj) - vIceC(I,J,bi,bj) )
-     &         * _recip_dyF(I,J,bi,bj)
-     &         + etaPlusZeta(I,J,bi,bj) * k2AtC(I,J,bi,bj)
-     &         * 0.5 _d 0 * ( vIceC(I,J+1,bi,bj) + vIceC(I,J,bi,bj) )
-     &         - 0.5 _d 0 * PRESS(I,J,bi,bj)
-         ENDDO
-        ENDDO
-C     contribution of sigma12 to rhs of u-equation
-        DO J=jMin,jMax+1
-         DO I=iMin,iMax
-          hFacM = seaiceMaskV(I,J,bi,bj) - seaiceMaskV(I-1,J,bi,bj)
-          sig12(I,J) = etaZ(I,J,bi,bj) * (
-     &         ( vIceC(I,J,bi,bj) - vIceC(I-1,J,bi,bj) )
-     &         * _recip_dxV(I,J,bi,bj)
-     &         - k1AtZ(I,J,bi,bj)
-     &         * 0.5 _d 0 * ( vIceC(I,J,bi,bj) + vIceC(I-1,J,bi,bj) )
-     &         )
-C     free slip conditions (sig12=0) are taken care of by masking sig12
-     &         *maskC(I  ,J  ,kSrf,bi,bj)*maskC(I-1,J  ,kSrf,bi,bj)
-     &         *maskC(I  ,J-1,kSrf,bi,bj)*maskC(I-1,J-1,kSrf,bi,bj)
-C     no slip boundary conditions (v(i-1)=-v(i))
-C     v(i)+v(i-1) = 0 is also taken care of by masking sig12, so that we
-C     only need to deal with v(i)-v(i-1)
-     &         + etaZ(I,J,bi,bj) * _recip_dxV(I,J,bi,bj)
-     &         * ( vIceC(I,J,bi,bj) + vIceC(I-1,J,bi,bj) )
-     &         * hFacM * 2. _d 0
-         ENDDO
-        ENDDO
-
-        DO J=jMin,jMax
-         DO I=iMin,iMax
-C     contribution to the rhs part of grad(sigma)_x
-          rhsU(I,J,bi,bj) = FORCEX(I,J,bi,bj)
-     &         + recip_rAw(I,J,bi,bj) * seaiceMaskU(I,J,bi,bj) *
-     &         ( _dyF(I  ,J  ,bi,bj)*sig11(I  ,J  )
-     &         - _dyF(I-1,J  ,bi,bj)*sig11(I-1,J  )
-     &         + _dxV(I  ,J+1,bi,bj)*sig12(I  ,J+1)
-     &         - _dxV(I  ,J  ,bi,bj)*sig12(I  ,J  ) )
-         ENDDO
-        ENDDO
-C
-C     v-equation
-C
-C     contribution of sigma22 to rhs
-        DO J=jMin-1,jMax
-         DO I=iMin,iMax
-          sig22(I,J) = zetaMinusEta(I,J,bi,bj)
-     &         * ( uIceC(I+1,J,bi,bj) - uIceC(I,J,bi,bj) )
-     &         * _recip_dxF(I,J,bi,bj)
-     &         + etaPlusZeta(I,J,bi,bj) * k1AtC(I,J,bi,bj)
-     &         * 0.5 _d 0 * ( uIceC(I+1,J,bi,bj) + uIceC(I,J,bi,bj) )
-     &         - 0.5 _d 0 * PRESS(I,J,bi,bj)
-         ENDDO
-        ENDDO
-C     contribution of sigma12 to rhs of v-equation
-        DO J=jMin,jMax
-         DO I=iMin,iMax+1
-          hFacM = seaiceMaskU(i,j,bi,bj) - seaiceMaskU(i,j-1,bi,bj)
-          sig12(I,J) = etaZ(I,J,bi,bj) * (
-     &         ( uIceC(I,J,bi,bj) - uIceC(I,J-1,bi,bj) )
-     &         * _recip_dyU(I,J,bi,bj)
-     &         - k2AtZ(I,J,bi,bj)
-     &         * 0.5 _d 0 * ( uIceC(I,J,bi,bj) + uIceC(I,J-1,bi,bj) )
-     &         )
-C     free slip conditions (sig12=0) are taken care of by masking sig12,
-     &         *maskC(I  ,J  ,kSrf,bi,bj)*maskC(I-1,J  ,kSrf,bi,bj)
-     &         *maskC(I  ,J-1,kSrf,bi,bj)*maskC(I-1,J-1,kSrf,bi,bj)
-C     no slip boundary conditions (u(j-1)=-u(j))
-C     u(j)+u(j-1) = 0 is also taken care of by masking sig12, so that we
-C     only need to deal with u(j)-u(j-1)
-     &         + etaZ(I,J,bi,bj) * _recip_dyU(I,J,bi,bj)
-     &         * ( uIceC(I,J,bi,bj) + uIceC(I,J-1,bi,bj) )
-     &         * hFacM * 2. _d 0
-         ENDDO
-        ENDDO
-
-        DO J=jMin,jMax
-         DO I=iMin,iMax
-C     contribution to the rhs part of grad(sigma)_y
-          rhsV(I,J,bi,bj) = FORCEY(I,J,bi,bj)
-     &         + recip_rAs(I,J,bi,bj) * seaiceMaskV(I,J,bi,bj) *
-     &         ( _dyU(I+1,J  ,bi,bj) * sig12(I+1,J  )
-     &         - _dyU(I  ,J  ,bi,bj) * sig12(I  ,J  )
-     &         + _dxF(I  ,J  ,bi,bj) * sig22(I  ,J  )
-     &         - _dxF(I  ,J-1,bi,bj) * sig22(I  ,J-1) )
-         ENDDO
-        ENDDO
-       ENDDO
-      ENDDO
 
 #ifndef OBCS_UVICE_OLD
 C--     prevent tri-diagonal solver from modifying OB values:
@@ -525,33 +448,52 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 #ifdef ALLOW_DEBUG
       IF ( debugLevel .GE. debLevD ) THEN
         WRITE(msgBuf,'(A,I3,A)')
-     &        'Uice pre  iter (SEAICE_LSR', MOD(ilcall,1000), ')'
+     &        'Uice pre  iter (SEAICE_LSR', MOD(ipass,1000), ')'
         CALL DEBUG_STATS_RL( 1, UICE, msgBuf, myThid )
         WRITE(msgBuf,'(A,I3,A)')
-     &        'Vice pre  iter (SEAICE_LSR', MOD(ilcall,1000), ')'
+     &        'Vice pre  iter (SEAICE_LSR', MOD(ipass,1000), ')'
         CALL DEBUG_STATS_RL( 1, VICE, msgBuf, myThid )
       ENDIF
 #endif /* ALLOW_DEBUG */
 
 C--   Calculate initial residual of the linearised system
-      IF ( printResidual .OR. LSR_mixIniGuess.GE.1 ) THEN
+      IF ( printResidual .OR. LSR_mixIniGuess.GE.1 )
+     & CALL SEAICE_RESIDUAL(
+     I                  rhsU, rhsV, uRt1, uRt2, vRt1, vRt2,
+     I                  AU, BU, CU, AV, BV, CV, uIce, vIce,
+     O                  residUini, residVini, uTmp, vTmp,
+     I                  printResidual, myIter, myThid )
+
 #ifdef SEAICE_ALLOW_FREEDRIFT
-        IF ( LSR_mixIniGuess.GE.1 )
-     &  CALL EXCH_UV_XY_RL( uIce_fd, vIce_fd, .TRUE., myThid )
-        IF ( LSR_mixIniGuess.GE.0 )
+      IF ( printResidual .OR. LSR_mixIniGuess.GE.1 ) THEN
+       IF ( LSR_mixIniGuess.GE.1 ) THEN
+        DO bj=myByLo(myThid),myByHi(myThid)
+         DO bi=myBxLo(myThid),myBxHi(myThid)
+          DO j=jMin,jMax
+           DO i=iMin,iMax
+            uIce_fd(i,j,bi,bj) = FORCEX(i,j,bi,bj)
+     &         / ( 1. _d 0 - seaiceMaskU(i,j,bi,bj)
+     &           + seaiceMassU(i,j,bi,bj)/SEAICE_deltaTdyn
+     &           + HALF*( DWATN(i,j,bi,bj) + DWATN(i-1,j,bi,bj) )*COSWAT
+     &           )
+            vIce_fd(i,j,bi,bj) = FORCEY(i,j,bi,bj)
+     &         / ( 1. _d 0 - seaiceMaskV(i,j,bi,bj)
+     &           + seaiceMassV(i,j,bi,bj)/SEAICE_deltaTdyn
+     &           + HALF*( DWATN(i,j,bi,bj) + DWATN(i,j-1,bi,bj) )*COSWAT
+     &           )
+           ENDDO
+          ENDDO
+         ENDDO
+        ENDDO
+        CALL EXCH_UV_XY_RL( uIce_fd, vIce_fd, .TRUE., myThid )
+       ENDIF
+       IF ( LSR_mixIniGuess.GE.0 )
      &  CALL SEAICE_RESIDUAL(
      I                  rhsU, rhsV, uRt1, uRt2, vRt1, vRt2,
      I                  AU, BU, CU, AV, BV, CV, uIce_fd, vIce_fd,
      O                  residU_fd, residV_fd, uRes, vRes,
      I                  printResidual, myIter, myThid )
-#endif /* SEAICE_ALLOW_FREEDRIFT */
-        CALL SEAICE_RESIDUAL(
-     I                  rhsU, rhsV, uRt1, uRt2, vRt1, vRt2,
-     I                  AU, BU, CU, AV, BV, CV, uIce, vIce,
-     O                  residUini, residVini, uTmp, vTmp,
-     I                  printResidual, myIter, myThid )
       ENDIF
-#ifdef SEAICE_ALLOW_FREEDRIFT
       IF ( LSR_mixIniGuess.GE.2 ) THEN
 # ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE uice, vice = comlev1_dynsol, kind=isbyte,
@@ -561,39 +503,43 @@ CADJ &     key = itmpkey
 # endif /* ALLOW_AUTODIFF_TAMC */
        DO bj=myByLo(myThid),myByHi(myThid)
         DO bi=myBxLo(myThid),myBxHi(myThid)
-          DO j=jMin,jMax
-           DO i=iMin,iMax
-             errIni = uTmp(i,j,bi,bj)*uTmp(i,j,bi,bj)
-             errFD  = uRes(i,j,bi,bj)*uRes(i,j,bi,bj)
-             IF ( LSR_mixIniGuess.GE.4 ) THEN
-               errIni = errIni*errIni
-               errFD  = errFD *errFD
-             ENDIF
-             errSum = ( errIni + errFD )
-     &               *maskInC(i,j,bi,bj)*maskInC(i-1,j,bi,bj)
-             IF ( errSum.GT.0. ) THEN
-               uIce(i,j,bi,bj) = ( errFD *uIce(i,j,bi,bj)
-     &                           + errIni*uIce_fd(i,j,bi,bj)
-     &                           )/errSum
-             ENDIF
-             errIni = vTmp(i,j,bi,bj)*vTmp(i,j,bi,bj)
-             errFD  = vRes(i,j,bi,bj)*vRes(i,j,bi,bj)
-             IF ( LSR_mixIniGuess.GE.4 ) THEN
-               errIni = errIni*errIni
-               errFD  = errFD *errFD
-             ENDIF
-             errSum = ( errIni + errFD )
-     &               *maskInC(i,j,bi,bj)*maskInC(i,j-1,bi,bj)
-             IF ( errSum.GT.0. ) THEN
-               vIce(i,j,bi,bj) = ( errFD *vIce(i,j,bi,bj)
-     &                           + errIni*vIce_fd(i,j,bi,bj)
-     &                           )/errSum
-             ENDIF
-           ENDDO
+         DO j=jMin,jMax
+          DO i=iMin,iMax
+           errIni = uTmp(i,j,bi,bj)*uTmp(i,j,bi,bj)
+           errFD  = uRes(i,j,bi,bj)*uRes(i,j,bi,bj)
+           IF ( LSR_mixIniGuess.GE.4 ) THEN
+            errIni = errIni*errIni
+            errFD  = errFD *errFD
+           ENDIF
+           errSum = ( errIni + errFD )
+     &          *maskInC(i,j,bi,bj)*maskInC(i-1,j,bi,bj)
+           IF ( errSum.GT.0. ) THEN
+            uIce(i,j,bi,bj) = ( errFD *uIce(i,j,bi,bj)
+     &                        + errIni*uIce_fd(i,j,bi,bj)
+     &                        )/errSum
+           ENDIF
+           errIni = vTmp(i,j,bi,bj)*vTmp(i,j,bi,bj)
+           errFD  = vRes(i,j,bi,bj)*vRes(i,j,bi,bj)
+           IF ( LSR_mixIniGuess.GE.4 ) THEN
+            errIni = errIni*errIni
+            errFD  = errFD *errFD
+           ENDIF
+           errSum = ( errIni + errFD )
+     &          *maskInC(i,j,bi,bj)*maskInC(i,j-1,bi,bj)
+           IF ( errSum.GT.0. ) THEN
+            vIce(i,j,bi,bj) = ( errFD *vIce(i,j,bi,bj)
+     &                        + errIni*vIce_fd(i,j,bi,bj)
+     &                        )/errSum
+           ENDIF
           ENDDO
+         ENDDO
         ENDDO
        ENDDO
        CALL EXCH_UV_XY_RL( uIce, vIce, .TRUE., myThid )
+#ifndef ALLOW_AUTODIFF_TAMC
+C     Here residU/Vmix and u/vTmp are computed but never used for anything
+C     but reporting to STDOUT. Still TAF thinks this requires recomputations
+C     so we hide this part of the code from TAF.
        IF ( printResidual ) THEN
         CALL SEAICE_RESIDUAL(
      I                  rhsU, rhsV, uRt1, uRt2, vRt1, vRt2,
@@ -601,6 +547,7 @@ CADJ &     key = itmpkey
      O                  residUmix, residVmix, uTmp, vTmp,
      I                  printResidual, myIter, myThid )
        ENDIF
+#endif /* ALLOW_AUTODIFF_TAMC */
       ENDIF
 #endif /* SEAICE_ALLOW_FREEDRIFT */
 
@@ -614,9 +561,12 @@ cph--- need to kick out goto
       doIterate4v = .TRUE.
 
 C ITERATION START -----------------------------------------------------
-#ifdef ALLOW_AUTODIFF_TAMC
-CADJ LOOP = iteration uice, vice
-#endif /* ALLOW_AUTODIFF_TAMC */
+C     Ideally, we would like to use the loop-directive for this
+C     iterative loop, but (unsurprisingly) it does not seem to work for 
+C     this convoluted case of mixed iterations, so it is commented out
+CML#ifdef ALLOW_AUTODIFF_TAMC
+CMLCADJ LOOP = iteration uice, vice = comlev1_lsr
+CML#endif /* ALLOW_AUTODIFF_TAMC */
 
 #if (defined (ALLOW_AUTODIFF_TAMC) && defined (SEAICE_LSR_ADJOINT_ITER))
       IF ( inAdMode ) THEN
@@ -633,17 +583,17 @@ CADJ LOOP = iteration uice, vice
 
       DO m = 1, SOLV_MAX_TMP
 
-# ifdef ALLOW_AUTODIFF_TAMC
-#  ifdef SEAICE_LSR_ADJOINT_ITER
-         itmpkey2 = (itmpkey-1)*SOLV_MAX_FIXED +
-     &              MIN(m,SOLV_MAX_FIXED)
-CADJ STORE utmp, vtmp = comlev1_dyniter, kind=isbyte,
-CADJ &     key = itmpkey2
-#  else
-CADJ STORE utmp, vtmp = comlev1_dynsol, kind=isbyte,
-CADJ &     key = itmpkey
-#  endif
-# endif /* ALLOW_AUTODIFF_TAMC */
+#ifdef ALLOW_AUTODIFF_TAMC
+# ifdef SEAICE_LSR_ADJOINT_ITER
+       itmpkey2 = (itmpkey-1)*SOLV_MAX_FIXED + MIN(m,SOLV_MAX_FIXED)
+# else
+       itmpkey2 = itmpkey
+# endif /* SEAICE_LSR_ADJOINT_ITER */
+C     Storing these scalars and logicals is necessary to do an exact
+C     backward iteration
+CADJ STORE wfau, wfav = comlev1_lsr,  kind=isbyte, key = itmpkey2
+CADJ STORE doIterate4u, doIterate4v = comlev1_lsr, key = itmpkey2
+#endif /* ALLOW_AUTODIFF_TAMC */
 
        IF ( doIterate4u .OR. doIterate4v ) THEN
 
@@ -653,13 +603,11 @@ CADJ &     key = itmpkey
         ENDIF
 
 # ifdef ALLOW_AUTODIFF_TAMC
-#  ifdef SEAICE_LSR_ADJOINT_ITER
-CADJ STORE uice, vice = comlev1_dyniter, kind=isbyte,
-CADJ &     key = itmpkey2
-#  else
-CADJ STORE uice, vice = comlev1_dynsol, kind=isbyte,
-CADJ &     key = itmpkey
-#  endif
+C     Note that itmpkey2 can get very large when SEAICE_LSR_ADJOINT_ITER
+C     is defined for an accurate adjoint, otherwise it is the same for
+C     each m, so that the tapes get overwritten for each iterate and
+C     the adjoint is necessarily wrong.
+CADJ STORE uice, vice = comlev1_lsr, kind=isbyte, key = itmpkey2
 # endif /* ALLOW_AUTODIFF_TAMC */
 
 #ifdef SEAICE_GLOBAL_3DIAG_SOLVER
@@ -693,7 +641,7 @@ C     end bi,bj-loops
           ENDDO
          ENDDO
 
-         iSubIter = SOLV_MAX_TMP*(ilcall-1) + m
+         iSubIter = SOLV_MAX_TMP*(ipass-1) + m
          CALL SOLVE_UV_TRIDIAGO(
      I                 1, OLx, doIterate4u, doIterate4v,
      I                 AU, BU, CU, rhsUx,
@@ -729,16 +677,25 @@ C     end bi,bj-loops
         DO bj=myByLo(myThid),myByHi(myThid)
          DO bi=myBxLo(myThid),myBxHi(myThid)
 
+#ifdef ALLOW_AUTODIFF_TAMC
+          act1 = bi - myBxLo(myThid)
+          max1 = myBxHi(myThid) - myBxLo(myThid) + 1
+          act2 = bj - myByLo(myThid)
+          max2 = myByHi(myThid) - myByLo(myThid) + 1
+          act3 = myThid - 1
+          max3 = nTx*nTy
+          act4 = itmpkey2 - 1
+          itmpkey3 = (act1 + 1) + act2*max1
+     &                          + act3*max1*max2
+     &                          + act4*max1*max2*max3
+CADJ STORE uice(:,:,bi,bj) = comlev1_bibj_lsr,kind=isbyte,key=itmpkey3
+CADJ STORE vice(:,:,bi,bj) = comlev1_bibj_lsr,kind=isbyte,key=itmpkey3
+#endif /* ALLOW_AUTODIFF_TAMC */
 C-jmc: get less TAF warnings when always (no if doIterate) saving uIce,vIce:
-C     save uIce prior to iteration, NOW SET U(3)=U(1)
+C     save u/vIce prior to iteration
           DO j=1-OLy,sNy+OLy
            DO i=1-OLx,sNx+OLx
             uTmp(I,J,bi,bj)=uIce(I,J,bi,bj)
-           ENDDO
-          ENDDO
-C     save vIce prior to iteration, NOW SET V(3)=V(1)
-          DO j=1-OLy,sNy+OLy
-           DO i=1-OLx,sNx+OLx
             vTmp(I,J,bi,bj)=vIce(I,J,bi,bj)
            ENDDO
           ENDDO
@@ -782,7 +739,7 @@ C     end bi,bj-loops
          ENDDO
          _GLOBAL_MAX_RL( S1, myThid )
 c        WRITE(standardMessageUnit,'(A,2I6,1P4E16.9)')
-c    &   ' U iters,error,WF = ',ilcall,M,S1,S1A,WFAU
+c    &   ' U iters,error,WF = ',ipass,M,S1,S1A,WFAU
 C SAFEGUARD AGAINST BAD FORCING ETC
          IF(m.GT.1.AND.S1.GT.S1A) WFAU=WFAU2
          S1A=S1
@@ -824,6 +781,10 @@ C ITERATION END -----------------------------------------------------
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
+#ifndef ALLOW_AUTODIFF_TAMC
+C     Here residU/Vend and u/vTmp are computed but never used for anything
+C     but reporting to STDOUT. Still TAF thinks this requires recomputations
+C     so we hide this part of the code from TAF.
       IF ( printResidual ) THEN
 C--   Calculate final residual of the linearised system
         CALL SEAICE_RESIDUAL(
@@ -834,7 +795,7 @@ C--   Calculate final residual of the linearised system
         _BEGIN_MASTER( myThid )
         WRITE(standardMessageUnit,'(A,1X,I4,1P3E16.8)')
      &    ' SEAICE_LSR: Residual Initial ipass,Uice,Vice=',
-     &        ilcall, residUini, residVini
+     &        ipass, residUini, residVini
 #ifdef SEAICE_ALLOW_FREEDRIFT
         IF ( LSR_mixIniGuess.GE.0 )
      &  WRITE(standardMessageUnit,'(A,1P3E16.8)')
@@ -846,26 +807,26 @@ C--   Calculate final residual of the linearised system
      &        residUmix, residVmix
 #endif /* SEAICE_ALLOW_FREEDRIFT */
         WRITE(standardMessageUnit,'(A,I4,A,I6,1P2E16.8)')
-     &    ' SEAICE_LSR (ipass=',ilcall,') iters,dU,Resid=',
+     &    ' SEAICE_LSR (ipass=',ipass,') iters,dU,Resid=',
      &      ICOUNT1, S1, residUend
         WRITE(standardMessageUnit,'(A,I4,A,I6,1P2E16.8)')
-     &    ' SEAICE_LSR (ipass=',ilcall,') iters,dV,Resid=',
+     &    ' SEAICE_LSR (ipass=',ipass,') iters,dV,Resid=',
      &      ICOUNT2, S2, residVend
         _END_MASTER( myThid )
       ENDIF
 #ifdef ALLOW_DEBUG
       IF ( debugLevel .GE. debLevD ) THEN
         WRITE(msgBuf,'(A,I3,A)')
-     &        'Uice post iter (SEAICE_LSR', MOD(ilcall,1000), ')'
+     &        'Uice post iter (SEAICE_LSR', MOD(ipass,1000), ')'
         CALL DEBUG_STATS_RL( 1, UICE, msgBuf, myThid )
         WRITE(msgBuf,'(A,I3,A)')
-     &        'Vice post iter (SEAICE_LSR', MOD(ilcall,1000), ')'
+     &        'Vice post iter (SEAICE_LSR', MOD(ipass,1000), ')'
         CALL DEBUG_STATS_RL( 1, VICE, msgBuf, myThid )
       ENDIF
 #endif /* ALLOW_DEBUG */
       IF ( doIterate4u .OR. doIterate4v ) THEN
         WRITE(msgBuf,'(2A,I10,A,I4,A)') '** WARNING ** SEAICE_LSR ',
-     &    '(it=', myIter, ',', ilcall,') did not converge :'
+     &    '(it=', myIter, ',', ipass,') did not converge :'
         CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
      &                      SQUEEZE_RIGHT, myThid )
         WRITE(msgBuf,'(2(A,I6,0PF6.3,1PE14.6))')
@@ -874,6 +835,7 @@ C--   Calculate final residual of the linearised system
         CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
      &                      SQUEEZE_RIGHT, myThid )
       ENDIF
+#endif /* ALLOW_AUTODIFF_TAMC */
 
 C     APPLY MASKS
       DO bj=myByLo(myThid),myByHi(myThid)
@@ -920,16 +882,22 @@ C--   Compute residual norm and print
        _BEGIN_MASTER( myThid )
        WRITE(standardMessageUnit,'(A,I7,1X,2E22.14)')
      &      'S/R SEAICE_LSR: IPSEUDO, RESNORM, EKNORM = ',
-     &      ilcall, sqrt(resnorm), EKnorm
+     &      ipass, sqrt(resnorm), EKnorm
        _END_MASTER( myThid )
       ENDIF
 #endif /* SEAICE_ALLOW_CHECK_LSR_CONVERGENCE */
 
       ENDIF
-C     end outer ilcall pseudo-time stepping loop
+C     end outer ipass pseudo-time stepping loop
       ENDDO
 
       IF ( useHB87StressCoupling ) THEN
+# ifdef ALLOW_AUTODIFF_TAMC
+C     These directives do not remove any recomputation warnings but avoid
+C     recomputing the entire LSR loop before evaluating this code block
+CADJ STORE uice, vice, eta, etaz, zeta = comlev1_dynsol, 
+CADJ &     kind=isbyte, key = ikey_dynamics
+# endif /* ALLOW_AUTODIFF_TAMC */
 C     compute the divergence of stress here to be used later
 C
 C     compute strain rate from latest velocities
@@ -973,16 +941,16 @@ C     evaluate divergence of stress and apply to forcing
      &          + sig12(I  ,J+1) * _dxV(I  ,J+1,bi,bj)
      &          - sig12(I  ,J  ) * _dxV(I  ,J  ,bi,bj)
      &          ) * recip_rAw(I,J,bi,bj)
-            stressDivergenceY(I,J,bi,bj) =
+           stressDivergenceY(I,J,bi,bj) =
      &          ( sig22(I  ,J  ) * _dxF(I  ,J  ,bi,bj)
      &          - sig22(I  ,J-1) * _dxF(I  ,J-1,bi,bj)
      &          + sig12(I+1,J  ) * _dyU(I+1,J  ,bi,bj)
      &          - sig12(I  ,J  ) * _dyU(I  ,J  ,bi,bj)
      &          ) * recip_rAs(I,J,bi,bj)
-           ENDDO
           ENDDO
          ENDDO
         ENDDO
+       ENDDO
 C     endif  useHB87StressCoupling
       ENDIF
 
@@ -1198,14 +1166,14 @@ C     XX: double derivative in X
 C     YY: double derivative in Y
 C     XM: metric term with derivative in X
 C     YM: metric term with derivative in Y
-      _RL UXX  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
-      _RL UYY  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
-      _RL UXM  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
-      _RL UYM  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
-      _RL VXX  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
-      _RL VYY  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
-      _RL VXM  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
-      _RL VYM  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL UXX  (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL UYY  (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL UXM  (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL UYM  (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL VXX  (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL VYY  (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL VXM  (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL VYM  (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL COSWAT
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
@@ -1229,40 +1197,40 @@ C
         DO J=jMin,jMax
          DO I=iMin-1,iMax
 C     ... d/dx (eta+zeta) d/dx u
-          UXX(I,J,bi,bj) = _dyF(I,J,bi,bj) * etaPlusZeta(I,J,bi,bj)
+          UXX(I,J) = _dyF(I,J,bi,bj) * etaPlusZeta(I,J,bi,bj)
      &         * _recip_dxF(I,J,bi,bj)
 C     ... d/dx (zeta-eta) k1 u
-          UXM(I,J,bi,bj) = _dyF(I,J,bi,bj) * zetaMinusEta(I,J,bi,bj)
+          UXM(I,J) = _dyF(I,J,bi,bj) * zetaMinusEta(I,J,bi,bj)
      &         * k1AtC(I,J,bi,bj) * 0.5 _d 0
          ENDDO
         ENDDO
         DO J=jMin,jMax+1
          DO I=iMin,iMax
 C     ... d/dy eta d/dy u
-          UYY(I,J,bi,bj) = _dxV(I,J,bi,bj) * etaZloc(I,J,bi,bj)
+          UYY(I,J) = _dxV(I,J,bi,bj) * etaZloc(I,J,bi,bj)
      &         * _recip_dyU(I,J,bi,bj)
 C     ... d/dy eta k2 u
-          UYM(I,J,bi,bj) = _dxV(I,J,bi,bj) * etaZloc(I,J,bi,bj)
+          UYM(I,J) = _dxV(I,J,bi,bj) * etaZloc(I,J,bi,bj)
      &         * k2AtZ(I,J,bi,bj) * 0.5 _d 0
          ENDDO
         ENDDO
         DO J=jMin,jMax
          DO I=iMin,iMax+1
 C     ... d/dx eta dv/dx
-          VXX(I,J,bi,bj) = _dyU(I,J,bi,bj) * etaZloc(I,J,bi,bj)
+          VXX(I,J) = _dyU(I,J,bi,bj) * etaZloc(I,J,bi,bj)
      &         * _recip_dxV(I,J,bi,bj)
 C     ... d/dx eta k1 v
-          VXM(I,J,bi,bj) = _dyU(I,J,bi,bj) * etaZloc(I,J,bi,bj)
+          VXM(I,J) = _dyU(I,J,bi,bj) * etaZloc(I,J,bi,bj)
      &         * k1AtZ(I,J,bi,bj) * 0.5 _d 0
          ENDDO
         ENDDO
         DO J=jMin-1,jMax
          DO I=iMin,iMax
 C     ... d/dy eta+zeta dv/dy
-          VYY(I,J,bi,bj) = _dxF(I,J,bi,bj) * etaPlusZeta(I,J,bi,bj)
+          VYY(I,J) = _dxF(I,J,bi,bj) * etaPlusZeta(I,J,bi,bj)
      &         * _recip_dyF(I,J,bi,bj)
 C     ... d/dy (zeta-eta) k2 v
-          VYM(I,J,bi,bj) = _dxF(I,J,bi,bj) * zetaMinusEta(I,J,bi,bj)
+          VYM(I,J) = _dxF(I,J,bi,bj) * zetaMinusEta(I,J,bi,bj)
      &         * k2AtC(I,J,bi,bj) * 0.5 _d 0
          ENDDO
         ENDDO
@@ -1275,22 +1243,20 @@ C     of U(I,J+/-1) are counted on the right hand side
         DO J=jMin,jMax
          DO I=iMin,iMax
 C     coefficients for UICE(I-1,J)
-          AU(I,J,bi,bj)= ( - UXX(I-1,J,bi,bj) + UXM(I-1,J,bi,bj) )
+          AU(I,J,bi,bj)= ( - UXX(I-1,J) + UXM(I-1,J) )
      &         * seaiceMaskU(I,J,bi,bj)
 C     coefficients for UICE(I+1,J)
-          CU(I,J,bi,bj)= ( - UXX(I  ,J,bi,bj) - UXM(I  ,J,bi,bj) )
+          CU(I,J,bi,bj)= ( - UXX(I  ,J) - UXM(I  ,J) )
      &         * seaiceMaskU(I,J,bi,bj)
 C     coefficients for UICE(I,J)
           BU(I,J,bi,bj)=(ONE - seaiceMaskU(I,J,bi,bj)) +
-     &         ( UXX(I-1,J  ,bi,bj) + UXX(I,J,bi,bj)
-     &         + UYY(I  ,J+1,bi,bj) + UYY(I,J,bi,bj)
-     &         + UXM(I-1,J  ,bi,bj) - UXM(I,J,bi,bj)
-     &         + UYM(I  ,J+1,bi,bj) - UYM(I,J,bi,bj)
+     &         ( UXX(I-1,J) + UXX(I,J) + UYY(I,J+1) + UYY(I,J)
+     &         + UXM(I-1,J) - UXM(I,J) + UYM(I,J+1) - UYM(I,J)
      &         ) * seaiceMaskU(I,J,bi,bj)
 C     coefficients of uIce(I,J-1)
-          uRt1(I,J,bi,bj)= UYY(I,J  ,bi,bj) + UYM(I,J  ,bi,bj)
+          uRt1(I,J,bi,bj)= UYY(I,J  ) + UYM(I,J  )
 C     coefficients of uIce(I,J+1)
-          uRt2(I,J,bi,bj)= UYY(I,J+1,bi,bj) - UYM(I,J+1,bi,bj)
+          uRt2(I,J,bi,bj)= UYY(I,J+1) - UYM(I,J+1)
          ENDDO
         ENDDO
 
@@ -1305,10 +1271,8 @@ C     copy contributions to coefficient of U(I,J)
 C     beware of sign convection: uRt1/2 have the opposite sign convention
 C     than BU, hence the minus sign
           BU(I,J,bi,bj)=BU(I,J,bi,bj) + seaiceMaskU(I,J,bi,bj) *
-     &         ( ( 1. _d 0 - hFacM )
-     &         * ( UYY(I  ,J  ,bi,bj) + UYM(I  ,J  ,bi,bj) )
-     &         + ( 1. _d 0 - hFacP )
-     &         * ( UYY(I  ,J+1,bi,bj) - UYM(I  ,J+1,bi,bj) ) )
+     &         ( ( 1. _d 0 - hFacM ) * ( UYY(I  ,J  ) + UYM(I  ,J  ) )
+     &         + ( 1. _d 0 - hFacP ) * ( UYY(I  ,J+1) - UYM(I  ,J+1) ) )
 C     reset coefficients of U(I,J-1) and U(I,J+1)
           uRt1(I,J,bi,bj) = uRt1(I,J,bi,bj) * hFacM
           uRt2(I,J,bi,bj) = uRt2(I,J,bi,bj) * hFacP
@@ -1341,22 +1305,20 @@ C     of V(I+/-1,J) are counted on the right hand side
         DO J=jMin,jMax
          DO I=iMin,iMax
 C     coefficients for VICE(I,J-1)
-          AV(I,J,bi,bj)=( - VYY(I,J-1,bi,bj) + VYM(I,J-1,bi,bj)
+          AV(I,J,bi,bj)=( - VYY(I,J-1) + VYM(I,J-1)
      &         ) * seaiceMaskV(I,J,bi,bj)
 C     coefficients for VICE(I,J+1)
-          CV(I,J,bi,bj)=( - VYY(I,J  ,bi,bj) - VYM(I,J  ,bi,bj)
+          CV(I,J,bi,bj)=( - VYY(I,J  ) - VYM(I,J  )
      &         ) * seaiceMaskV(I,J,bi,bj)
 C     coefficients for VICE(I,J)
           BV(I,J,bi,bj)= (ONE - seaiceMaskV(I,J,bi,bj)) +
-     &         ( VXX(I,J,bi,bj) + VXX(I+1,J  ,bi,bj)
-     &         + VYY(I,J,bi,bj) + VYY(I  ,J-1,bi,bj)
-     &         - VXM(I,J,bi,bj) + VXM(I+1,J  ,bi,bj)
-     &         - VYM(I,J,bi,bj) + VYM(I  ,J-1,bi,bj)
+     &         ( VXX(I,J) + VXX(I+1,J) + VYY(I,J) + VYY(I,J-1)
+     &         - VXM(I,J) + VXM(I+1,J) - VYM(I,J) + VYM(I,J-1)
      &         ) * seaiceMaskV(I,J,bi,bj)
 C     coefficients for V(I-1,J)
-          vRt1(I,J,bi,bj) = VXX(I  ,J,bi,bj) + VXM(I  ,J,bi,bj)
+          vRt1(I,J,bi,bj) = VXX(I  ,J) + VXM(I  ,J)
 C     coefficients for V(I+1,J)
-          vRt2(I,J,bi,bj) = VXX(I+1,J,bi,bj) - VXM(I+1,J,bi,bj)
+          vRt2(I,J,bi,bj) = VXX(I+1,J) - VXM(I+1,J)
          ENDDO
         ENDDO
 
@@ -1371,10 +1333,8 @@ C     copy contributions to coefficient of V(I,J)
 C     beware of sign convection: vRt1/2 have the opposite sign convention
 C     than BV, hence the minus sign
           BV(I,J,bi,bj)=BV(I,J,bi,bj) + seaiceMaskV(I,J,bi,bj) *
-     &         ( ( 1. _d 0 - hFacM )
-     &         * ( VXX(I  ,J,bi,bj) + VXM(I  ,J,bi,bj) )
-     &         + ( 1. _d 0 - hFacP )
-     &         * ( VXX(I+1,J,bi,bj) - VXM(I+1,J,bi,bj) ) )
+     &         ( ( 1. _d 0 - hFacM ) * ( VXX(I  ,J) + VXM(I  ,J) )
+     &         + ( 1. _d 0 - hFacP ) * ( VXX(I+1,J) - VXM(I+1,J) ) )
 C     reset coefficients of V(I-1,J) and V(I+1,J)
           vRt1(I,J,bi,bj) = vRt1(I,J,bi,bj) * hFacM
           vRt2(I,J,bi,bj) = vRt2(I,J,bi,bj) * hFacP
@@ -1409,6 +1369,211 @@ C     bi/bj-loops
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 CBOP
+C     !ROUTINE: SEAICE_LSR_RHSU
+C     !INTERFACE:
+      SUBROUTINE SEAICE_LSR_RHSU(
+     I     zetaMinusEta, etaPlusZeta, etaZloc, pressLoc, vIceC, 
+     U     rhsU,
+     I     iMin, iMax, jMin, jMax, bi, bj, myThid )
+
+C     !DESCRIPTION: \bv
+C     *==========================================================*
+C     | S/R SEAICE_LSR_RHSU
+C     | o Set up stress contribution to rhs of u-momentum eq.
+C     *==========================================================*
+C     \ev
+
+C     !USES:
+      IMPLICIT NONE
+#include "SIZE.h"
+#include "GRID.h"
+#include "SEAICE_SIZE.h"
+#include "SEAICE.h"
+
+C     !INPUT/OUTPUT PARAMETERS:
+C     === Routine arguments ===
+C     myThid     :: my Thread Id. number
+      INTEGER myThid
+      INTEGER iMin, iMax, jMin, jMax, bi, bj
+C
+      _RL zetaMinusEta(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL etaPlusZeta (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL etaZloc     (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL pressloc    (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL vIceC       (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL rhsU        (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+
+C     !LOCAL VARIABLES:
+C     === Local variables ===
+C     i,j  :: Loop counters
+      INTEGER I,J
+      INTEGER kSrf
+      _RL hFacM
+      _RL sig11(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL sig12(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+CEOP
+
+      kSrf = 1
+      DO J=1-OLy,sNy+OLy
+       DO I=1-OLx,sNx+OLx
+        sig11(I,J) = 0. _d 0
+        sig12(I,J) = 0. _d 0
+       ENDDO
+      ENDDO
+C     contribution of sigma11 to rhs
+      DO J=jMin,jMax
+       DO I=iMin-1,iMax
+        sig11(I,J) = zetaMinusEta(I,J,bi,bj)
+     &       * ( vIceC(I,J+1,bi,bj) - vIceC(I,J,bi,bj) )
+     &       * _recip_dyF(I,J,bi,bj)
+     &       + etaPlusZeta(I,J,bi,bj) * k2AtC(I,J,bi,bj)
+     &       * 0.5 _d 0 * ( vIceC(I,J+1,bi,bj) + vIceC(I,J,bi,bj) )
+     &       - 0.5 _d 0 * pressLoc(I,J,bi,bj)
+       ENDDO
+      ENDDO
+C     contribution of sigma12 to rhs of u-equation
+      DO J=jMin,jMax+1
+       DO I=iMin,iMax
+        hFacM = seaiceMaskV(I,J,bi,bj) - seaiceMaskV(I-1,J,bi,bj)
+        sig12(I,J) = etaZloc(I,J,bi,bj) * (
+     &       ( vIceC(I,J,bi,bj) - vIceC(I-1,J,bi,bj) )
+     &       * _recip_dxV(I,J,bi,bj)
+     &       - k1AtZ(I,J,bi,bj)
+     &       * 0.5 _d 0 * ( vIceC(I,J,bi,bj) + vIceC(I-1,J,bi,bj) )
+     &       )
+C     free slip conditions (sig12=0) are taken care of by masking sig12
+     &       *maskC(I  ,J  ,kSrf,bi,bj)*maskC(I-1,J  ,kSrf,bi,bj)
+     &       *maskC(I  ,J-1,kSrf,bi,bj)*maskC(I-1,J-1,kSrf,bi,bj)
+C     no slip boundary conditions (v(i-1)=-v(i))
+C     v(i)+v(i-1) = 0 is also taken care of by masking sig12, so that we
+C     only need to deal with v(i)-v(i-1)
+     &       + etaZloc(I,J,bi,bj) * _recip_dxV(I,J,bi,bj)
+     &       * ( vIceC(I,J,bi,bj) + vIceC(I-1,J,bi,bj) )
+     &       * hFacM * 2. _d 0
+       ENDDO
+      ENDDO
+
+      DO J=jMin,jMax
+       DO I=iMin,iMax
+C     contribution to the rhs part of grad(sigma)_x
+        rhsU(I,J,bi,bj) = rhsU(I,J,bi,bj)
+     &       + recip_rAw(I,J,bi,bj) * seaiceMaskU(I,J,bi,bj) *
+     &       ( _dyF(I  ,J  ,bi,bj)*sig11(I  ,J  )
+     &       - _dyF(I-1,J  ,bi,bj)*sig11(I-1,J  )
+     &       + _dxV(I  ,J+1,bi,bj)*sig12(I  ,J+1)
+     &       - _dxV(I  ,J  ,bi,bj)*sig12(I  ,J  ) )
+       ENDDO
+      ENDDO
+
+      RETURN
+      END
+
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+
+CBOP
+C     !ROUTINE: SEAICE_LSR_RHSV
+C     !INTERFACE:
+      SUBROUTINE SEAICE_LSR_RHSV(
+     I     zetaMinusEta, etaPlusZeta, etaZloc, pressLoc, uIceC, 
+     U     rhsV,
+     I     iMin, iMax, jMin, jMax, bi, bj, myThid )
+
+C     !DESCRIPTION: \bv
+C     *==========================================================*
+C     | S/R SEAICE_LSR_RHSV
+C     | o Set up stress contribution to rhs of v-momentum eq.
+C     *==========================================================*
+C     \ev
+
+C     !USES:
+      IMPLICIT NONE
+#include "SIZE.h"
+#include "GRID.h"
+#include "SEAICE_SIZE.h"
+#include "SEAICE.h"
+
+C     !INPUT/OUTPUT PARAMETERS:
+C     === Routine arguments ===
+C     myThid     :: my Thread Id. number
+      INTEGER myThid
+      INTEGER iMin, iMax, jMin, jMax, bi, bj
+C
+      _RL zetaMinusEta(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL etaPlusZeta (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL etaZloc     (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL pressloc    (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL uIceC       (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL rhsV        (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+
+C     !LOCAL VARIABLES:
+C     === Local variables ===
+C     i,j  :: Loop counters
+      INTEGER I,J
+      INTEGER kSrf
+      _RL hFacM
+      _RL sig22(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL sig12(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+CEOP
+
+      kSrf = 1
+      DO J = 1-Oly,sNy+Oly
+       DO I = 1-Olx,sNx+Olx
+        sig22(I,J) = 0. _d 0
+        sig12(I,J) = 0. _d 0
+       ENDDO
+      ENDDO
+
+C     contribution of sigma22 to rhs
+      DO J=jMin-1,jMax
+       DO I=iMin,iMax
+        sig22(I,J) = zetaMinusEta(I,J,bi,bj)
+     &       * ( uIceC(I+1,J,bi,bj) - uIceC(I,J,bi,bj) )
+     &       * _recip_dxF(I,J,bi,bj)
+     &       + etaPlusZeta(I,J,bi,bj) * k1AtC(I,J,bi,bj)
+     &       * 0.5 _d 0 * ( uIceC(I+1,J,bi,bj) + uIceC(I,J,bi,bj) )
+     &       - 0.5 _d 0 * pressLoc(I,J,bi,bj)
+       ENDDO
+      ENDDO
+C     contribution of sigma12 to rhs of v-equation
+      DO J=jMin,jMax
+       DO I=iMin,iMax+1
+        hFacM = seaiceMaskU(i,j,bi,bj) - seaiceMaskU(i,j-1,bi,bj)
+        sig12(I,J) = etaZloc(I,J,bi,bj) * (
+     &       ( uIceC(I,J,bi,bj) - uIceC(I,J-1,bi,bj) )
+     &       * _recip_dyU(I,J,bi,bj)
+     &       - k2AtZ(I,J,bi,bj)
+     &       * 0.5 _d 0 * ( uIceC(I,J,bi,bj) + uIceC(I,J-1,bi,bj) )
+     &       )
+C     free slip conditions (sig12=0) are taken care of by masking sig12,
+     &       *maskC(I  ,J  ,kSrf,bi,bj)*maskC(I-1,J  ,kSrf,bi,bj)
+     &       *maskC(I  ,J-1,kSrf,bi,bj)*maskC(I-1,J-1,kSrf,bi,bj)
+C     no slip boundary conditions (u(j-1)=-u(j))
+C     u(j)+u(j-1) = 0 is also taken care of by masking sig12, so that we
+C     only need to deal with u(j)-u(j-1)
+     &       + etaZloc(I,J,bi,bj) * _recip_dyU(I,J,bi,bj)
+     &       * ( uIceC(I,J,bi,bj) + uIceC(I,J-1,bi,bj) )
+     &         * hFacM * 2. _d 0
+       ENDDO
+      ENDDO
+
+      DO J=jMin,jMax
+       DO I=iMin,iMax
+C     contribution to the rhs part of grad(sigma)_y
+        rhsV(I,J,bi,bj) = rhsV(I,J,bi,bj)
+     &       + recip_rAs(I,J,bi,bj) * seaiceMaskV(I,J,bi,bj) *
+     &       ( _dyU(I+1,J  ,bi,bj) * sig12(I+1,J  )
+     &       - _dyU(I  ,J  ,bi,bj) * sig12(I  ,J  )
+     &       + _dxF(I  ,J  ,bi,bj) * sig22(I  ,J  )
+     &       - _dxF(I  ,J-1,bi,bj) * sig22(I  ,J-1) )
+       ENDDO
+      ENDDO
+
+      RETURN
+      END
+
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+
+CBOP
 C     !ROUTINE: SEAICE_LSR_TRIDIAGU
 C     !INTERFACE:
       SUBROUTINE SEAICE_LSR_TRIDIAGU(
@@ -1426,6 +1591,9 @@ C     \ev
 C     !USES:
       IMPLICIT NONE
 #include "SIZE.h"
+#ifdef ALLOW_AUTODIFF_TAMC
+# include "tamc.h"
+#endif /* ALLOW_AUTODIFF_TAMC */
 
 C     !INPUT/OUTPUT PARAMETERS:
 C     === Routine arguments ===
@@ -1462,11 +1630,16 @@ C     i,j  :: Loop counters
 #ifdef SEAICE_VECTORIZE_LSR_ZEBRA
       INTEGER K
 #endif
-      _RL AA3
+#ifdef ALLOW_AUTODIFF_TAMC
+      INTEGER ilockey
+#endif /* ALLOW_AUTODIFF_TAMC */
+      _RL AA3, bet
       _RL URT(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL CUU(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       
-#ifdef SEAICE_VECTORIZE_LSR_ZEBRA
+#ifdef ALLOW_AUTODIFF_TAMC
+CADJ INIT comlev1_tridiagu = COMMON, (sNx+2*Olx)*(sNy+2*Oly)
+#endif /* ALLOW_AUTODIFF_TAMC */
 C     Need to initialize local arrays
       DO J = 1-OLy,sNy+OLy
        DO I = 1-OLx,sNx+OLx
@@ -1474,6 +1647,7 @@ C     Need to initialize local arrays
         CUU(I,J) = 0. _d 0
        ENDDO
       ENDDO
+#ifdef SEAICE_VECTORIZE_LSR_ZEBRA
       DO K=0,1
       DO J=jMin+K,jMax,2
 #else
@@ -1510,9 +1684,16 @@ C     start a new loop with reversed order to support automatic vectorization
        DO I=iMin+1,iMax
         IM=I-1
 #endif /* SEAICE_VECTORIZE_LSR */
-        CUU(I,J)=CUU(I,J)/(BU(I,J,bi,bj)-AU(I,J,bi,bj)*CUU(IM,J))
-        URT(I,J)=(URT(I,J)-AU(I,J,bi,bj)*URT(IM,J))
-     &       /(BU(I,J,bi,bj)-AU(I,J,bi,bj)*CUU(IM,J))
+#ifdef ALLOW_AUTODIFF_TAMC
+        ilockey = 1 + I-iMin + (sNx+2*OLx)*(J-jMin)
+CADJ STORE urt(i,j),urt(im,j),cuu(i,j),cuu(im,j) = comlev1_tridiagu, 
+CADJ & kind=isbyte, key = ilockey
+C     appart from storing urt/cuu(i/im,j), it seems to be important to 
+C     rewrite the code: introduce abbreviate "bet"
+#endif /* ALLOW_AUTODIFF_TAC */
+        bet      = BU(I,J,bi,bj)-AU(I,J,bi,bj)*CUU(IM,J)
+        CUU(I,J) = CUU(I,J)/bet
+        URT(I,J) = (URT(I,J)-AU(I,J,bi,bj)*URT(IM,J))/bet
        ENDDO
 #ifdef SEAICE_VECTORIZE_LSR
       ENDDO
@@ -1524,7 +1705,12 @@ C     go back to original order
 #endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
 #endif /* SEAICE_VECTORIZE_LSR */
        DO I=iMin,iMax-1
-        IM=sNx-I
+        IM=iMax-I
+#ifdef ALLOW_AUTODIFF_TAMC
+        ilockey = 1 + I-iMin + (sNx+2*OLx)*(J-jMin)
+CADJ STORE urt(im,j),urt(im+1,j) = comlev1_tridiagu, 
+CADJ & kind=isbyte, key = ilockey
+#endif /* ALLOW_AUTODIFF_TAMC */
         URT(IM,J)=URT(IM,J)-CUU(IM,J)*URT(IM+1,J)
        ENDDO
        DO I=iMin,iMax
@@ -1559,6 +1745,9 @@ C     \ev
 C     !USES:
       IMPLICIT NONE
 #include "SIZE.h"
+#ifdef ALLOW_AUTODIFF_TAMC
+# include "tamc.h"
+#endif /* ALLOW_AUTODIFF_TAMC */
 
 C     !INPUT/OUTPUT PARAMETERS:
 C     === Routine arguments ===
@@ -1595,11 +1784,16 @@ C     i,j  :: Loop counters
 #ifdef SEAICE_VECTORIZE_LSR_ZEBRA
       INTEGER K
 #endif
-      _RL AA3
+#ifdef ALLOW_AUTODIFF_TAMC
+      INTEGER ilockey
+#endif /* ALLOW_AUTODIFF_TAMC */
+      _RL AA3, bet
       _RL VRT(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL CVV(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
 
-#ifdef SEAICE_VECTORIZE_LSR_ZEBRA
+#ifdef ALLOW_AUTODIFF_TAMC
+CADJ INIT comlev1_tridiagv = COMMON, (sNx+2*Olx)*(sNy+2*Oly)
+#endif /* ALLOW_AUTODIFF_TAMC */
 C     Need to initialize local arrays
       DO J = 1-OLy,sNy+OLy
        DO I = 1-OLx,sNx+OLx
@@ -1607,13 +1801,22 @@ C     Need to initialize local arrays
         CVV(I,J) = 0. _d 0
        ENDDO
       ENDDO
+#ifdef SEAICE_VECTORIZE_LSR_ZEBRA
       DO K=0,1
 #endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
 #ifdef SEAICE_VECTORIZE_LSR
-      DO J=jMin,jMax
 # ifdef SEAICE_VECTORIZE_LSR_ZEBRA
+#  ifdef ALLOW_AUTODIFF_TAMC
+C     the order of the loop is relevant for TAF. We avoid having
+C     to store vice with this order
+      DO I=iMin+K,iMax,2
+       DO J=jMin,jMax
+#  else
+      DO J=jMin,jMax
        DO I=iMin+K,iMax,2
+#  endif /* ALLOW_AUTODIFF_TAMC */
 # else
+      DO J=jMin,jMax
        DO I=iMin,iMax
 # endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
 #else
@@ -1634,7 +1837,11 @@ C     Need to initialize local arrays
        ENDDO
 #ifdef SEAICE_VECTORIZE_LSR
       ENDDO
+# ifdef SEAICE_VECTORIZE_LSR_ZEBRA
+      DO I=iMin+K,iMax,2
+# else
       DO I=iMin,iMax
+# endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
 #endif /* SEAICE_VECTORIZE_LSR */
        CVV(I,jMin)=CVV(I,jMin)/BV(I,jMin,bi,bj)
        VRT(I,jMin)=VRT(I,jMin)/BV(I,jMin,bi,bj)
@@ -1652,9 +1859,16 @@ C     start a new loop with reversed order to support automatic vectorization
        DO J=jMin+1,jMax
         JM=J-1
 #endif /* SEAICE_VECTORIZE_LSR */
-        CVV(I,J)=CVV(I,J)/(BV(I,J,bi,bj)-AV(I,J,bi,bj)*CVV(I,JM))
-        VRT(I,J)=(VRT(I,J)-AV(I,J,bi,bj)*VRT(I,JM))
-     &       /(BV(I,J,bi,bj)-AV(I,J,bi,bj)*CVV(I,JM))
+#ifdef ALLOW_AUTODIFF_TAMC
+        ilockey = 1 + J-jMin + (sNy+2*OLy)*(I-iMin)
+CADJ STORE vrt(i,j),vrt(i,jm),cvv(i,j),cvv(i,jm) = comlev1_tridiagv, 
+CADJ & kind=isbyte, key = ilockey
+C     appart from storing vrt/cvv(i,j/jm), it seems to be important to 
+C     rewrite the code: introduce abbreviate "bet"
+#endif /* ALLOW_AUTODIFF_TAMC */
+        bet      = BV(I,J,bi,bj)-AV(I,J,bi,bj)*CVV(I,JM)
+        CVV(I,J) = CVV(I,J)/bet
+        VRT(I,J) = (VRT(I,J)-AV(I,J,bi,bj)*VRT(I,JM))/bet
        ENDDO
 #ifdef SEAICE_VECTORIZE_LSR
       ENDDO
@@ -1666,7 +1880,12 @@ C     go back to original order
 # endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
 #endif /* SEAICE_VECTORIZE_LSR */
        DO J=jMin,jMax-1
-        JM=sNy-J
+        JM=jMax-J
+#ifdef ALLOW_AUTODIFF_TAMC
+        ilockey = 1 + J-jMin + (sNy+2*OLy)*(I-iMin)
+CADJ STORE vrt(i,jm), vrt(i,jm+1) = comlev1_tridiagv, 
+CADJ &                              kind=isbyte, key = ilockey
+#endif /* ALLOW_AUTODIFF_TAMC */
         VRT(I,JM)=VRT(I,JM)-CVV(I,JM)*VRT(I,JM+1)
        ENDDO
        DO J=jMin,jMax

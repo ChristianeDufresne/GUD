@@ -29,12 +29,14 @@ c     ==================================================================
 
 c     == global variables ==
 
+#ifdef ALLOW_SSH_MEAN_COST_CONTRIBUTION
 #include "EEPARAMS.h"
 #include "SIZE.h"
 #include "PARAMS.h"
 #include "GRID.h"
 
 #include "ecco_cost.h"
+#endif
 
 c     == routine arguments ==
 
@@ -89,6 +91,11 @@ c--   Convert mean ssh from cm to m
 
 #ifndef ALLOW_SHALLOW_ALTIMETRY
               if ( R_low(i,j,bi,bj) .GT. -200. ) then
+                mdtmask(i,j,bi,bj) = 0. _d 0
+              endif
+#endif
+#ifdef OMIT_HIGHLAT_MDT
+              if ( abs(YC(i,j,bi,bj)) .GT. 66. ) then
                 mdtmask(i,j,bi,bj) = 0. _d 0
               endif
 #endif

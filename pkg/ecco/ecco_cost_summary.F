@@ -27,15 +27,20 @@ c     ==================================================================
 
 c     == global variables ==
 
+#if (defined (ALLOW_ECCO) && defined (ECCO_CTRL_DEPRECATED))
 #include "EEPARAMS.h"
 #include "SIZE.h"
-
 #include "ecco_cost.h"
+#ifdef ALLOW_CTRL
+# include "CTRL_OBCS.h"
+#endif
+#endif
 
 c     == routine arguments ==
 
       integer mythid
 
+#if (defined (ALLOW_ECCO) && defined (ECCO_CTRL_DEPRECATED))
 c     == local variables ==
 
       integer il
@@ -186,6 +191,7 @@ c     == end of interface ==
      &'  Ageostrophic bdy flow:        ',mult_ageos
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
+#ifdef ALLOW_CTRL
       write(msgbuf,'(a,e10.3)')
      &'  OB North:                     ',mult_obcsn
       call print_message( msgbuf, standardmessageunit,
@@ -202,8 +208,7 @@ c     == end of interface ==
      &'  OB East:                      ',mult_obcse
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
-
-
+#endif
       write(msgbuf,'(a)')
      &' '
       call print_message( msgbuf, standardmessageunit,
@@ -251,7 +256,7 @@ c     == end of interface ==
 #endif /* ALLOW_SSH_MEAN_COST_CONTRIBUTION */
 
 #ifdef ALLOW_SSH_TPANOM_COST_CONTRIBUTION
-      if (using_topex) then
+      if (using_tpj) then
         il = ilnblnk(topexfile)
         write(msgbuf,'(a,a)')
      &  '  T/P data are read from:         ',topexfile(1:il)
@@ -312,6 +317,8 @@ c     == end of interface ==
      &                      SQUEEZE_RIGHT , mythid)
       endif
 #endif /* ALLOW_SSH_GFOANOM_COST_CONTRIBUTION */
+
+#endif /* ALLOW_ECCO and ECCO_CTRL_DEPRECATED */
 
       return
       end

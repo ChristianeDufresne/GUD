@@ -9,22 +9,39 @@
 # $Header$
 # $Name$
 
+# ACES-grid PBS-batch script: MPI test using PGI (pgf77) compiler & mpich
+
 if test -f /etc/profile.d/modules.sh ; then
     . /etc/profile.d/modules.sh
 fi
 # Note: added "ulimit -s unlimited" in file "~/.bashrc"
 # to pass big test (the 2 fizhi-cs-* test & adjoint tests) with MPI
 
-dNam='aces'
-TST_DIR="$HOME/test_$dNam"
-echo "start from TST_DIR='$TST_DIR' at: "`date`
-
 umask 0022
 #- to get case insensitive "ls" (and order of tested experiments)
 export LC_ALL="en_US.UTF-8"
+echo " running on: "`hostname`
 
-HERE=$TST_DIR/output
+dNam='aces'
+HERE="$HOME/test_$dNam"
+OUTP="$HERE/output"; SavD="$HERE/send"
+SEND="ssh geo $SavD/mpack"
+TST_DIR=$HERE
+
+if test -d $TST_DIR ; then
+  echo "start from TST_DIR='$TST_DIR' at: "`date`
+else
+# if test ! -d /scratch/jm_c ; then mkdir /scratch/jm_c ; fi
+  if test ! -d $TST_DIR ; then mkdir $TST_DIR ; fi
+  if test ! -d $TST_DIR ; then
+    echo "ERROR: Can't create directory \"$TST_DIR\""
+    exit 1
+  fi
+  echo "start in new dir TST_DIR='$TST_DIR' at: "`date`
+fi
+
 sfx='pgi'
+addExp=''
  module add mpich/$sfx
  export MPI_INC_DIR='/usr/local/pkg/mpich/mpich-pgi/include'
  export NETCDF_ROOT='/usr/local/pkg/pgi/pgi-5.2/linux86/5.2'
@@ -33,14 +50,13 @@ sfx='pgi'
 #options="$options -skd tutorial_advection_in_gyre"
  EXE="mpirun -machinefile TR_MFILE -v -np TR_NPROC ./mitgcmuv"
 
-#- keep a copy of MPI_MFILE:
-cp -p $PBS_NODEFILE $HERE"/mf_"$sfx
-
-checkOut=1 ; options="$options -do" ; dblRun=1 ;
+checkOut=1 ; options="$options -do" ; dblRun=6 ;
 #options="$options -nc" ; checkOut=0 ; dblRun=0 ;
 #options="$options -q"  ; checkOut=0 ; dblRun=0 ;
 
-addExp=0
+#- keep a copy of MPI_MFILE:
+cp -p $PBS_NODEFILE $OUTP"/mf_"$sfx
+
 cvsArg="-d :pserver:cvsanon@mitgcm.org:/u/gcmpack"
 gcmDIR="MITgcm_$sfx"
 cd $TST_DIR
@@ -91,11 +107,11 @@ if [ $checkOut -eq 2 ] ; then
   fi
 # cvs co MITgcm
   cvs $cvsArg co -P -d $gcmDIR MITgcm > /dev/null 2>&1
-  if [ $addExp -ge 1 ]; then
-   echo " add dir: offline_cheapaml (from Contrib:verification_other)"
-   ( cd $gcmDIR/verification ; cvs $cvsArg co -P -d offline_cheapaml \
-                  MITgcm_contrib/verification_other/offline_cheapaml > /dev/null 2>&1 )
-  fi
+  for exp2add in $addExp ; do
+   echo " add dir: $exp2add (from Contrib:verification_other)"
+   ( cd $gcmDIR/verification ; cvs $cvsArg co -P -d $exp2add \
+                  MITgcm_contrib/verification_other/$exp2add > /dev/null 2>&1 )
+  done
   /usr/bin/find $gcmDIR -type d | xargs chmod g+rxs
   /usr/bin/find $gcmDIR -type f | xargs chmod g+r
 fi
@@ -110,18 +126,65 @@ else
   exit
 fi
 
-SavD="$HOME/test_$dNam/send"
-SEND="ssh geo $SavD/mpack"
+if [ $dblRun -ge 1 ] ; then
 
-if [ $dblRun -eq 1 ] ; then
-
+ test -f tr_cmpnum && cp -p tr_cmpnum tr_cmpnum.sav
  echo ./testreport $options -of $OPTFILE -command \"$EXE\" -odir ${dNam}-$sfx
  ./testreport $options -of $OPTFILE -command "$EXE" -odir ${dNam}-$sfx
+ test -f tr_cmpnum.sav && mv -f tr_cmpnum.sav tr_cmpnum
 
- echo ./testreport $options -of $OPTFILE -command \"$EXE\" -odir ${dNam}-$sfx \
-   -q -send \"$SEND\" -sd $SavD -a jmc@mitgcm.org
- ./testreport $options -of $OPTFILE -command "$EXE" -odir ${dNam}-$sfx \
-   -q -send "$SEND" -sd $SavD -a jmc@mitgcm.org
+ iRun=0 ; nFail=0 ; pFail=$nFail ; totObj=0
+ #- counts executables and number of Object files:
+   bldDir='build' ; gcmExe='mitgcmuv'
+   listD=`ls */$bldDir/Makefile | sed "s/\/$bldDir\/Makefile//g"`
+   for yy in $listD ; do
+     objNb=`( cd $yy/$bldDir ; ls *.o | wc -l)`
+     totObj=`expr $totObj + $objNb`
+   done
+   exeNb=`ls */$bldDir/$gcmExe | wc -l`
+   expNb=`echo $listD | wc -w`
+   difNb=`expr $expNb - $exeNb`
+   printf "  Exe=%3i , Exp=%3i , Fail=%3i , Total # of Obj= %i\n" \
+             $exeNb    $expNb    $difNb    $totObj
+ #----
+ nFail=$difNb
+ while test $nFail != $pFail ; do
+   iRun=`expr $iRun + 1`
+   printf "  fails=%3i , prev=%3i ==> Re-run (run #%2i ):\n" $nFail $pFail $iRun
+   echo ./testreport $options -of $OPTFILE -command \"$EXE\" -odir ${dNam}-$sfx -q
+   ./testreport $options -of $OPTFILE -command "$EXE" -odir ${dNam}-$sfx -q
+   #- update counts:
+   pFail=$nFail ; totObj=0
+   for yy in $listD ; do
+     objNb=`( cd $yy/$bldDir ; ls *.o | wc -l)`
+     totObj=`expr $totObj + $objNb`
+   done
+   exeNb=`ls */$bldDir/$gcmExe | wc -l`
+   difNb=`expr $expNb - $exeNb`
+   printf "  Exe=%3i , Exp=%3i , Fail=%3i , Total # of Obj= %i\n" \
+             $exeNb    $expNb    $difNb    $totObj
+   if [ $iRun -lt $dblRun ] ; then
+    nFail=$difNb
+    if [ $nFail -eq 0 ] ; then pFail=0 ; fi
+   fi
+ done
+
+ #-- send output (adapted from testreport):
+ outpSum=`ls -t tr_${dNam}-${sfx}_????????_?/summary.txt | head -1`
+ if test "x$outpSum" != x ; then
+   dirRes=`echo $outpSum | sed 's/\/summary.txt$//'`
+   tar -cf ${SavD}/${dirRes}".tar" $dirRes > /dev/null 2>&1 \
+           && gzip ${SavD}/${dirRes}".tar" \
+           && $SEND -s MITgcm-test -m 3555000 ${SavD}/${dirRes}".tar.gz" -a jmc@mitgcm.org
+   RETVAL=$?
+   if test "x$RETVAL" != x0 ; then
+     echo "ERROR in tar/gzip/send results dir \"$dirRes\" to jmc@mitgcm.org"
+   else
+     echo " $dirRes output sent to email jmc@mitgcm.org"
+     test -f ${SavD}/${dirRes}".tar" &&  rm -f ${SavD}/${dirRes}".tar"
+     test -f ${SavD}/${dirRes}".tar.gz" &&  rm -f ${SavD}/${dirRes}".tar.gz"
+   fi
+ fi
 
 else
 

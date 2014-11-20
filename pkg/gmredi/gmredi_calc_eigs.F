@@ -50,7 +50,7 @@ C     bi, bj    :: tile indices
 C     !LOCAL VARIABLES:
 C     == Local variables ==
       INTEGER i,j,k,kk,m
-# ifdef use_lapack
+# ifdef HAVE_LAPACK
 C     info     :: error code from LAPACK
 C     idx      :: index used for sorting the eigenvalues
 C     a3d      :: lower diagonal of eigenvalue problem
@@ -114,7 +114,7 @@ C     Square of the Coriolis parameter
        ENDDO
       ENDDO
 
-# ifdef use_lapack
+# ifdef HAVE_LAPACK
 C     Calculate the tridiagonal operator matrix for
 C     f^2 d/dz 1/N^2 d/dz
 C     a3d is the lower off-diagonal, b3d is the diagonal
@@ -203,7 +203,7 @@ C         and the first M baroclinic modes (eigenvectors)
           DO k=1,kLow(i,j)
            eigval(0) = MAX(eigval(0),eigR(k))
           ENDDO
-          DO m=1,MIN(nmodes,klow(i,j))
+          DO m=1,MIN(nmodes,klow(i,j)-1)
            DO k=1,kLow(i,j)
             IF (eigR(k).LT.eigval(m-1)) THEN
               eigval(m) = MAX(eigval(m),eigR(k))
@@ -393,7 +393,7 @@ C     Normalise the eigenvectors
 # ifdef ALLOW_DIAGNOSTICS
 C     Diagnostics
       IF ( useDiagnostics.AND.writediag ) THEN
-#  ifdef use_lapack        
+#  ifdef HAVE_LAPACK        
         CALL DIAGNOSTICS_FILL(a3d, 'GM_A3D  ',0,Nr,0,1,1,myThid)
         CALL DIAGNOSTICS_FILL(b3d, 'GM_B3D  ',0,Nr,0,1,1,myThid)
         CALL DIAGNOSTICS_FILL(c3d, 'GM_C3D  ',0,Nr,0,1,1,myThid)
