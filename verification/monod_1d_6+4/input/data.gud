@@ -1,10 +1,10 @@
 ########################
  &GUD_FORCING_PARAMS
  gud_chlInitBalanced= T,
- ironFile='../../../data/input_owsm/loc1_FeFlux_monsurf.bin',
+ ironFile='../input/input/loc1_FeFlux_monsurf.bin',
  ironPeriod= -12.,
  gud_inscal_iron= 1000.,
- PARFile='../../../data/input_owsm/loc1_PAR_monsurf.bin',
+ PARFile='../input/input/loc1_PAR_monsurf.bin',
  PARPeriod= -12.,
  gud_inscal_PAR= 11.574074074074,
  /
