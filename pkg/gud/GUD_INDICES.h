@@ -12,22 +12,22 @@ C    !DESCRIPTION:
 C Contains indices into ptracer array
 
       INTEGER nNQuota, nPQuota, nSiQuota, nFeQuota
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
       PARAMETER(nNQuota=nplank)
 #else
       PARAMETER(nNQuota=0)
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
       PARAMETER(nPQuota=nplank)
 #else
       PARAMETER(nPQuota=0)
 #endif
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
       PARAMETER(nSiQuota=nplank)
 #else
       PARAMETER(nSiQuota=0)
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
       PARAMETER(nFeQuota=nplank)
 #else
       PARAMETER(nFeQuota=0)
@@ -50,11 +50,11 @@ C Contains indices into ptracer array
       integer iPOSi
       integer iPOFe
       integer iPIC
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       integer iALK
       integer iO2
 #endif
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       integer iCDOM
 #endif
       integer ic
@@ -83,14 +83,14 @@ C Contains indices into ptracer array
       PARAMETER (iPOSi  =iPOP +1)
       PARAMETER (iPOFe  =iPOSi+1)
       PARAMETER (iPIC   =iPOFe+1)
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       PARAMETER (iALK   =iPIC +1)
       PARAMETER (iO2    =iALK +1)
       PARAMETER (eCARBON=iO2)
 #else
       PARAMETER (eCARBON=iPIC)
 #endif
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       PARAMETER (iCDOM  =eCARBON+1)
       PARAMETER (eCDOM  =iCDOM)
 #else
@@ -99,9 +99,9 @@ C Contains indices into ptracer array
       PARAMETER (ic     =eCDOM+1)
       PARAMETER (in     =ic   +nplank)
       PARAMETER (ip     =in   +nNQuota)
-      PARAMETER (isi    =ip   +nPQuota)
-      PARAMETER (ife    =isi  +nSiQuota)
-      PARAMETER (iChl   =ife  +nFeQuota)
+      PARAMETER (ife    =ip   +nPQuota)
+      PARAMETER (isi    =ife  +nFeQuota)
+      PARAMETER (iChl   =isi  +nSiQuota)
 
       integer ec
       integer en

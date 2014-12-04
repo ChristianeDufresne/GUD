@@ -1,6 +1,4 @@
  &GUD_FORCING_PARAMS
- /
- &GUD_EXF_PARAMS
  iceFile='../input/input/nasa_icefraction_mth-2d.bin',
  ironFile='../input/input/mahowald2009_solubile_current_smooth_oce_mth-2d.bin',
  PARFile='../input/input/par_ecco.bin_mth-2d.bin',
@@ -18,7 +16,6 @@
  &GUD_PARAMS
  gud_seed= 56,
  gud_linFSConserve= .TRUE.,
- gud_allometric= .TRUE.,
  KDOC=  2.3148148148148148e-07,  ! .02/day
  KDON=  2.3148148148148148e-07,
  KDOP=  2.3148148148148148e-07,
@@ -46,7 +43,7 @@
  /
  &GUD_RANDOM_PARAMS
  /
- &GUD_ALLOMETRIC_PARAMS
+ &GUD_TRAIT_PARAMS
  grp_pp_sig(:)=5*0.5,
 #                        P  S  E  D  Z
  grp_nplank(:)=          2, 3, 5,15,30,
@@ -55,15 +52,20 @@
  grp_prey(:)=            1, 1, 1, 1, 0,
  grp_DIACOC(:)=          0, 0, 0, 0, 0,
  grp_DIAZO(:)=           0, 0, 0, 0, 0,
- grp_NSOURCE(:)=         3, 3, 3, 3, 0,
+ grp_useNH4(:)=          1, 1, 1, 1, 0,
+ grp_useNO2(:)=          1, 1, 1, 1, 0,
+ grp_useNO3(:)=          1, 1, 1, 1, 0,
+ grp_combNO(:)=          1, 1, 1, 1, 0,
  grp_tempMort(:)=        0, 0, 0, 0, 1,
  grp_tempMort2(:)=       0, 0, 0, 0, 1,
- grp_taxon_mu(:)=       1.0, 1.4, 2.1, 3.8,
  grp_ExportFracPreyPred(1:4,5)= 2*.19999998807907104, 2*.5,
  grp_ExportFrac(:)=     2*.19999998807907104, 3*.5,
  grp_mQyield(:)= 4*1.915E-5,
 # zoo don't sink, have Chl
  grp_R_ChlC(5)= 0.,
+# max photosynthesis rates
+ a_vmax_DIC(:)= 1., 1.4, 2.1, 3.8,
+ a_vmax_DIC_denom(:)= 4*86400.,
  a_biosink(5)= 0.,
 # zoo have approx Redfield N:C
  a_qmax_n(5)=0.1510,

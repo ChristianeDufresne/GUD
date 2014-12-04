@@ -55,7 +55,7 @@ C  gO2  :: O2 tendency due to air-sea exchange
       _RL  gO2(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
 
 #ifdef ALLOW_GUD
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
 
 C !LOCAL VARIABLES: ====================================================
       INTEGER i,j,k,ks
@@ -334,7 +334,7 @@ C === k ================================================================
       ENDDO
 C ======================================================================
 
-#endif /* ALLOW_CARBON */
+#endif /* GUD_ALLOW_CARBON */
 #endif /* ALLOW_GUD */
 
       RETURN

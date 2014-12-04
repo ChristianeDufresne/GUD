@@ -1,6 +1,4 @@
  &GUD_FORCING_PARAMS
- /
- &GUD_EXF_PARAMS
  ironFile='../input/input/loc1_FeFlux_monsurf.bin',
  PARFile='../input/input/loc1_owsm_PAR_monsurf.bin',
  ironPeriod= -12.,
@@ -9,6 +7,7 @@
  gud_inscal_PAR= 11.574074074074,
  /
  &GUD_PARAMS
+ diaz_ini_fac= 0.1,
  gud_seed= 11231,
  gud_read_phos= T,
  PARmin= 1.0,
@@ -49,5 +48,5 @@
  val_R_PICPOC= 0.8D0,
  kgrazesat_val= 10.2D0,
  /
- &GUD_ALLOMETRIC_PARAMS
+ &GUD_TRAIT_PARAMS
  /

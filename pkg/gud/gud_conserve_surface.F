@@ -36,7 +36,7 @@ C============== Local variables ============================================
       _RL totflxN
       _RL totflxFe
       _RL totflxSi
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       _RL totflxA
       _RL totflxO
 #endif
@@ -47,7 +47,7 @@ C============== Local variables ============================================
       totflxN = 0. _d 0
       totflxFe = 0. _d 0
       totflxSi = 0. _d 0
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       totflxA = 0. _d 0
       totflxO = 0. _d 0
 #endif
@@ -61,7 +61,7 @@ c carbon budget
         iTr=ic+np-1
         totflxC=totflxC+totSurfCorPtr(iTr)  !Phy
       ENDDO
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       totflxC=totflxC+totSurfCorPtr(iCDOM)*R_CP_CDOM  !CDOM
 #endif
 
@@ -70,7 +70,7 @@ c Phosphorus budget
       totflxP=totflxP+totSurfCorPtr(iDOP)    !DOP
       totflxP=totflxP+totSurfCorPtr(iPOP)   !POP
       DO np=1,nplank
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
         iTr=ip+np-1
         totflxP=totflxP+totSurfCorPtr(iTr)  !Phy 
 #else
@@ -78,7 +78,7 @@ c Phosphorus budget
         totflxP=totflxP+totSurfCorPtr(iTr)*R_PC(np)  !Phy 
 #endif
       ENDDO
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       totflxP=totflxP+totSurfCorPtr(iCDOM)     !CDOM
 #endif
 
@@ -89,7 +89,7 @@ c Nitrogen budget
       totflxN=totflxN+totSurfCorPtr(iDON)    !DON
       totflxN=totflxN+totSurfCorPtr(iPON)   !PON
       DO np=1,nplank
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
         iTr=in+np-1
         totflxN=totflxN+totSurfCorPtr(iTr)  !Phy
 #else
@@ -97,7 +97,7 @@ c Nitrogen budget
         totflxN=totflxN+totSurfCorPtr(iTr)*R_NC(np)  !Phy
 #endif
       ENDDO
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       totflxN=totflxN+totSurfCorPtr(iCDOM)*R_NP_CDOM  !CDOM
 #endif
 
@@ -106,7 +106,7 @@ c Iron budget
       totflxFe=totflxFe+totSurfCorPtr(iDOFe)   !DOFe
       totflxFe=totflxFe+totSurfCorPtr(iPOFe)   !POFe
       DO np=1,nplank
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
         iTr=ife+np-1
         totflxFe=totflxFe+totSurfCorPtr(iTr)  !Phy
 #else
@@ -114,7 +114,7 @@ c Iron budget
         totflxFe=totflxFe+totSurfCorPtr(iTr)*R_FeC(np)  !Phy
 #endif
       ENDDO
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       totflxFe=totflxFe+totSurfCorPtr(iCDOM)*R_FeP_CDOM  !CDOM
 #endif
 
@@ -122,7 +122,7 @@ c Silica budget
       totflxSi=totflxSi+totSurfCorPtr(iSiO2)   !Si
       totflxSi=totflxSi+totSurfCorPtr(iPOSi)   !POSi
       DO np=1,nplank
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
         iTr=isi+np-1
         totflxSi=totflxSi+totSurfCorPtr(iTr)  !Phy
 #else
@@ -131,7 +131,7 @@ c Silica budget
 #endif
       ENDDO
 c------------------------------------------------------------
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
 c alkalinity budget !!!!! NOT FULL BUDGET!!!!!
       totflxA=totflxA+totSurfCorPtr(iALK)    !ALK
 c oxygem budget !!!!!!!! NOT FULL BUDGET !!!!!!!!!!!
@@ -162,7 +162,7 @@ C     mean tracer change
       totflxP  = ptracers_dTLev(1)*totflxP /voltot
       totflxFe = ptracers_dTLev(1)*totflxFe/voltot
       totflxSi = ptracers_dTLev(1)*totflxSi/voltot
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       totflxA  = ptracers_dTLev(1)*totflxA /voltot
       totflxO  = ptracers_dTLev(1)*totflxO /voltot
 #endif
@@ -183,7 +183,7 @@ C     add neglected flux to tracer globally
      &                               totflxFe*maskC(i,j,k,bi,bj)
            Ptracer(i,j,k,bi,bj,iSiO2)=Ptracer(i,j,k,bi,bj,iSiO2)+
      &                               totflxSi*maskC(i,j,k,bi,bj)
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
            Ptracer(i,j,k,bi,bj,iALK)=Ptracer(i,j,k,bi,bj,iALK)+
      &                               totflxA*maskC(i,j,k,bi,bj)
            Ptracer(i,j,k,bi,bj,iO2 )=Ptracer(i,j,k,bi,bj,iO2 )+

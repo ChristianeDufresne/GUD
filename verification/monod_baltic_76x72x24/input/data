@@ -125,8 +125,8 @@
  monitorFreq=1200.,
 #diagFreq=1200.,
  forcing_In_AB = .FALSE.,
- dumpFreq= 1200.,
- dumpInitAndLast=.TRUE.,
+# dumpFreq= 1200.,
+ dumpInitAndLast=.FALSE.,
  &
 
 # Gridding parameters

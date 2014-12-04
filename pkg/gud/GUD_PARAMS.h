@@ -3,7 +3,7 @@ C$Name$
 
 #ifdef ALLOW_GUD
 
-#ifdef ALLOW_RADTRANS
+#ifdef GUD_ALLOW_RADTRANS
 
       COMMON /radtrans_params_r/
      &  wb_totalWidth, wb_width, wb_center, WtouEins,
@@ -30,11 +30,11 @@ C$Name$
       COMMON /gud_acdom_params_r/ exCDOM
       _RL exCDOM(nlam)
 
-#ifndef ALLOW_CDOM
+#ifndef GUD_ALLOW_CDOM
       COMMON /gud_acdom_params_i/ laCDOM
       INTEGER laCDOM
 #endif
 
-#endif /* ALLOW_RADTRANS */
+#endif /* GUD_ALLOW_RADTRANS */
 
 #endif /* ALLOW_GUD */

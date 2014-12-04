@@ -1,13 +1,10 @@
 ########################
  &GUD_FORCING_PARAMS
  gud_chlInitBalanced= T,
- /
-########################
- &GUD_EXF_PARAMS
- ironFile='/home/stephdut/Input/input_ecco/mahowald2009_solubile_current_smooth_oce_mth-2d.bin',
+ ironFile='../../../data/eccov3/mahowald2009_solubile_current_smooth_oce_mth-2d.bin',
  ironPeriod= -12.,
  gud_inscal_iron= 1000.,
- PARFile='/home/stephdut/Input/input_ecco/ecco_oasim_total_below_oneband_einm2d.bin',
+ PARFile='../../../data/eccov3/ecco_oasim_total_below_oneband_einm2d.bin',
  PARPeriod= -12.,
  gud_inscal_PAR= 11.574074074074,
  windFile='../../../data/eccov3/tren_speed_mth-2d.bin',
@@ -19,10 +16,10 @@
  /
 ########################
  &GUD_PARAMS
+ diaz_ini_fac= 0.1,
  gud_linFSConserve= T,
- gud_allometric= T,
  gud_seed= 56,
- gud_read_phos= T,
+ gud_read_phos= F,
  tempCoeffArr= 0.8,
  PARmin= 0.1,
  alpfe= 1.0,
@@ -48,7 +45,7 @@
  &GUD_RANDOM_PARAMS
  /
 ########################
- &GUD_ALLOMETRIC_PARAMS
+ &GUD_TRAIT_PARAMS
 #                        D  l  s  P  T  C  S  Z
  grp_nplank(:)=          1, 1, 1, 1, 1, 1, 0, 4,
  grp_photo(:)=           1, 1, 1, 1, 1, 1, 1, 0,
@@ -56,9 +53,13 @@
  grp_prey(:)=            1, 1, 1, 1, 1, 1, 0, 0,
  grp_DIACOC(:)=          1, 0, 0, 0, 0, 2, 0, 0,
  grp_DIAZO(:)=           0, 0, 0, 0, 1, 0, 0, 0,
- grp_NSOURCE(:)=         3, 3, 3, 3, 0, 3, 0, 0,
+ grp_useNH4(:)=          1, 1, 1, 1, 1, 1, 1, 0,
+ grp_useNO2(:)=          1, 1, 1, 1, 1, 1, 1, 0,
+ grp_useNO3(:)=          1, 1, 1, 1, 1, 1, 1, 0,
+ grp_combNO(:)=          1, 1, 1, 1, 1, 1, 1, 0,
  grp_tempMort(:)=        1, 1, 1, 1, 1, 1, 1, 1,
  grp_tempMort2(:)=       1, 1, 1, 1, 1, 1, 1, 1,
+ grp_Xmin(:)= 7*120E-20,
  grp_mqyield(:)= 7*5E-5,
  grp_chl2cmax(:)= 7*.3,
  grp_acclimtimescl(:)= 7*.5,

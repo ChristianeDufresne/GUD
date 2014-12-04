@@ -99,7 +99,7 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
      I             diagName, diagCode, diagUnits, diagTitle, 0, myThid )
       ENDDO
 
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       WRITE(diagName,'(A)')'pH'
       WRITE(diagTitle,'(A)')'pH'
       diagUnits = '1               '
@@ -142,7 +142,7 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
       diagCode  = 'SM P    L1      '
       CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I           diagName, diagCode, diagUnits, diagTitle, 0, myThid )
-#endif /* ALLOW_CARBON */
+#endif /* GUD_ALLOW_CARBON */
 
 #endif /* ALLOW_DIAGNOSTICS */
 #endif /* ALLOW_GUD */

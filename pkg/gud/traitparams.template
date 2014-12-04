@@ -54,7 +54,7 @@ val_R_PC = 1D0/120.0D0
 val_R_SiC_diatom = 16.0D0/120.0D0  ! 32 for Fanny's runs
 val_R_FeC = 1.0D-3/120.0D0
 val_R_FeC_diaz = 30.0D0 * val_R_FeC
-val_R_PICPOC = 0.0D0  !0.8D0
+val_R_PICPOC = 0.8D0
 val_R_ChlC   = 16D0/120D0          ! for atten_chl = atten_p * 16
 
 val_R_NC_zoo     = 16.0D0/120.0D0
@@ -88,7 +88,7 @@ val_amminhib = 4.6D0               ! coefficient for NH4 inhibition of NO uptake
                                    ! set si half sat
 val_ksatsio2 = 1.D0
 
-                                             !#ifndef GEIDER
+                                             !#ifndef GUD_ALLOW_GEIDER
 smallksatpar =    0.12D-1                    ! 0.8D0
 smallksatparstd = 0.20D-1                    ! 0.3D0
 smallkinhpar =    6.0D-3                     ! 2.0D0
@@ -101,7 +101,7 @@ LLProkinhpar =   6.0D-3
 Coccokinhpar =   0.5D-3
                                              !#endif
 
-                                             !#ifdef GEIDER
+                                             !#ifdef GUD_ALLOW_GEIDER
                                              ! inhib for Prochl?
 ! inhibcoef_geid_val = 1.2D0                 ! DUMMY VAL
 inhibcoef_geid_val = 0D0                     ! DUMMY VAL
@@ -184,7 +184,7 @@ ZooDM = 100D0                      ! diameter (not used so far)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-&GUD_ALLOMETRIC_PARAMS
+&GUD_TRAIT_PARAMS
 ! used in gud_generate_allometric
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -193,6 +193,7 @@ logvol0inc  = 0.0D0
 
 DIMENSION(nGroup,nGroup)
 grp_ExportFracPreyPred(:,:) = 0.5D0
+grp_ass_eff(:,:) = 0.70D0
 
 DIMENSION(nGroup)
 logvol0ind(:) = 0
@@ -208,16 +209,19 @@ grp_nplank(:) = 0
 grp_photo(:) = 1
 grp_pred(:) = 0
 grp_prey(:) = 1
-grp_nsource(:) = 3
 grp_diacoc(:) = 0
 grp_diazo(:) = 0
-grp_taxon_mu(:) = 1D0
+grp_useNH4(:) = 1
+grp_useNO2(:) = 1
+grp_useNO3(:) = 1
+grp_combNO(:) = 1
+grp_Xmin(:) = 0D0                 ! used to be 120D-20 for phyto
 grp_R_NC(:) = 16.0D0/120.0D0
 grp_R_PC(:) = 1D0/120.0D0
 grp_R_SiC(:) = 0D0
 grp_R_FeC(:) = 1.0D-3/120.0D0
 grp_R_ChlC(:) = 16D0/120D0
-grp_R_PICPOC(:) = 0.0D0
+grp_R_PICPOC(:) = 0.8D0
 grp_ExportFrac(:) = 0.5D0
 grp_mort(:) =  0.02D0 / pday
 grp_mort2(:) = 0.0D0
@@ -229,7 +233,7 @@ grp_tempcoeff3(:) = 1.04D0
 grp_tempopt(:) = 2.D0
 grp_tempdecay(:) = 4.D0
 grp_pp_sig(:) = 1.0D0
-#ifdef GEIDER
+#ifdef GUD_ALLOW_GEIDER
 grp_mQyield(:) = 7.5D-5
 grp_chl2cmax(:) = .3D0
 grp_inhibcoef_geid(:) = 0D0
@@ -246,7 +250,6 @@ grp_aphy_chl(:) = 0.02D0   ! mean of all spectra (m2 (mg chla)-1)
 grp_acclimtimescl(:) = 1D0/(20*86400D0)  ! inverse time scale for Chl acclimation
 grp_acclimtimescl_denom(:) = 1D0
 
-grp_ass_eff(:) = 0.70D0    ! grazing efficiency for prey group
 
 
 ! parameter = aV^b
@@ -272,9 +275,9 @@ a_bioswim_denom(:)  =  1.D0
 b_bioswim(:)        =  0.18D0
                                        !ccccccccccccccccccccccccccccccccccccccccccccccccccccc
                                        ! mortality
-a_mort(:)           =  0.02D0 / pday   ! d^-1
-a_mort_denom(:)     =  1.D0
-b_mort(:)           =  0.00D0
+!a_mort(:)           =  0.02D0 / pday   ! d^-1
+!a_mort_denom(:)     =  1.D0
+!b_mort(:)           =  0.00D0
                                        ! predator prey preference distribution parameters
 a_prdpry(:)         =  1024.D0         ! dimensionless
 b_prdpry(:)         =  0.00D0
@@ -297,10 +300,10 @@ b_respir(:)         =  0.93D0
 a_kexc_c(:)         =  0.00D0
 b_kexc_c(:)         = -0.33D0
                                        ! fraction grazing to DOC
-a_beta_graz_c(:)    =  1.00D0
-b_beta_graz_c(:)    = -0.40D0
+!a_beta_graz_c(:)    =  1.00D0
+!b_beta_graz_c(:)    = -0.40D0
                                        ! fraction mortality to DOC
-a_beta_mort_c(:)    =  1.00D0
+!a_beta_mort_c(:)    =  1.00D0
 b_beta_mort_c(:)    = -0.40D0
                                        ! nitrogen & nitrate
                                        ! maximum NO3 uptake rate
@@ -321,11 +324,11 @@ b_qmax_n(:)         = -0.13D0
 a_kexc_n(:)         =  0.00D0
 b_kexc_n(:)         = -0.33D0
                                        ! fraction grazing to DON
-a_beta_graz_n(:)    =  1.00D0
-b_beta_graz_n(:)    = -0.40D0
+!a_beta_graz_n(:)    =  1.00D0
+!b_beta_graz_n(:)    = -0.40D0
                                        ! fraction mortality to DON
-a_beta_mort_n(:)    =  1.00D0
-b_beta_mort_n(:)    = -0.40D0
+!a_beta_mort_n(:)    =  1.00D0
+!b_beta_mort_n(:)    = -0.40D0
                                        ! nitrite
                                        ! maximum NO2 uptake rate
 a_vmax_NO2(:)       =  0.51D0 / pday   ! mmol N (mmol C)^-1 d^-1
@@ -435,7 +438,7 @@ GUD_effective_ksat = .FALSE.
 
 CODE: grp_acclimtimescl(:)=grp_acclimtimescl(:)/grp_acclimtimescl_denom(:)
 CODE: a_graz(:) = a_graz(:)/a_graz_denom(:)
-CODE: a_mort(:) = a_mort(:)/a_mort_denom(:)
+! CODE: a_mort(:) = a_mort(:)/a_mort_denom(:)
 CODE: a_respir(:) = a_respir(:)/a_respir_denom(:)
 CODE: a_biosink(:) = a_biosink(:)/a_biosink_denom(:)
 CODE: a_bioswim(:) = a_bioswim(:)/a_bioswim_denom(:)

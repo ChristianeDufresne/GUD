@@ -10,6 +10,8 @@
 \usepackage{color}
 \usepackage[colorlinks=true]{hyperref}
 \usepackage{marginnote}
+\usepackage{longtable}
+\usepackage{url}
 \usepackage[qualifier-mode=phrase,qualifier-phrase={\,}]{siunitx}
 %\usepackage{wrapfig}
 
@@ -26,6 +28,79 @@
 
 \let\norm=\|
 \def\|#1|{\operatorname{#1}}
+
+\def\diacoc{\|diacoc|}
+\def\diazo{\|diazo|}
+\def\useNHiv{\|useNH4|}
+\def\useNOii{\|useNO2|}
+\def\useNOiii{\|useNO3|}
+\def\combNO{\|combNO|}
+\def\tempMort{\|tempMort|}
+\def\tempMortTWO{\|tempMort2|}
+\def\apSUBtype{\|ap\_type|}
+\def\Xmin{c^{\min}_j}
+\def\amminhib{\sigma_1}
+\def\acclimtimescl{\tau^{\|acclim|}}
+\def\PCmax{P^{\|max|}_{\|C|,j}}
+\def\mort{m^{(1)}_j}
+\def\mortTWO{m^{(2)}_j}
+\def\mortTempFuncMin{f^{\|mort|\min}_j}
+\def\mortTWOTempFuncMin{f^{\|mort2|\min}_j}
+\def\ExportFrac{f^{\exp}_j}
+\def\phytoTempCoeff{c_j}
+\def\phytoTempExpONE{e_{1j}}
+\def\phytoTempExpTWO{e_{2j}}
+\def\phytoTempOptimum{T^{\|opt|}_j}
+\def\phytoDecayPower{p_j}
+\def\RSUBNC{R^{\N:\C}_j}
+\def\RSUBPC{R^{\P:\C}_j}
+\def\RSUBSiC{R^{\Si:\C}_j}
+\def\RSUBFeC{R^{\Fe:\C}_j}
+\def\RSUBChlC{R^{\chlc}_j}
+\def\RSUBPICPOC{R^{\PICPOC}_j}
+\def\wsink{w^{\|sink|}_j}
+\def\wswim{w^{\|swim|}_j}
+\def\ksatNHiv{k^{\NHiv}_j}
+\def\ksatNOii{k^{\NOii}_j}
+\def\ksatNOiii{k^{\NOiii}_j}
+\def\ksatPOiv{k^{\POiv}_j}
+\def\ksatSiOii{k^{\SiOii}_j}
+\def\ksatFeT{k^{\Fe}_j}
+\def\ksatPAR{k^{\|sat|}_{\|PAR|}}
+\def\kinhPAR{k^{\|inh|}_{\|PAR|}}
+\def\inhibcoefSUBgeid{c^{\|inhib|}_j}
+\def\mQyield{\Phi_j}
+\def\chlTWOcmax{\chlc^{\max}_j}
+\def\grazemax{g^{\max}_z}
+\def\kgrazesat{k^{\|graz|}_z}
+%\def\palat{p_{j,z}}
+\def\asseff{a_{j,z}}
+\def\ExportFracPreyPred{f^{\|exp|\|graz|}_{j,z}}
+\def\respiration{r^{\|resp|}_j}
+\def\Qnmax{Q^{\N\max}_j}
+\def\Qnmin{Q^{\N\min}_j}
+\def\Qpmax{Q^{\P\max}_j}
+\def\Qpmin{Q^{\P\min}_j}
+\def\Qsimax{Q^{\Si\max}_j}
+\def\Qsimin{Q^{\Si\min}_j}
+\def\Qfemax{Q^{\Fe\max}_j}
+\def\Qfemin{Q^{\Fe\min}_j}
+\def\VmaxSUBNHiv{V^{\NHiv\max}_j}
+\def\VmaxSUBNOii{V^{\NOii\max}_j}
+\def\VmaxSUBNOiii{V^{\NOiii\max}_j}
+\def\VmaxSUBN{V^{\N\max}_j}
+\def\VmaxSUBPOiv{V^{\POiv\max}_j}
+\def\VmaxSUBSiOii{V^{\SiOii\max}_j}
+\def\VmaxSUBFeT{V^{\Fe\max}_j}
+\def\kexcC{\kappa^{\|exc|}_{\C j}}
+\def\kexcN{\kappa^{\|exc|}_{\N j}}
+\def\kexcP{\kappa^{\|exc|}_{\P j}}
+\def\kexcSi{\kappa^{\|exc|}_{\Si j}}
+\def\kexcFe{\kappa^{\|exc|}_{\Fe j}}
+\def\aphySUBchl{a^{\chl}_{\|phy| {j,l}}}
+\def\aphySUBchlSUBps{a^{\chl}_{\|ps| {j,l}}}
+\def\bphySUBchl{b^{\chl}_{\|phy| {j,l}}}
+\def\bbphySUBchl{b^{\chl}_{\|b|\|phy| {j,l}}}
 
 \newcommand{\ee}{\mathrm{e}}
 \newcommand{\DDt}{\operatorname{D}_t}
@@ -101,7 +176,8 @@
 \newcommand{\remin}{{\text{remin}}}
 \newcommand{\crit}{{\text{crit}}}
 \newcommand{\export}{{\text{exp}}}
-\newcommand{\mort}{{\text{mort}}}
+\renewcommand{\day}{{\text{day}}}
+%\newcommand{\mort}{{\text{mort}}}
 
 \newcommand{\X}{c}
 \newcommand{\palat}{p}
@@ -112,6 +188,7 @@
 
 \section{GUD ecosystem model}
 
+Inorganic nutrients:
 \begin{align*}
   \DDt \DIC   &= -\sum_j U^{\DIC}_j \cdot (1 + R^{\PICPOC}_j)
                  + r_{\DOC} \DOC + (r_{\POC} \POC)
@@ -136,7 +213,7 @@
 \noalign{with Chl quota:}
   \DDt \chl_j &= S^{\chl}_j - m_j \chl'_j - G_j \cdot \chlc_j
 \end{align*}
-With \verb|ALLOW_CDOM|, all particulate remineralization terms (in parenthesis)
+With \verb|GUD_ALLOW_CDOM|, all particulate remineralization terms (in parenthesis)
 except Si are absent.  Terms: $U$ -- uptake; $P$ -- nitrification;
 $D$ -- denitrification; $R$ -- respiration; $G$, $g$ -- grazing;
 $S$ -- synthesis/other sources.
@@ -462,7 +539,7 @@ where
 
 
 
-\subsection{Dynamic CDOM ({\tt \#define ALLOW\_CDOM})}
+\subsection{Dynamic CDOM ({\tt \#define GUD\_ALLOW\_CDOM})}
 
 Remineralization of particulate organic matter to inorganic matter is replaced by
 \begin{align*}
@@ -483,7 +560,7 @@ where
 
 
 
-\subsection{Denitrification ({\tt \#define ALLOW\_DENIT})}
+\subsection{Denitrification ({\tt \#define GUD\_ALLOW\_DENIT})}
 
 When $\O_2<\O_2^\crit$, denitrification occurs:
 \begin{align*}
@@ -492,9 +569,9 @@ When $\O_2<\O_2^\crit$, denitrification occurs:
   D_{\NOiii} &= {\tt denit\_NO3} \cdot \bigl(r_{\DOP} \DOP + (r_{\POP} \POP) \bigr)
   \qtext{if } \O_2<\O_2^\crit \text{, else } 0
 \end{align*}
-(the particulate organic terms are not present with \verb|ALLOW_CDOM|).
+(the particulate organic terms are not present with \verb|GUD_ALLOW_CDOM|).
 
-When $\O_2<\O_2^\crit$ and $\NO_3<\NO_3^\crit$ (and \verb|ALLOW_DENIT|),
+When $\O_2<\O_2^\crit$ and $\NO_3<\NO_3^\crit$ (and \verb|GUD_ALLOW_DENIT|),
 all remineralization, denitrification and CDOM degradation (except
 bleaching) stops.
 
@@ -511,7 +588,7 @@ bleaching) stops.
            - r_{\DOP} \DOP - (r_{\POP} \POP)
          \biggr)
 \end{align*}
-The POP term is not present with \verb|ALLOW_CDOM|.
+The POP term is not present with \verb|GUD_ALLOW_CDOM|.
 
 \dots surface forcing \dots
 
@@ -529,7 +606,7 @@ where
 \[
   F_{\Fe}^\sed = \begin{cases}
     {\tt fesedflux\_pcm}\cdot w^\P_\sink R^{\C:\P}_\sed \POP
-    & \text{if \tt IRON\_SED\_SOURCE\_VARIABLE}, \\
+    & \text{if \tt GUD\_IRON\_SED\_SOURCE\_VARIABLE}, \\
     {\tt fesedflux}
     & \text{else.}
     \end{cases}
@@ -538,14 +615,75 @@ and
 \[
   r_\scav = \begin{cases}
     r_\scav I_\scav \left(\dfrac{\POP}{R^{\POP:\POC}_\scav}\right)^{e_\scav}
-    & \text{if \tt PART\_SCAV}, \\
+    & \text{if \tt GUD\_PART\_SCAV}, \\
     {\tt scav}
     & \text{else.}
     \end{cases}
 \]
 \textbf{Should be POC directly? or POFe??}
 
-The free iron concentration $\Fe'$ is determined as detailed in App.~\ref{app:fe}.
+%The free iron concentration $\Fe'$ is determined as detailed in App.~\ref{app:fe}.
+%\subsection{Fe chemistry}\label{app:fe}
+
+The rate of iron scavenging depends on the amount of free dissolved iron which
+is determined following \cite{Parekh2004}, \cite{Dutkiewicz2005}.
+Free dissolved iron, $\Fe'$, is assumed to be in equilibrium with dissolved iron
+bound to ligands via
+\[
+  \Fe' + L' \rightleftharpoons \FeL
+\]
+i.e.,
+\[
+  \frac{[\FeL]}{[\Fe'][L']} = \Lstab
+  \;,
+\]
+given $\FeL+\Fe'=\FeT$ and $\FeL+L'=\Ltot$.  The solution is
+\begin{align*}
+ \begin{split}
+  L' &= \frac{ \Lstab (\Ltot - \FeT) - 1
+             +\sqrt{(1 - \Lstab (\Ltot - \FeT))^2 + 4 \Lstab \Ltot}}
+          {2 \Lstab}
+    \\
+  \FeL &= \Ltot - L' \\
+  \Fe' &= \FeT - \FeL
+%       &= \tfrac12 \left(
+%          \FeT - \Ltot - 1/\Lstab
+%             + \sqrt{(1/\Lstab - (\Ltot - \FeT))^2 + 4 \Ltot/\Lstab}
+%         \right)
+  \;.
+ \end{split}
+  \\
+\end{align*}
+If \lxr{GUD\_MINFE} is defined, $\Fe'$ will be constrained to be no more than $\Fe'_{\max}$,
+and $\FeT$ adjusted accordingly, assuming that excess free iron is scavenged away.
+This is done before and after each biogeochemical subtimestep as the above reaction
+is very fast.
+
+%By the same reasoning, one could actually solve for equilibrium under the condition
+%that $\Fe'$ stay below $\Fe'_{\max}$, thus imposing a limit directly on $\FeT$.
+
+%The effective scavenging rate of total dissolved iron, $c_{\scav}\Fe'/\FeT$, is shown
+%in Fig.\ \ref{fig:scavenging}.
+%
+%\begin{figure}
+%\centering
+%\includegraphics[width=.7\textwidth]{scavenging.pdf}
+%\caption{Dissolved-iron scavenging rate and free iron concentration as
+%a function of total dissolved iron.}
+%\label{fig:scavenging}
+%\end{figure}
+
+\begin{tabular}{@{}l@{\qquad}l@{${}={}$}l}
+\ll{ligand\_tot}  & $\Ltot=\SI{e-3}{\muMolar}$
+                  & total ligand (\unit{\muMolar})  \\
+\ll{ligand\_stab} & $\Lstab=1/(\SI{5E-6}{\muMolar})$
+                  & ligand stablity rate ratio (\unit{\meter\cubed\per\milli\mol}) \\
+\ll{freefemax}    & $\Fe'_{\max}=\SI{0.4E-3}{\muMolar}$
+                  & maximal concentration of free iron (\unit{\milli\mol\per\meter\cubed})
+\end{tabular}
+
+
+
 
 
 
@@ -553,8 +691,8 @@ The free iron concentration $\Fe'$ is determined as detailed in App.~\ref{app:fe
 
 Mortality stops at $\X_j^{\min}$,
 \[
-  m_j c'_j = m^{(1)}_j \max\left(f^{\mort\max}_j, f^\mort(T)\right) (\X_j - \X_j^{\min})
-      + m^{(2)}_j \max\left(f^{\mort2\max}_j, f^{\mort2}(T)\right) (\X_j - \X_j^{\min})^2
+  m_j c'_j = m^{(1)}_j \max\left(f^{\|mort|\min}_j, f^{\|mort|}(T)\right) (\X_j - \X_j^{\min})
+      + m^{(2)}_j \max\left(f^{\mort2\min}_j, f^{\mort2}(T)\right) (\X_j - \X_j^{\min})^2
 \]
 Other quotas are regulated proportionally, e.g.,
 \[
@@ -568,7 +706,7 @@ Respiration also,
 
 
 
-\subsection{Exudation ({\tt \#define ALLOW\_EXUDE})}
+\subsection{Exudation ({\tt \#define GUD\_ALLOW\_EXUDE})}
 
 Basically, mortality is increased on a per-element basis, i.e.,
 \[
@@ -624,7 +762,7 @@ Gains from grazing:\\
   g^{\C}_z &= \sum_j G_{j,z} a_{j,z} \reg^{Q\C}_z
 \\
   g^{\P}_z &= \sum_j G_{j,z} a_{j,z} \reg^{Q\P}_z Q^\P_j
-  \qquad\text{if PQUOTA}
+  \qquad\text{if GUD\_ALLOW\_PQUOTA}
 \\
   &\dots\displaybreak[0]
 \\
@@ -633,7 +771,7 @@ Gains from grazing:\\
 \\
   g^{\DOP} &= \sum_{j,z} \begin{cases}
     G_{j,z} (1 - a_{j,z} \reg^{Q\P}_z) (1 - f^{\exp\graz}_z) Q^\P_j
-    &\text{if PQUOTA} \\
+    &\text{if GUD\_ALLOW\_PQUOTA} \\
     G_{j,z} (R^{\P:\C}_j - a_{j,z} R^{\P:\C}_z) (1 - f^{\exp\graz}_z)
     &\text{else}
   \end{cases}
@@ -644,7 +782,7 @@ Gains from grazing:\\
 \\
   g^{\POP} &= \sum_{j,z} \begin{cases}
     G_{j,z} (1 - a_{j,z} \reg^{Q\P}_z) f^{\exp\graz}_z Q^\P_j
-    &\text{if PQUOTA} \\
+    &\text{if GUD\_ALLOW\_PQUOTA} \\
     G_{j,z} (R^{\P:\C}_j - a_{j,z} R^{\P:\C}_z) f^{\exp\graz}_z
     &\text{else}
     \end{cases}
@@ -678,34 +816,34 @@ changes, the above equations apply.
 
 \subsection{Temperature dependence}
 
-\paragraph{TEMP\_VERSION 1}
+\paragraph{GUD\_TEMP\_VERSION 1}
 \begin{gather*}
   f^\phy_j(T) = \left[ c_j \left[ e_{1 j}^T
-      \ee^{\ds -e_{2 j} {| T - T^{\|opt|}_j |}^{p_j}}  % only with TEMP_RANGE
+      \ee^{\ds -e_{2 j} {| T - T^{\|opt|}_j |}^{p_j}}  % only with GUD_TEMP_RANGE
     - n \right]_{\ge\num{E-10}}
     \right]^{\le 1}
 \\
   f^{\up}_j(T) =
   f^\graz_z(T) =
   f^\remin(T) =
-  f^\mort(T) =
+  f^{\|mort|}(T) =
   f^{\mort2}(T) =
   1
 \end{gather*}
-where the exponential is only present with \verb|TEMP_RANGE|.
+where the exponential is only present with \verb|GUD_TEMP_RANGE|.
 
-\paragraph{TEMP\_VERSION 2}
+\paragraph{GUD\_TEMP\_VERSION 2}
 \begin{gather*}
   f^\phy_j(T) = c^{\|Arr|}_j \left[
       \ee^{\ds A^{\|Arr|}_{\|e|}
            \bigl( (T+273.15)^{-1} - {T^{\|Arr|}_{\|ref|}}^{-1} \bigr)}
-      \ee^{\ds -e_{2 j} {| T - T^{\|opt|}_j |}^{p_j}}  % only with TEMP_RANGE
+      \ee^{\ds -e_{2 j} {| T - T^{\|opt|}_j |}^{p_j}}  % only with GUD_TEMP_RANGE
     \right]_{\ge\num{E-10}}
 \\
   f^{\up}_j(T) =
   f^\graz_z(T) =
   f^\remin(T) =
-  f^\mort(T) =
+  f^{\|mort|}(T) =
   f^{\mort2}(T) =
   f_{\|Arr|}(T)
 \\
@@ -714,15 +852,15 @@ where the exponential is only present with \verb|TEMP_RANGE|.
            \bigl( (T+273.15)^{-1} - {T^{\|Arr|}_{\|ref|}}^{-1} \bigr)}
     \right]_{\ge\num{E-10}}
 \end{gather*}
-where the second exponential in $f^\phy$ again is only present with \verb|TEMP_RANGE|.
+where the second exponential in $f^\phy$ again is only present with \verb|GUD_TEMP_RANGE|.
 
-\paragraph{TEMP\_VERSION 3}
+\paragraph{GUD\_TEMP\_VERSION 3}
 \begin{gather*}
   f^\phy_j(T) =
   f^{\up}_j(T) =
   f^\graz_z(T) =
   f^\remin(T) =
-  f^\mort(T) =
+  f^{\|mort|}(T) =
   f^{\mort2}(T) =
   f^{\|Arr|}(T) =
   \left[ \ee^{\ds A_{\|e|} (T - T_{\|ref|})} \right]_{\ge\num{E-10}}
@@ -745,7 +883,7 @@ trait                 & \multicolumn{1}{l}{value}
                       & $A_{\|e|}=0.05$   &
                 ($E_{\|a|}=\SI{35.725}{\kilo\J\per\mol}$ at $\SI{20}{\degreeCelsius}$) \\
                       & $T_{\|ref|}=20$ \\
-\noalign{for \ll{TEMP\_RANGE}:\vspace*{1ex}}
+\noalign{for \ll{GUD\_TEMP\_RANGE}:\vspace*{1ex}}
 \ll{phytoTempExp2}    & $e_{2j}=0.001$   & \ll{grp\_tempcoeff2}  \\
 \ll{phytoTempOptimum} & $T^{\|opt|}_j=2$ & \ll{grp\_tempopt}  \\
 \ll{phytoDecayPower}  & $p_{j}=4$        & \ll{grp\_tempdecay}  \\\hline
@@ -755,7 +893,7 @@ trait                 & \multicolumn{1}{l}{value}
 tempmax${}-{}$temprange${}\cdot[0,1]$.)
 
 Version 3 is the same as version 1 with $e_1=1.0512710963760241$,
-$c=0.36787944117144233$, $n=0$ and no \verb|TEMP_RANGE| (except for the constraint
+$c=0.36787944117144233$, $n=0$ and no \verb|GUD_TEMP_RANGE| (except for the constraint
 to be smaller than 1).
 
 
@@ -792,71 +930,268 @@ None of these should matter for normal abundances/concentrations.
 
 
 
+\section{Compiling and Running}
 
-\clearpage
+\subsection{Compiling}
 
-\appendix
+Include the word \verb|gud| in \verb|packages.conf| in your code directory.
+This will automatically turn on gchem, ptracers and exf.
 
-\section{Fe chemistry}\label{app:fe}
+Set compile-time options for gud in file \verb|GUD_OPTIONS.h|.
 
-The rate of iron scavenging depends on the amount of free dissolved iron which
-is determined following \cite{Parekh2004}, \cite{Dutkiewicz2005}.
-Free dissolved iron, $\Fe'$, is assumed to be in equilibrium with dissolved iron
-bound to ligands via
-\[
-  \Fe' + L' \rightleftharpoons \FeL
-\]
-i.e.,
-\[
-  \frac{[\FeL]}{[\Fe'][L']} = \Lstab
-  \;,
-\]
-given $\FeL+\Fe'=\FeT$ and $\FeL+L'=\Ltot$.  The solution is
-\[
- \begin{split}
-  L' &= \frac{ \Lstab (\Ltot - \FeT) - 1
-             +\sqrt{(1 - \Lstab (\Ltot - \FeT))^2 + 4 \Lstab \Ltot}}
-          {2 \Lstab}
-    \\
-  \FeL &= \Ltot - L' \\
-  \Fe' &= \FeT - \FeL
-%       &= \tfrac12 \left(
-%          \FeT - \Ltot - 1/\Lstab
-%             + \sqrt{(1/\Lstab - (\Ltot - \FeT))^2 + 4 \Ltot/\Lstab}
-%         \right)
-  \;.
- \end{split}
-\]
-If \lxr{MINFE} is defined, $\Fe'$ will be constrained to be no more than $\Fe'_{\max}$,
-and $\FeT$ adjusted accordingly, assuming that excess free iron is scavenged away.
-This is done before and after each biogeochemical subtimestep as the above reaction
-is very fast.  By the same reasoning, one could actually solve for equilibrium under
-the condition that $\Fe'$ stay below $\Fe'_{\max}$, thus imposing a limit directly on
-$\FeT$.
+Adjust the number of plankton types, functional groups, autotrophs, grazers,
+prey, wavebands and optical types in \verb|GUD_SIZE.h|.
 
-%The effective scavenging rate of total dissolved iron, $c_{\scav}\Fe'/\FeT$, is shown
-%in Fig.\ \ref{fig:scavenging}.
-%
-%\begin{figure}
-%\centering
-%\includegraphics[width=.7\textwidth]{scavenging.pdf}
-%\caption{Dissolved-iron scavenging rate and free iron concentration as
-%a function of total dissolved iron.}
-%\label{fig:scavenging}
-%\end{figure}
+You will also have to adjust the number of passive tracers in
+\verb|PTRACERS_SIZE.h|.  You can run \path|MITgcm/mkgudtracers| in your code
+directory (after adjusting \verb|GUD_OPTIONS.h| and \verb|GUD_SIZE.h|) to find
+out how many ptracers you will need and what they are.
 
-\begin{tabular}{@{}l@{\qquad}l@{${}={}$}l}
-\ll{ligand\_tot}  & $\Ltot=\SI{e-3}{\muMolar}$
-                  & total ligand (\unit{\muMolar})  \\
-\ll{ligand\_stab} & $\Lstab=1/(\SI{5E-6}{\muMolar})$
-                  & ligand stablity rate ratio (\unit{\meter\cubed\per\milli\mol}) \\
-\ll{freefemax}    & $\Fe'_{\max}=\SI{0.4E-3}{\muMolar}$
-                  & maximal concentration of free iron (\unit{\milli\mol\per\meter\cubed})
+In \verb|GCHEM_OPTIONS.h| you need to define \verb|GCHEM_SEPARATE_FORCING|.
+
+In \verb|EXF_OPTIONS.h| you may want to undef \verb|ALLOW_CLIMSST_RELAXATION|
+and \verb|ALLOW_CLIMSSS_RELAXATION| and, if you want to read in sea ice cover,
+define \verb|EXF_SEAICE_FRACTION|.
+
+
+
+\subsection{Running}
+
+You will need to set \verb|useGUD=.TRUE.| in \verb|data.gchem| (and turn on
+gchem, ptracers, exf, etc.\ in \verb|data.pkg|).
+
+Runtime parameters are set in \verb|data.gud| in these namelists:
+
+\begin{tabular}{ll}
+  \verb|&GUD_FORCING_PARAMS| & parameters related to forcing and initialization \\
+  \verb|&GUD_INTERP_PARAMS| & parameters for interpolation of forcing fields (ifdef \verb|USE_EXF_INTERPOLATION|) \\
+  \verb|&GUD_PARAMS| & general parameters (not per-plankton traits) \\
+  \verb|&GUD_RADTRANS_PARAMS| & parameters for radiative transer \\
+  \verb|&GUD_CDOM_PARAMS| & parameters for dynamic CDOM \\
+  \verb|&GUD_RANDOM_PARAMS| & parameters for randomly generated traits (deprecated) \\
+  \verb|&GUD_TRAIT_PARAMS| & parameters for trait generation (allometric and functional groups)
 \end{tabular}
+
+Set initial values/files for the tracers in \verb|data.ptracers|.  You can
+generate a template by running \path|MITgcm/mkgudtracers| in your code directory
+(get help with the `-h' option).
+
+\begin{sloppypar}
+You may generate a minimal file \verb|data.diagnostics| with all the
+gud tracers by running \path|MITgcm/mkdiagnosticsdata| in your input/run
+directory.
+\end{sloppypar}
+
+
+
+\subsubsection{Traits}
+
+Traits are generated from the parameters in \verb|&GUD_TRAIT_PARAMS|
+(see next section) but can be overridden in \verb|data.traits|:
+{\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[l]{lllll}
+\textbf{trait} & \textbf{dims} & \textbf{symbol} & \textbf{units} & \textbf{description} \\
+\hline
+\endhead
+\multicolumn{5}{@{}l}{\texttt{\&GUD\_TRAITS}}\\
+  $\|diacoc|$             & (p)   & $\diacoc$               &  & 1: diatom, 2: diazo, 0: neither \\
+  $\|diazo|$              & (p)   & $\diazo$                &  & 1: diazotroph, 0: not \\
+  $\|useNH4|$             & (p)   & $\useNHiv$              &  & 1: can use $\NH_4$ \\
+  $\|useNO2|$             & (p)   & $\useNOii$              &  & 1: can use $\NO_2$ \\
+  $\|useNO3|$             & (p)   & $\useNOiii$             &  & 1: can use $\NO_3$ \\
+  $\|combNO|$             & (p)   & $\combNO$               &  & 1: combine $\NO_{2/3}$ limit.terms \\
+  $\|tempMort|$           & (p)   & $\tempMort$             &  & 1: mortality is temp.dependent \\
+  $\|tempMort2|$          & (p)   & $\tempMortTWO$          &  & 1: quadr.mort. is temp.dep. \\
+  $\|ap\_type|$           & (p)   & $\apSUBtype$            &  & optical type \# \\
+  $\|Xmin|$               & (p)   & $\Xmin$                 & \unit{mmol C m^{-3}} &  \\
+  $\|amminhib|$           & (p)   & $\amminhib$             & \unit{(mmol N m^{-3})^{-1}} &  \\
+  $\|acclimtimescl|$      & (p)   & $\acclimtimescl$        & \unit{s^{-1}} &  \\
+  $\|PCmax|$              & (p)   & $\PCmax$                & \unit{s^{-1}} &  \\
+  $\|mort|$               & (p)   & $\mort$                 & \unit{s^{-1}} &  \\
+  $\|mort2|$              & (p)   & $\mortTWO$              & \unit{(mmol C m^{-3})^{-1} s^{-1}} &  \\
+  $\|ExportFrac|$         & (p)   & $\ExportFrac$           & \unit{1} &  \\
+  $\|phytoTempCoeff|$     & (p)   & $\phytoTempCoeff$       & \unit{1} &  \\
+  $\|phytoTempExp1|$      & (p)   & $\phytoTempExpONE$      & \unit{$\ln$(degree)} &  \\
+  $\|phytoTempExp2|$      & (p)   & $\phytoTempExpTWO$      & \unit{(degree C)^{-\phytoDecayPower}} &  \\
+  $\|phytoTempOptimum|$   & (p)   & $\phytoTempOptimum$     & \unit{degree C} &  \\
+  $\|phytoDecayPower|$    & (p)   & $\phytoDecayPower$      & \unit{1} &  \\
+  $\|R\_NC|$              & (p)   & $\RSUBNC$               & \unit{mmol N (mmol C)^{-1}} &  \\
+  $\|R\_PC|$              & (p)   & $\RSUBPC$               & \unit{mmol P (mmol C)^{-1}} &  \\
+  $\|R\_SiC|$             & (p)   & $\RSUBSiC$              & \unit{mmol Si (mmol C)^{-1}} &  \\
+  $\|R\_FeC|$             & (p)   & $\RSUBFeC$              & \unit{mmol Fe (mmol C)^{-1}} &  \\
+  $\|R\_ChlC|$            & (p)   & $\RSUBChlC$             & \unit{mg Chl (mmol C)^{-1}} &  \\
+  $\|R\_PICPOC|$          & (p)   & $\RSUBPICPOC$           & \unit{mmol PIC (mmol POC)^{-1}} &  \\
+  $\|wsink|$              & (p)   & $\wsink$                & \unit{m s^{-1}} &  \\
+  $\|wswim|$              & (p)   & $\wswim$                & \unit{m s^{-1}} &  \\
+  $\|ksatNH4|$            & (p)   & $\ksatNHiv$             & \unit{mmol N m^{-3}} &  \\
+  $\|ksatNO2|$            & (p)   & $\ksatNOii$             & \unit{mmol N m^{-3}} &  \\
+  $\|ksatNO3|$            & (p)   & $\ksatNOiii$            & \unit{mmol N m^{-3}} &  \\
+  $\|ksatPO4|$            & (p)   & $\ksatPOiv$             & \unit{mmol P m^{-3}} &  \\
+  $\|ksatSiO2|$           & (p)   & $\ksatSiOii$            & \unit{mmol Si m^{-3}} &  \\
+  $\|ksatFeT|$            & (p)   & $\ksatFeT$              & \unit{mmol Fe m^{-3}} &  \\
+  $\|ksatPAR|$            & (p)   & $\ksatPAR$              & \unit{(uEin m^{-2} s^{-1})^{-1}} & (for undef \verb|GUD_ALLOW_GEIDER|) \\
+  $\|kinhPAR|$            & (p)   & $\kinhPAR$              & \unit{(uEin m^{-2} s^{-1})^{-1}} & (for undef \verb|GUD_ALLOW_GEIDER|) \\
+  $\|inhibcoef\_geid|$    & (p)   & $\inhibcoefSUBgeid$     & \unit{1} &  \\
+  $\|mQyield|$            & (p)   & $\mQyield$              & \unit{mmol C (uEin)^{-1}} &  \\
+  $\|chl2cmax|$           & (p)   & $\chlTWOcmax$           & \unit{mg Chl (mmol C)^{-1}} &  \\
+  $\|grazemax|$           & (p)   & $\grazemax$             & \unit{s^{-1}} &  \\
+  $\|kgrazesat|$          & (p)   & $\kgrazesat$            & \unit{mmol C m^{-3}} &  \\
+  $\|palat|$              & (p,p) & $\palat_{j,z}$          & \unit{1} &  \\
+  $\|asseff|$             & (p,p) & $\asseff$               & \unit{1} &  \\
+  $\|ExportFracPreyPred|$ & (p,p) & $\ExportFracPreyPred$   & \unit{1} &  \\
+  $\|respiration|$        & (p)   & $\respiration$          & \unit{s^{-1}} &  \\
+  $\|Qnmax|$              & (p)   & $\Qnmax$                & \unit{mmol N (mmol C)^{-1}} &  \\
+  $\|Qnmin|$              & (p)   & $\Qnmin$                & \unit{mmol N (mmol C)^{-1}} &  \\
+  $\|Qpmax|$              & (p)   & $\Qpmax$                & \unit{mmol P (mmol C)^{-1}} &  \\
+  $\|Qpmin|$              & (p)   & $\Qpmin$                & \unit{mmol P (mmol C)^{-1}} &  \\
+  $\|Qsimax|$             & (p)   & $\Qsimax$               & \unit{mmol Si (mmol C)^{-1}} &  \\
+  $\|Qsimin|$             & (p)   & $\Qsimin$               & \unit{mmol Si (mmol C)^{-1}} &  \\
+  $\|Qfemax|$             & (p)   & $\Qfemax$               & \unit{mmol Fe (mmol C)^{-1}} &  \\
+  $\|Qfemin|$             & (p)   & $\Qfemin$               & \unit{mmol Fe (mmol C)^{-1}} &  \\
+  $\|Vmax\_NH4|$          & (p)   & $\VmaxSUBNHiv$          & \unit{mmol N (mmol C)^{-1} s^{-1}} &  \\
+  $\|Vmax\_NO2|$          & (p)   & $\VmaxSUBNOii$          & \unit{mmol N (mmol C)^{-1} s^{-1}} &  \\
+  $\|Vmax\_NO3|$          & (p)   & $\VmaxSUBNOiii$         & \unit{mmol N (mmol C)^{-1} s^{-1}} &  \\
+  $\|Vmax\_N|$            & (p)   & $\VmaxSUBN$             & \unit{mmol N (mmol C)^{-1} s^{-1}} &  \\
+  $\|Vmax\_PO4|$          & (p)   & $\VmaxSUBPOiv$          & \unit{mmol P (mmol C)^{-1} s^{-1}} &  \\
+  $\|Vmax\_SiO2|$         & (p)   & $\VmaxSUBSiOii$         & \unit{mmol Si (mmol C)^{-1} s^{-1}} &  \\
+  $\|Vmax\_FeT|$          & (p)   & $\VmaxSUBFeT$           & \unit{mmol Fe (mmol C)^{-1} s^{-1}} &  \\
+  $\|kexcC|$              & (p)   & $\kexcC$                & \unit{s^{-1}} &  \\
+  $\|kexcN|$              & (p)   & $\kexcN$                & \unit{s^{-1}} &  \\
+  $\|kexcP|$              & (p)   & $\kexcP$                & \unit{s^{-1}} &  \\
+  $\|kexcSi|$             & (p)   & $\kexcSi$               & \unit{s^{-1}} &  \\
+  $\|kexcFe|$             & (p)   & $\kexcFe$               & \unit{s^{-1}} &  \\
+\hline
+\multicolumn{5}{@{}l}{\texttt{\&GUD\_RADTRANS\_TRAITS}}\\
+  $\|aphy\_chl|$          & (p,l) & $\aphySUBchl$           & \unit{m^{-1} (mg Chl m^{-3})^{-1}} &  \\
+  $\|aphy\_chl\_ps|$      & (p,l) & $\aphySUBchlSUBps$      & \unit{m^{-1} (mg Chl m^{-3})^{-1}} &  \\
+  $\|bphy\_chl|$          & (p,l) & $\bphySUBchl$           & \unit{m^{-1} (mg Chl m^{-3})^{-1}} &  \\
+  $\|bbphy\_chl|$         & (p,l) & $\bbphySUBchl$          & \unit{m^{-1} (mg Chl m^{-3})^{-1}} &
+\end{longtable}}
+Dimensions: p -- nplank, l -- nlam.
+
+
+
+\subsubsection{Allometric trait generation}
+
+Traits are generated based on values for functional groups and allometric
+scaling relations,
+\[
+  \mathrm{trait}_j = a_g \cdot V_j^{b_g}
+\]
+where $V_j$ is the volume of the given type and $a_g$ and $b_g$ are the
+scaling coefficients of the its functional group.
+The volumes $V_j$ of the types in each group are
+\[
+  V_{0 g}, f_g V_{0 g}, f_g^2 V_{0 g}, \dots
+\]
+where $V_{0 g}=\verb|biovol0(g)|$ and $f_g=\verb|biovolfac(g)|$.
+
+The scaling coefficients are read from
+namelist \verb|&gud_trait_params| in \verb|data.gud|.  The following table
+shows the correspondence between traits and trait parameters.  Where $b$ is
+not given, it is set to 0, i.e., all types in the group share the same trait
+value.
+{\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[l]{ll>{$}l<{$}l>{$}r<{$}}
+\textbf{trait} & {\boldmath$a$} & \textbf{default} & {\boldmath$b$} & \textbf{default} \\
+\hline
+\endhead
+  \verb|diacoc|             & \verb|grp_diacoc|                 & 0         \\
+  \verb|diazo|              & \verb|grp_diazo|                  & 0         \\
+  \verb|useNH4|             & \verb|grp_useNH4|                 & 1         \\
+  \verb|useNO2|             & \verb|grp_useNO2|                 & 1         \\
+  \verb|useNO3|             & \verb|grp_useNO3|                 & 1         \\
+  \verb|combNO|             & \verb|grp_combNO|                 & 1         \\
+  \verb|tempMort|           & \verb|grp_tempMort|               & 1         \\
+  \verb|tempMort2|          & \verb|grp_tempMort2|              & 1         \\
+  \verb|Xmin|               & \verb|grp_Xmin|                   & 0.0       \\
+  \verb|amminhib|           & \verb|grp_amminhib|               & 4.6       \\
+  \verb|acclimtimescl|      & \verb|grp_acclimtimescl|          & 1/20/\day \\
+  \verb|mort|               & \verb|grp_mort|                   & 0.02/\day \\
+  \verb|mort2|              & \verb|grp_mort2|                  & 0.0       \\
+  \verb|ExportFrac|         & \verb|grp_ExportFrac|             & 0.5       \\
+  \verb|phytoTempCoeff|     & \verb|grp_tempcoeff1|             & 1/3       \\
+  \verb|phytoTempExp1|      & \verb|grp_tempcoeff3|             & 1.04      \\
+  \verb|phytoTempExp2|      & \verb|grp_tempcoeff2|             & 0.001     \\
+  \verb|phytoTempOptimum|   & \verb|grp_tempopt|                & 2.0       \\
+  \verb|phytoDecayPower|    & \verb|grp_tempdecay|              & 4.0       \\
+  \verb|R_NC|               & \verb|grp_R_NC|                   & 16/120    \\
+  \verb|R_PC|               & \verb|grp_R_PC|                   & 1/120     \\
+  \verb|R_SiC|              & \verb|grp_R_SiC|                  & 0.0       \\
+  \verb|R_FeC|              & \verb|grp_R_FeC|                  & 0.001/120 \\
+  \verb|R_ChlC|             & \verb|grp_R_ChlC|                 & 16/120    \\
+  \verb|R_PICPOC|           & \verb|grp_R_PICPOC|               & 0.8       \\
+  \verb|wsink|              & \verb|a_biosink|                  & 0.028/\day       & \verb|b_biosink|                   &  0.39 \\
+  \verb|wswim|              & \verb|a_bioswim|                  & 0.0              & \verb|b_bioswim|                   &  0.18 \\
+  \verb|PCmax|              & \verb|a_vmax_DIC|                 & 1.0/\day         & \verb|b_vmax_DIC|                  & -0.15 \\
+  \verb|vmax_NH4|           & \verb|a_vmax_NH4|                 & 0.26/\day        & \verb|b_vmax_NH4|                  & -0.27 \\
+  \verb|vmax_NO2|           & \verb|a_vmax_NO2|                 & 0.51/\day        & \verb|b_vmax_NO2|                  & -0.27 \\
+  \verb|vmax_NO3|           & \verb|a_vmax_NO3|                 & 0.51/\day        & \verb|b_vmax_NO3|                  & -0.27 \\
+  \verb|vmax_N|             & \verb|a_vmax_N|                   & 1.28/\day        & \verb|b_vmax_N|                    & -0.27 \\
+  \verb|vmax_PO4|           & \verb|a_vmax_PO4|                 & 0.077/\day       & \verb|b_vmax_PO4|                  & -0.27 \\
+  \verb|vmax_SiO2|          & \verb|a_vmax_SiO2|                & 0.077/\day       & \verb|b_vmax_SiO2|                 & -0.27 \\
+  \verb|vmax_FeT|           & \verb|a_vmax_FeT|                 & \num{14E-6}/\day & \verb|b_vmax_FeT|                  & -0.27 \\
+  \verb|Qnmin|              & \verb|a_qmin_n|                   & 0.07             & \verb|b_qmin_n|                    & -0.17 \\
+  \verb|Qnmax|              & \verb|a_qmax_n|                   & 0.25             & \verb|b_qmax_n|                    & -0.13 \\
+  \verb|Qpmin|              & \verb|a_qmin_p|                   & 0.002            & \verb|b_qmin_p|                    &  0.00 \\
+  \verb|Qpmax|              & \verb|a_qmax_p|                   & 0.01             & \verb|b_qmax_p|                    &  0.00 \\
+  \verb|Qsimin|             & \verb|a_qmin_si|                  & 0.002            & \verb|b_qmin_si|                   &  0.00 \\
+  \verb|Qsimax|             & \verb|a_qmax_si|                  & 0.004            & \verb|b_qmax_si|                   &  0.00 \\
+  \verb|Qfemin|             & \verb|a_qmin_fe|                  & \num{1.5E-6}     & \verb|b_qmin_fe|                   &  0.00 \\
+  \verb|Qfemax|             & \verb|a_qmax_fe|                  & \num{80E-6}      & \verb|b_qmax_fe|                   &  0.00 \\
+  \verb|ksatNH4|            & \verb|a_kn_NH4|                   & 0.085            & \verb|b_kn_NH4|                    &  0.27 \\
+  \verb|ksatNO2|            & \verb|a_kn_NO2|                   & 0.17             & \verb|b_kn_NO2|                    &  0.27 \\
+  \verb|ksatNO3|            & \verb|a_kn_NO3|                   & 0.17             & \verb|b_kn_NO3|                    &  0.27 \\
+  \verb|ksatPO4|            & \verb|a_kn_PO4|                   & 0.026            & \verb|b_kn_PO4|                    &  0.27 \\
+  \verb|ksatSiO2|           & \verb|a_kn_SiO2|                  & 0.024            & \verb|b_kn_SiO2|                   &  0.27 \\
+  \verb|ksatFeT|            & \verb|a_kn_FeT|                   & \num{80E-6}      & \verb|b_kn_FeT|                    &  0.27 \\
+  \verb|kexcC|              & \verb|a_kexc_c|                   & 0.0              & \verb|b_kexc_c| \\
+  \verb|kexcN|              & \verb|a_kexc_n|                   & 0.0              & \verb|b_kexc_n| \\
+  \verb|kexcP|              & \verb|a_kexc_p|                   & 0.0              & \verb|b_kexc_p| \\
+  \verb|kexcSi|             & \verb|a_kexc_si|                  & 0.0              & \verb|b_kexc_si| \\
+  \verb|kexcFe|             & \verb|a_kexc_fe|                  & 0.0              & \verb|b_kexc_fe| \\
+  \verb|respiration|        & \verb|a_respir|/\verb|qcarbon|    & 0.0              & \multicolumn{2}{l}{$\num{12E9}\cdot\texttt{qcarbon}$} \\
+  \verb|qcarbon|            & \verb|a_qcarbon|                  & \num{1.8E-11}    & \verb|b_qcarbon|                   &  0.94 \\
+  \verb|grazemax|           & \verb|a_graz|                     & 21.9/\day        & \verb|b_graz|                      & -0.16 \\
+  \verb|kgrazesat |         & \verb|a_kg|                       & 1.0              & \verb|b_kg|                        &  0.00 \\
+  \verb|pp_opt|             & \verb|a_prdpry|                   & 1024.0           & \verb|b_prdpry|                    &  0.00 \\
+  \verb|pp_sig|             & \verb|grp_pp_sig|                 & 1.0  \\
+  \verb|mQyield|            & \verb|grp_mQyield|                & \num{75E-6}  \\
+  \verb|chl2cmax|           & \verb|grp_chl2cmax|               & 0.3  \\
+  \verb|inhibcoef_geid|     & \verb|grp_inhibcoef_geid|         & 0.0  \\
+  \verb|ksatPAR|            & \verb|grp_ksatPAR|                & 0.012  \\
+  \verb|kinhPAR|            & \verb|grp_kinhPAR|                & 0.006  \\
+  \verb|asseff|             & \verb|grp_ass_eff|                & 0.7  \\
+  \verb|ExportFracPreyPred| & \verb|grp_ExportFracPreyPred|     & 0.5
+\end{longtable}}
+Palatabilities are initialized to zero and have to be set in \verb|data.traits|
+unless \verb|GUD_ALLOMETRIC_PALAT| is defined in which case they are computed
+based on predator and prey sizes,
+\[
+  p_{j,z} = \frac{1}{2\|pp\_sig|_z} \exp\left\{ -\ln(r/\|pp\_opt|_z)^2/(2 \|pp\_sig|_z^2) \right\}
+\]
+where
+\[
+  r = V_z/V_j
+\]
+and \verb|pp_opt| and \verb|pp_sig| are from the above table.
+
+If \verb|GUD_effective_ksat=T|, half saturations for non-quota elements are
+computed from quota traits.  The half saturation for $\NO_3$ is computed as
+\[
+  \ksatNOiii {}' = \frac{ \ksatNOiii \PCmax \Qnmin (\Qnmax-\Qnmin)}
+                        { \VmaxSUBNOiii \Qnmax + \PCmax \Qnmin (\Qnmax-\Qnmin)}
+\]
+and those of the other elements are computed by scaling $\ksatNOiii$ with
+the type's elemental ratios.  Here, $\ksatNOiii$ on the right-hand side
+is computed from \verb|a_kn_NO3| and \verb|b_kn_NO3|.
+
 
 
 \bibliography{mendeley}{}
 \bibliographystyle{apalike}
+
+\dots
 
 \end{document}
 

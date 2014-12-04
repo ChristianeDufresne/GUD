@@ -46,7 +46,7 @@ C !USES: ===============================================================
 #include "GUD_SIZE.h"
 #include "GUD_INDICES.h"
 #include "GUD_GENPARAMS.h"
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
 #include "GUD_FIELDS.h"
 #endif
 #endif
@@ -288,7 +288,7 @@ ccccccccccccccccccccccccccc GUD ccccccccccccccccccccccccccccc
          CALL GUD_CONS( myTime, myIter, myThid )
          CALL TIMER_STOP ('GUD_CONS [GCHEM_FORCING_SEP]',myThid)
 
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
 #ifdef ALLOW_OLD_VIRTUALFLUX
 c find global surface averages
          CALL TIMER_START('GCHEM_SURFMEAN [GCHEM_FORCING_SEP]',myThid)
@@ -299,7 +299,7 @@ c find global surface averages
      &             pTracer(1-OLx,1-OLy,1,1,1,iALK), gsm_alk, myThid )
          CALL TIMER_STOP ('GCHEM_SURFMEAN [GCHEM_FORCING_SEP]',myThid)
 #endif /* ALLOW_OLD_VIRTUALFLUX */
-#endif /* ALLOW_CARBON */
+#endif /* GUD_ALLOW_CARBON */
 
 C$taf loop = parallel
          DO bj=myByLo(myThid),myByHi(myThid)
@@ -311,7 +311,7 @@ C$taf loop = parallel
            iMin=1
            iMax=sNx
 
-#ifdef NUT_SUPPLY
+#ifdef GUD_ALLOW_NUT_SUPPLY
 c articficial supply of nutrients
            CALL GUD_NUT_SUPPLY( pTracer(1-OLx,1-OLy,1,bi,bj,iPO4),
      &                          bi,bj,iMin,iMax,jMin,jMax,

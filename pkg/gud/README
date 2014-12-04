@@ -1,4 +1,4 @@
-# Call tree and entry points for gud package (cat README to see bold)
+# Call tree and entry points for gud package ("cat README" to see bold)
 
 the_model_main 
   initialise_fixed 
@@ -15,11 +15,7 @@ the_model_main
           gud_random_init 
           gud_init_traits 
           gud_generate_allometric 
-            invnormal 
-            gud_random 
-            gud_random_normal 
-          gud_generate 
-            gud_readtraits 
+          gud_generate_random
             gud_random
             gud_random_normal
           gud_readtraits
@@ -32,12 +28,14 @@ the_model_main
         gchem_init_vari 
           [1mgud_init_varia[0m 
             gud_exf_init_varia 
+            gud_read_pickup 
             gud_init_chl 
               gud_light_radtrans 
-                gud_radtrans_direct 
-                  solve_tridiagonal_pivot 
-              gud_light 
                 gud_insol 
+                gud_radtrans_direct 
+                  gud_solve_tridiag 
+              gud_light 
+                gud_insol
             gud_surfforcing_init 
               gud_carbon_coeffs 
               gud_calc_pco2_approx 
@@ -59,19 +57,21 @@ the_model_main
             gud_fe_chem 
             gud_tempfunc 
             gud_model 
-            gud_grazing_monod 
             gud_grazing 
             gud_sinking 
+        do_write_pickup 
+          packages_write_pickup 
+            gchem_write_pickup 
+              [1mgud_write_pickup[0m 
 
-[1mgud_cons_tend[0m 
-[1mgud_carbon_coeffs_pressure_dep[0m 
+# not called:
+
+[1minvnormal[0m 
 [1mgud_calc_pco2[0m 
 
 
-# Generated files:
+# generated files:
 
-gud_check.F             # ./mkcheck > $@
-gud_diagnostics_init.F  # ./mkdiags < diags.template > $@
 GUD_GENPARAMS.h         # ./gentraits params.template
 gud_readgenparams.F
 GUD_TRAITPARAMS.h       # ./gentraits traitparams.template
@@ -79,10 +79,13 @@ gud_readtraitparams.F
 GUD_TRAITS.h            # ./gentraits traits.template
 gud_readtraits.F
 gud_init_traits.F
-GUD_EXF_DEFAULTS.h      # ./genexf < exf.template
-GUD_EXF.h
+
+# these have embedded templates
+gud_check.F             # python -m cogapp/__main__ -c -r gud_check.F
+GUD_EXF.h               # python -m cogapp/__main__ -c -r GUD_EXF.h
+GUD_EXF_DEFAULTS.h      # ...
+GUD_EXF_NAMELIST.h
 gud_exf_init_fixed.F
 gud_exf_init_varia.F
 gud_exf_load.F
-GUD_EXF_NAMELIST.h
 

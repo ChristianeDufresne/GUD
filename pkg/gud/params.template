@@ -27,7 +27,7 @@ rad2deg = 180D0 / PI
 &CARBON_CONSTANTS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
 
 Pa2Atm  = 1.01325D5
 ptr2mol = 1.0D-3                  ! convert ptracers (in mmol/m3) to mol/m3
@@ -75,7 +75,6 @@ kDEBUG = 1
 
 gud_linFSConserve = .FALSE.
 
-gud_allometric = .FALSE.
 gud_sort_biovol = .FALSE.
 
 gud_read_phos = .FALSE.
@@ -135,7 +134,7 @@ wN_sink = wp_sink
 wFe_sink = wp_sink
 wSi_sink = wp_sink
 
-                                   !#ifdef ALLOW_CARBON
+                                   !#ifdef GUD_ALLOW_CARBON
 gud_atmos_pCO2 = 278D-6
 R_OP      = 170D0
 R_OC      = 170D0/120.0D0
@@ -147,6 +146,8 @@ wPIC_sink = 15.0D0/pday
 m3perkg   = 1.D0 / 1024.5D0
                                    !#endif
 
+diaz_ini_fac = 1D0                 ! reduce tracer concentrations by this factor on initialization
+
 
 ! denitrification
 
@@ -155,8 +156,6 @@ O2crit = 6.0D0                     ! critical oxygen for O2/NO3 remineralization
 denit_NP = 120.0D0                 ! ratio of n to p in denitrification process
 denit_NO3 = 104.0D0                ! ratio no3 used relative to all n in denitrification process
 NO3crit = 1.D-2                    ! critical nitrate below which no denit (or remin) happens
-
-diaz_ini_fac = 0.1D0               ! reduce tracer concentrations by this factor on initialization
 
 
 
@@ -193,11 +192,13 @@ depthdenit = 185.0D0               ! depth for denitrification relaxation to sta
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 &GUD_RADTRANS_PARAMS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#ifdef ALLOW_RADTRANS
+#ifdef GUD_ALLOW_RADTRANS
 
 CHARACTER*80 gud_waterAbsorbFile = ' '
 CHARACTER*80 gud_phytoAbsorbFile = ' '
 CHARACTER*80 gud_particleAbsorbFile = ' '
+
+gud_useModelCalendar = .FALSE.
 
 INTEGER gud_radtrans_kmax = Nr
 gud_part_size_P = 1D-15   ! mmol P per particle
@@ -220,13 +221,13 @@ gud_aCDOM_fac = 0.2D0
 
 /
 
-#endif /* ALLOW_RADTRANS */
+#endif /* GUD_ALLOW_RADTRANS */
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 &GUD_CDOM_PARAMS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
 
 fracCDOM = 2.D0 / 100.D0
 CDOMdegrd  = 1.D0 / (200D0 *pday)

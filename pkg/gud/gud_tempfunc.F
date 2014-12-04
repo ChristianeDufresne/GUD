@@ -16,10 +16,10 @@ C !INTERFACE: ==========================================================
 C !DESCRIPTION: ========================================================
 C     Compute temperature functions for gud model.
 C
-C     TEMP_VERSION 1 used in Follows et al (2007) - without max of 1
-C     TEMP_VERSION 2 used in Dutkiewicz et al (2009), Hickman et al, 
+C     GUD_TEMP_VERSION 1 used in Follows et al (2007) - without max of 1
+C     GUD_TEMP_VERSION 2 used in Dutkiewicz et al (2009), Hickman et al, 
 C                            Monteiro etal, Barton et al
-C     TEMP_RANGE gives all phyto a  specific temperature range
+C     GUD_TEMP_RANGE gives all phyto a  specific temperature range
 C                if undefined, then full Eppley/Arrenhius curve used
 
 C !USES: ===============================================================
@@ -51,7 +51,7 @@ c !LOCAL VARIABLES: ====================================================
       _RL TempAe, Tempref, TempCoeff
       INTEGER j
 
-#ifdef NOTEMP
+#ifdef GUD_NOTEMP
 
       photoFun = 1.0 _d 0
       grazFun  = 1.0 _d 0
@@ -60,7 +60,7 @@ c !LOCAL VARIABLES: ====================================================
       mort2Fun = 1.0 _d 0
       uptakeFun = 1.0 _d 0
 
-#elif TEMP_VERSION == 1
+#elif GUD_TEMP_VERSION == 1
 
 c +++++++++++++++++++ VERSION 1 +++++++++++++++++++++++++++++++++++++++
 c steph's version 1 (pseudo-Eppley)
@@ -68,7 +68,7 @@ c plankton growth function (unitless)
       DO j = iMinPhoto, iMaxPhoto
 cswd -- this gives Eppley curve only
         photoFun(j) = phytoTempExp1(j)**Temp
-# ifdef TEMP_RANGE
+# ifdef GUD_TEMP_RANGE
 cswd -- temperature range
         photoFun(j) = photoFun(j) *
      &      exp(-phytoTempExp2(j)*
@@ -90,7 +90,7 @@ c    &             zooTempExp(j)*(Temp - zooTempOptimum(j)))
       uptakeFun = 1.0 _d 0
 c ++++++++++++++ END VERSION 1 +++++++++++++++++++++++++++++++++++++++
 
-#elif TEMP_VERSION == 2
+#elif GUD_TEMP_VERSION == 2
 
 c +++++++++++++++++++ VERSION 2 +++++++++++++++++++++++++++++++++++++++
 c steph's version 2 (pseudo-Arrenhius)
@@ -102,7 +102,7 @@ c steph's version 2 (pseudo-Arrenhius)
 cswd -- this gives Arrenhius curve only
         photoFun(j) = exp(TempAeArr*(1. _d 0/(Temp+Tkel) -
      &                                  1. _d 0/(TemprefArr) ) )
-# ifdef TEMP_RANGE
+# ifdef GUD_TEMP_RANGE
 cswd -- temperature range
         photoFun(j) = photoFun(j) *
      &      exp(-phytoTempExp2(j)*
@@ -129,7 +129,7 @@ c      mort2Fun = 1.0 _d 0
       uptakeFun = 1.0 _d 0
 c ++++++++++++++ END VERSION 2 +++++++++++++++++++++++++++++++++++++++
 
-#elif TEMP_VERSION == 3
+#elif GUD_TEMP_VERSION == 3
 
 c +++++++++++++++++++ VERSION 3 +++++++++++++++++++++++++++++++++++++++
 c ben's version 3 from quota model
@@ -146,10 +146,10 @@ c ben's version 3 from quota model
 c ++++++++++++++ END VERSION 3 +++++++++++++++++++++++++++++++++++++++
 
 #else
-#error "TEMP_VERSION must be 1, 2 or 3.  Define in GUD_OPTIONS.h"
+#error "GUD_TEMP_VERSION must be 1, 2 or 3.  Define in GUD_OPTIONS.h"
 #endif
 
-#ifdef NOZOOTEMP
+#ifdef GUD_NOZOOTEMP
       grazFun(:) = 1.0 _d 0
 #endif
 

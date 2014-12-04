@@ -215,6 +215,7 @@ C     == Global variables ==
 #ifdef ALLOW_PTRACERS
 # include "PTRACERS_SIZE.h"
 # include "PTRACERS_PARAMS.h"
+# include "OBCS_PTRACERS.h"
 #endif /* ALLOW_PTRACERS */
 
 C     !INPUT/OUTPUT PARAMETERS:
@@ -361,6 +362,8 @@ C     get record numbers and interpolation factor
      I                       , fac, first, changed, useYearlyFields
      I                       , obcsperiod, count0, count1, year0, year1
      I                       , myTime, myIter, myThid )
+        OBptr(:,:,:,:,iTracer)=
+     &        OBptr(:,:,:,:,iTracer)*OBCS_ptrScale(iTracer)
        enddo
       endif
 # endif /* ALLOW_PTRACERS */
@@ -487,6 +490,7 @@ C     == Global variables ==
 #ifdef ALLOW_PTRACERS
 # include "PTRACERS_SIZE.h"
 # include "PTRACERS_PARAMS.h"
+# include "OBCS_PTRACERS.h"
 #endif /* ALLOW_PTRACERS */
 
 C     !INPUT/OUTPUT PARAMETERS:
@@ -634,6 +638,8 @@ C     get record numbers and interpolation factor
      I                       , fac, first, changed, useYearlyFields
      I                       , obcsperiod, count0, count1, year0, year1
      I                       , myTime, myIter, myThid )
+        OBptr(:,:,:,:,iTracer)=
+     &        OBptr(:,:,:,:,iTracer)*OBCS_ptrScale(iTracer)
        enddo
       endif
 # endif /* ALLOW_PTRACERS */

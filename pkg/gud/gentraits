@@ -117,7 +117,7 @@ with len(args) and open(args[0]) or sys.stdin as f:
                     name = name.strip()
                     lname = name.lower()
                     mysec = sec == 'dependent' and 'locals_read' or 'locals'
-                    print mysec, name
+                    sys.stderr.write('{0} {1}\n'.format(mysec, name))
                     secs.setdefault(mysec, OrderedDict())[lname] = (name,tp,args,dim,'')
                     continue
             else:
@@ -128,13 +128,17 @@ with len(args) and open(args[0]) or sys.stdin as f:
                 if m:
                     tp,name,args,rhs = m.groups()
                     lname = name.lower()
+                    if '!' in rhs:
+                        val,comm = string.split(rhs, '!', maxsplit=1)
+                    else:
+                        val = rhs
                     if tp is None:
-                        tp = gettype(rhs)
+                        tp = gettype(val)
                     else:
                         line = '{0}{1} = {2}'.format(name, args or '', rhs)
                     mysec = pre == 'LOCAL:' and 'locals' or sec
                     if mysec != sec:
-                        print mysec,name
+                        sys.stderr.write('{0} {1}\n'.format(mysec, name))
                     secs[mysec][lname] = (name,tp,args,dim,rhs)
                     if mysec in ['parameters']:
                         types[lname] = tp

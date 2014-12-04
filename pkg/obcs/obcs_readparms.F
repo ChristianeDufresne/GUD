@@ -141,7 +141,7 @@ C     retired parameters
      &          OBNAmFile, OBSAmFile, OBEAmFile, OBWAmFile,
      &          OBNPhFile, OBSPhFile, OBEPhFile, OBWPhFile,
 #ifdef ALLOW_PTRACERS
-     &          OBCS_u1_adv_Tr,
+     &          OBCS_u1_adv_Tr, OBCS_ptrScale,
      &          OBNptrFile,OBSptrFile,OBEptrFile,OBWptrFile,
 #endif
      &          useOBCSsponge, useSeaiceSponge,
@@ -316,6 +316,7 @@ C--   Default flags and values for OBCS
 #ifdef ALLOW_PTRACERS
       DO iTracer = 1, PTRACERS_num
        OBCS_u1_adv_Tr(iTracer) = 0
+       OBCS_ptrScale(iTracer) = 1. _d 0
        OBNptrFile(iTracer) = ' '
        OBSptrFile(iTracer) = ' '
        OBEptrFile(iTracer) = ' '

@@ -8,6 +8,7 @@ C !ROUTINE: GUD_LIGHT_RADTRANS
 C !INTERFACE: ==========================================================
       SUBROUTINE GUD_LIGHT_RADTRANS(
      O                         PAR,
+     I                         solTime,
      I                         bi, bj,
      I                         myTime, myIter, myThid )
 
@@ -36,6 +37,7 @@ C#include "DYNVARS.h"
 C !INPUT PARAMETERS: ===================================================
 C  myTime :: time at end of (sub)timestep
 C  myThid :: thread number
+      _RL solTime
       _RL myTime
       INTEGER bi, bj, myIter, myThid
 
@@ -44,7 +46,7 @@ C !OUTPUT PARAMETERS: ==================================================
 CEOP
 
 #ifdef ALLOW_GUD
-#ifdef ALLOW_RADTRANS
+#ifdef GUD_ALLOW_RADTRANS
 
 C!LOCAL VARIABLES: ====================================================
 C  i,j                  :: loop indices
@@ -56,7 +58,7 @@ C  k                    :: vertical level
       _RL part
       _RL aCDOM(nlam)
       _RL phychl(nPhoto)
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       _RL CDOM
 #else
       _RL actotref, atotref
@@ -73,18 +75,28 @@ C
       _RL Estop(nlam,Nr),Eutop(nlam,Nr)
       _RL amp1(nlam,Nr), amp2(nlam,Nr)
 
+      _RL solzlat(1-OLy:sNy+OLy)
+
 C ======================================================================
 C get current date and time of day: iyr/imon/iday+isec
       CALL CAL_GETDATE( myIter, mytime, mydate, mythid )
       CALL CAL_CONVDATE( mydate,iyr,imon,iday,isec,lp,wd,mythid )
 
+      IF (gud_useModelCalendar) THEN
+       CALL GUD_INSOL(solTime, solzlat, bj, .TRUE.)
+      ENDIF
+
       DO j=1,sNy
        DO i=1,sNx
+        IF (gud_useModelCalendar) THEN
+         solz(i,j) = solzlat(j)
+        ELSE
 C oj: average light effective at noon?
-        isec = 12*3600
-        CALL SUN_SFCSOLZ(rad2deg, iyr, imon, iday, isec,
-     I                   XC(i,j,bi,bj), YC(i,j,bi,bj),
-     O                   solz(i,j))
+         isec = 12*3600
+         CALL SUN_SFCSOLZ(rad2deg, iyr, imon, iday, isec,
+     I                    XC(i,j,bi,bj), YC(i,j,bi,bj),
+     O                    solz(i,j))
+        ENDIF
 
 c compute 1/cos(zenith) for direct light below surface
         CALL SUN_SFCRMUD(rad2deg, solz(i,j),
@@ -96,14 +108,14 @@ C ======================================================================
          dz_k(k) = drF(k)*HFacC(i,j,k,bi,bj)
          part = MAX(Ptracer(i,j,k,bi,bj,iPOP), 0. _d 0)
          DO jp=1,nPhoto
-#ifdef CHLQUOTA
+#ifdef GUD_ALLOW_CHLQUOTA
           phychl(jp)=MAX(Ptracer(i,j,k,bi,bj,iChl+jp-1),0.)
 #else
           phychl(jp)=MAX(chlPrev(i,j,k,bi,bj,jp), 0.)
 #endif
          ENDDO
 
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
 c use cdom-like tracer
          CDOM = MAX(Ptracer(i,j,k,bi,bj,iCDOM), 0.0 _d 0)
          DO l = 1,nlam
@@ -174,7 +186,7 @@ C      i,j
       ENDDO
 C ======================================================================
 
-#endif /* ALLOW_RADTRANS */
+#endif /* GUD_ALLOW_RADTRANS */
 #endif /* ALLOW_GUD */
 
       RETURN

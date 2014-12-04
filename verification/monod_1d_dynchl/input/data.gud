@@ -1,7 +1,5 @@
  &GUD_FORCING_PARAMS
  gud_chlInitBalanced=.TRUE.,
- /
- &GUD_EXF_PARAMS
  ironFile= '../input/input/loc1_FeFlux_monsurf.bin',
  PARFile=  '../input/input/loc1_PAR_monsurf.bin',
  ironPeriod= -12.,
@@ -19,5 +17,5 @@
  oldTwoGrazers= .TRUE.,
  diatom_growfac= 1.0,
  /
- &GUD_ALLOMETRIC_PARAMS
+ &GUD_TRAIT_PARAMS
  /

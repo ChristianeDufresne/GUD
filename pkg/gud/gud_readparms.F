@@ -48,21 +48,11 @@ C  msgBuf  :: message buffer
       integer iUnit, oUnit, l
       CHARACTER*(MAX_LEN_MBUF) msgBuf
 
-      NAMELIST/gud_forcing_params/
-     &    useGudYearlyFields,
-     &    gud_chlInitBalanced,
-     &    gud_chlIter0
-
 #include "GUD_EXF_NAMELIST.h"
 
 C Open and read the data.gud file
 
       _BEGIN_MASTER(myThid)
-
-C     gud_forcing_params
-      useGudYearlyFields = useExfYearlyFields
-      gud_chlInitBalanced = .FALSE.
-      gud_chlIter0 = 0
 
 #include "GUD_EXF_DEFAULTS.h"
 
@@ -76,7 +66,6 @@ C     gud_forcing_params
      I                   myThid )
 
       READ(UNIT=iUnit, NML=gud_forcing_params)
-      READ(UNIT=iUnit, NML=gud_exf_params)
 #ifdef USE_EXF_INTERPOLATION
       READ(UNIT=iUnit, NML=gud_interp_params)
 #endif

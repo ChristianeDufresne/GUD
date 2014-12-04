@@ -14,9 +14,9 @@ C
 C Requires: SIZE.h
 C
 
-#ifndef CHLQUOTA
+#ifndef GUD_ALLOW_CHLQUOTA
       COMMON /GUD_CHL_STORE/ chlPrev
-#ifdef ALLOW_RADTRANS
+#ifdef GUD_ALLOW_RADTRANS
       _RL chlPrev(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy,nPhoto)
 #else
       _RL chlPrev(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
@@ -24,7 +24,7 @@ C
 #endif
 
 
-#ifdef ALLOW_GUD_CONS
+#ifdef GUD_ALLOW_CONS
       COMMON /GUD_CHECK_CONS/
      &      GUD_cons_C_unit,
      &      GUD_cons_P_unit,

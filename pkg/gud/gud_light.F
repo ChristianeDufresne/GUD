@@ -43,7 +43,7 @@ C !OUTPUT PARAMETERS: ==================================================
 CEOP
 
 #ifdef ALLOW_GUD
-#ifndef ALLOW_RADTRANS
+#ifndef GUD_ALLOW_RADTRANS
 
 C!LOCAL VARIABLES: ====================================================
 C  i,j                  :: loop indices
@@ -55,20 +55,20 @@ C  k                    :: vertical level
       _RL atten(sNx,sNy)
 
 C ======================================================================
-#ifdef READ_PAR
+#ifdef GUD_READ_PAR
       PARF = surfPAR(1:sNx, 1:sNy, bi, bj)
 #else
-# ifdef USE_QSW
+# ifdef GUD_USE_QSW
       PARF = -parfrac*parconv*Qsw(1:sNx, 1:sNy, bi, bj)*
      &       maskC(1:sNx, 1:sNy, 1, bi, bj)
 # else
-      CALL GUD_INSOL(midTime, PARlat, bj)
+      CALL GUD_INSOL(midTime, PARlat, bj, .FALSE.)
       DO i=1,sNx
 C       convert W/m2 to uEin/s/m2
         PARF(i,:) = PARlat(1:sNy)/.2174
       ENDDO
-# endif /* USE_QSW */
-#endif /* READ_PAR */
+# endif /* GUD_USE_QSW */
+#endif /* GUD_READ_PAR */
 #ifdef ALLOW_DIAGNOSTICS
       IF (useDiagnostics .AND. myIter .GE.0) THEN
        CALL DIAGNOSTICS_FILL(surfPAR(1-OLx,1-OLy,bi,bj),'surfPAR ',
@@ -84,8 +84,8 @@ C       convert W/m2 to uEin/s/m2
       DO k=1,Nr
 
        Chl = 0.0
-#ifdef GEIDER
-#ifdef CHLQUOTA
+#ifdef GUD_ALLOW_GEIDER
+#ifdef GUD_ALLOW_CHLQUOTA
         DO j = iMinPhoto,iMaxPhoto
          Chl = Chl + MAX(0.0, 
      &        Ptracer(1:sNx, 1:sNy, k, bi, bj, iChl+j-iMinPhoto))
@@ -102,7 +102,7 @@ C       convert W/m2 to uEin/s/m2
 
 C TODO should include hFacC
        atten = (katten_w + katten_Chl*Chl)*DRF(k)
-#ifdef USE_AVPAR
+#ifdef GUD_AVPAR
        PAR(:,:,k,1) = PARF*(1.0 - EXP(-atten))/atten
 #else /* USE_MIDPAR */
        PAR(:,:,k,1) = PARF*EXP(-0.5*atten)
@@ -118,7 +118,7 @@ C TODO should include hFacC
 
       ENDDO  ! k
 
-#endif /* not ALLOW_RADTRANS */
+#endif /* not GUD_ALLOW_RADTRANS */
 #endif /* ALLOW_GUD */
 
       RETURN

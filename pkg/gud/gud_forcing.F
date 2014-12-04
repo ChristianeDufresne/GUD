@@ -90,15 +90,15 @@ c        CALL GUD_INIT_CHL(bi, bj, myTime, myIter, myThid)
 c      ENDIF
 
       CALL TIMER_START('GUD_LIGHT [GUD_FORCING]',myThid)
-#ifdef ALLOW_RADTRANS
-      CALL GUD_LIGHT_RADTRANS(PAR, bi, bj, myTime, myIter, myThid)
+#ifdef GUD_ALLOW_RADTRANS
+      CALL GUD_LIGHT_RADTRANS(PAR,endTime,bi,bj,myTime,myIter,myThid)
 #else
       CALL GUD_LIGHT(PAR, midTime, bi, bj, myTime, myIter, myThid)
 #endif
       CALL TIMER_STOP ('GUD_LIGHT [GUD_FORCING]',myThid)
 
 C === dic ==============================================================
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
 C carbon air-sea interaction
       CALL TIMER_START('GUD_SURFFORCING [GUD_FORCING]',myThid)
       CALL GUD_SURFFORCING(
@@ -141,7 +141,7 @@ C     scavenging
       DO k=1,Nr
       DO j=1,sNy
       DO i=1,sNx
-#ifdef PART_SCAV
+#ifdef GUD_PART_SCAV
         scav_poc = MAX(0 _d 0, Ptracer(i,j,k,bi,bj,iPOP))/scav_R_POPPOC
         scv = scav_rat*scav_inter*(scav_poc**scav_exp)
 #else
@@ -162,7 +162,7 @@ C     iron sediment source (in bottom grid cell above kMaxFeSed)
         DO i=1,sNx
          IF (hFacC(i,j,k,bi,bj) .GT. 0. .AND.
      &       (hFacC(i,j,kdn,bi,bj) .EQ. 0. .OR. k .EQ. Nr)) THEN
-#ifdef IRON_SED_SOURCE_VARIABLE
+#ifdef GUD_IRON_SED_SOURCE_VARIABLE
           flx = fesedflux_pcm*wp_sink*R_CP_fesed*
      &            MAX(0 _d 0, Ptracer(i,j,k-1,bi,bj,iPOP))
 #else
@@ -201,12 +201,12 @@ C === plankton =========================================================
 #endif
      I                    myTime, myIter, myThid )
         diags(i, j, k, :) = diagsl
-#ifdef ALLOW_GUD_CONS
+#ifdef GUD_ALLOW_CONS
         GUD_Nfix(i,j,k,bi,bj) = diagsl(iNfix)
         GUD_Ndenit(i,j,k,bi,bj) = diagsl(iDenitN)
 #endif
-#ifndef CHLQUOTA
-#ifdef ALLOW_RADTRANS
+#ifndef GUD_ALLOW_CHLQUOTA
+#ifdef GUD_ALLOW_RADTRANS
         chlPrev(i, j, k, bi, bj, :) = chlout
 #else
         chlPrev(i, j, k, bi, bj) = SUM(chlout)
@@ -259,7 +259,7 @@ C === apply tendencies to tracers ======================================
       DO j=1,sNy
       DO i=1,sNx
         pTracer(i,j,k,bi,bj,iTr)=pTracer(i,j,k,bi,bj,iTr)
-     &                          +dTsub(k)*gPtr(i,j,k,iTr)
+     &                      +dTsub(k)*gPtr(i,j,k,iTr)*maskInC(i,j,bi,bj)
       ENDDO
       ENDDO
       ENDDO
@@ -289,7 +289,7 @@ C === diagnostics ======================================================
      &          bi,bj,myThid)
        CALL DIAGNOSTICS_FILL(diags(1,1,1,iDenit),'Denit   ',0,Nr,3,
      &          bi,bj,myThid)
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
        CALL DIAGNOSTICS_FILL(pH,     'pH      ',0,Nr,1,bi,bj,myThid)
        CALL DIAGNOSTICS_FILL(pCO2,   'pCO2    ',0,Nr,1,bi,bj,myThid)
        CALL DIAGNOSTICS_FILL(FluxCO2,'fluxCO2 ',0,1,1,bi,bj,myThid)

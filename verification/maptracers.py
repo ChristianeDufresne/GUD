@@ -64,7 +64,7 @@ def mapmonod(namesmonod, namesdarwin, log=None):
                 ff.append(RCP)
                 continue
         ii.append(0)
-        ff.append(0.)
+        ff.append(np.nan)
         if log is not None:
             log.write('Tracer not found: {}\n'.format(nameorig))
 
@@ -130,7 +130,7 @@ def mapquota(namesquota, namesdarwin, log=None):
                 ff.append(f)
                 continue
         ii.append(0)
-        ff.append(0.)
+        ff.append(np.nan)
         if log is not None:
             log.write('Tracer not found: {}\n'.format(nameorig))
 

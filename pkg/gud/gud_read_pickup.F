@@ -30,7 +30,7 @@ C     myThid            :: thread number
       INTEGER myThid
 
 #ifdef ALLOW_GUD
-#if defined(ALLOW_CARBON) || (defined(GEIDER) && !defined(CHLQUOTA))
+#if defined(GUD_ALLOW_CARBON) || (defined(GUD_ALLOW_GEIDER) && !defined(GUD_ALLOW_CHLQUOTA))
 
 C     !LOCAL VARIABLES:
 C     fn          :: character buffer for creating filename
@@ -124,12 +124,12 @@ C---   Old way to read pickup not supported
 C---   New way to read GUD pickup:
         nj = 0
 C---    read GUD 3-D fields for restart
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
         fldName = 'pH'
         CALL READ_MFLDS_3D_RL( fldName, pH, nj, fp, Nr, myIter, myThid )
 #endif
-#if defined(GEIDER) && !defined(CHLQUOTA)
-#ifdef ALLOW_RADTRANS
+#if defined(GUD_ALLOW_GEIDER) && !defined(GUD_ALLOW_CHLQUOTA)
+#ifdef GUD_ALLOW_RADTRANS
         DO np = 1, nPhoto
          fldName(1:6) = 'ChlPhy'
          fldName(7:8) = PTRACERS_ioLabel(np)
@@ -167,11 +167,11 @@ C--    Check for missing fields:
        ENDIF
 
 C--    Update overlap regions:
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
         CALL EXCH_3D_RL( pH, 1, myThid )
 #endif
-#if defined(GEIDER) && !defined(CHLQUOTA)
-#ifdef ALLOW_RADTRANS
+#if defined(GUD_ALLOW_GEIDER) && !defined(GUD_ALLOW_CHLQUOTA)
+#ifdef GUD_ALLOW_RADTRANS
         DO np = 1, nPhoto
          CALL EXCH_3D_RL( ChlPrev(1-OLx,1-OLy,1,1,1,np), Nr, myThid )
         ENDDO

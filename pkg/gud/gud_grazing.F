@@ -60,18 +60,18 @@ c !LOCAL VARIABLES: ====================================================
 
       _RL preygraz   (nplank)
       _RL predgrazc  (nplank)
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
       _RL predgrazn  (nplank)
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
       _RL predgrazp  (nplank)
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
       _RL predgrazfe (nplank)
 #endif
 
       _RL totkillc, totkilln, totkillp, totkillsi, totkillfe
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       _RL totkillPIC
 #endif
       _RL totkillexpc, totkillexpn, totkillexpp, totkillexpfe
@@ -102,7 +102,7 @@ c !LOCAL VARIABLES: ====================================================
       _RL respir
       _RL respir_c
 
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       _RL graz2CDOM, exude_CDOM
 #endif
 
@@ -118,39 +118,39 @@ c ratio if not variable.
       ELSEWHERE
         Xi(:) = 0.
       ENDWHERE
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
       Qn(:) = MAX(0., Ptr(in:en))*Xi(:)
 #else
       Qn(:) = R_NC(:)
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
       Qp(:) = MAX(0., Ptr(ip:ep))*Xi(:)
 #else
       Qp(:) = R_PC(:)
 #endif
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
       Qsi(:) = MAX(0., Ptr(isi:esi))*Xi(:)
 #else
       Qsi(:) = R_SiC(:)
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
       Qfe(:) = MAX(0., Ptr(ife:efe))*Xi(:)
 #else
       Qfe(:) = R_FeC(:)
 #endif
-#ifdef CHLQUOTA
+#ifdef GUD_ALLOW_CHLQUOTA
       QChl(:) = MAX(0., Ptr(ichl:echl))*Xi(1:nChl)
 #endif
 
       preygraz(:)   = 0.0
       predgrazc(:)  = 0.0
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
       predgrazn(:)  = 0.0
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
       predgrazp(:)  = 0.0
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
       predgrazfe(:) = 0.0
 #endif
       graz2POC  = 0.0
@@ -174,17 +174,17 @@ C=======================================================================
 
 C       regulate grazing near full quota
         regQc = 1.0 _d 0
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
         regQn = MAX(0., MIN(1., (Qnmax(jz)-Qn(jz))/
      &                          (Qnmax(jz)-Qnmin(jz)) ))
         regQc = MIN(regQc, 1.0 _d 0 - regQn)
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
         regQp = MAX(0., MIN(1., (Qpmax(jz)-Qp(jz))/
      &                          (Qpmax(jz)-Qpmin(jz)) ))
         regQc = MIN(regQc, 1.0 _d 0 - regQp)
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
         regQfe= MAX(0., MIN(1., (Qfemax(jz)-Qfe(jz))/
      &                          (Qfemax(jz)-Qfemin(jz)) ))
         regQc = MIN(regQc, 1.0 _d 0 - regQfe)
@@ -211,7 +211,7 @@ C       regulate grazing near full quota
         totkillp  = 0.0 _d 0
         totkillsi = 0.0 _d 0
         totkillfe = 0.0 _d 0
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
         totkillPIC= 0.0 _d 0
 #endif
         totkillexpc  = 0.0 _d 0
@@ -236,7 +236,7 @@ C       regulate grazing near full quota
           totkillp  = totkillp  + grazphy*Qp (jp)
           totkillsi = totkillsi + grazphy*Qsi(jp)
           totkillfe = totkillfe + grazphy*Qfe(jp)
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
           totkillPIC= totkillPIC+ grazphy*R_PICPOC(jp)
 #endif
 
@@ -248,19 +248,19 @@ C       regulate grazing near full quota
 
           predgrazc(jz) = predgrazc(jz) + grazphy*asseff(jp,jz)*regQc
           predexpc = predexpc + expFrac*grazphy*asseff(jp,jz)*regQc
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
           predgrazn(jz) = predgrazn(jz) + grazphy*asseff(jp,jz)*
      &                                    regQn*Qn(jp)
           predexpn = predexpn + expFrac*grazphy*asseff(jp,jz)*
      &                                    regQn*Qn(jp)
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
           predgrazp(jz) = predgrazp(jz) + grazphy*asseff(jp,jz)*
      &                                    regQp*Qp(jp)
           predexpp = predexpp + expFrac*grazphy*asseff(jp,jz)*
      &                                  regQp*Qp(jp)
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
           predgrazfe(jz) = predgrazfe(jz) + grazphy*asseff(jp,jz)*
      &                                      regQfe*Qfe(jp)
           predexpfe = predexpfe + expFrac*grazphy*asseff(jp,jz)*
@@ -271,7 +271,7 @@ C       regulate grazing near full quota
         graz2OC   = graz2OC   + totkillc    - predgrazc(jz)
         graz2POC  = graz2POC  + totkillexpc - predexpc
 
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
         graz2ON   = graz2ON   + totkilln    - predgrazn(jz)
         graz2PON  = graz2PON  + totkillexpn - predexpn
 #else
@@ -279,7 +279,7 @@ C       regulate grazing near full quota
         graz2PON  = graz2PON  + totkillexpn - predexpc     *Qn(jz)
 #endif
 
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
         graz2OP   = graz2OP   + totkillp    - predgrazp(jz)
         graz2POP  = graz2POP  + totkillexpp - predexpp
 #else
@@ -287,7 +287,7 @@ C       regulate grazing near full quota
         graz2POP  = graz2POP  + totkillexpp - predexpc     *Qp(jz)
 #endif
 
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
         graz2OFe  = graz2OFe   + totkillfe    - predgrazfe(jz)
         graz2POFe = graz2POFe  + totkillexpfe - predexpfe
 #else
@@ -297,7 +297,7 @@ C       regulate grazing near full quota
 
         graz2POSi = graz2POSi + totkillsi
 
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
         graz2PIC  = graz2PIC  + totkillPIC
 #endif
 
@@ -315,10 +315,10 @@ C==== tendencies =======================================================
       gTr(iPOP )=gTr(iPOP ) + graz2POP
       gTr(iPOSi)=gTr(iPOSi) + graz2POSi
       gTr(iPOFe)=gTr(iPOFe) + graz2POFe
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       gTr(iPIC )=gTr(iPIC ) + graz2PIC
 #endif
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       graz2CDOM = fracCDOM*(graz2OP - graz2POP)
       gTr(iCDOM)=gTr(iCDOM) + graz2CDOM
       gTr(iDOC )=gTr(iDOC )             - R_CP_CDOM*graz2CDOM
@@ -332,19 +332,19 @@ C==== tendencies =======================================================
       DO jz = iMinPred, iMaxPred
        gTr(ic+jz-1)=gTr(ic+jz-1) + predgrazc(jz)
       ENDDO
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
       gTr(in:en)=gTr(in:en) + predgrazn(:) - preygraz(:)*Qn(:)
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
       gTr(ip:ep)=gTr(ip:ep) + predgrazp(:) - preygraz(:)*Qp(:)
 #endif
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
       gTr(isi:esi)=gTr(isi:esi) - preygraz(:)*Qsi(:)
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
       gTr(ife:efe)=gTr(ife:efe) + predgrazfe(:) - preygraz(:)*Qfe(:)
 #endif
-#ifdef CHLQUOTA
+#ifdef GUD_ALLOW_CHLQUOTA
       gTr(iChl:eChl)=gTr(iChl:eChl) - preygraz(1:nChl)*QChl(:)
 #endif
 
@@ -388,20 +388,20 @@ C==== mortality ========================================================
         respir = respir + respir_c
 
         gTr(ic+jp-1)=gTr(ic+jp-1)  - mortX - respir_c
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
         gTr(in+jp-1)=gTr(in+jp-1)  - mortX*Qn(jp)
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
         gTr(ip+jp-1)=gTr(ip+jp-1)  - mortX*Qp(jp)
 #endif
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
         gTr(isi+jp-1)=gTr(isi+jp-1) - mortX*Qsi(jp)
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
         gTr(ife+jp-1)=gTr(ife+jp-1) - mortX*Qfe(jp)
 #endif
 
-#ifdef ALLOW_EXUDE
+#ifdef GUD_ALLOW_EXUDE
         exude_DOC = exude_DOC + (1.-ExportFrac(jp))*kexcC(jp)*Xe
         exude_POC = exude_POC +     ExportFrac(jp) *kexcC(jp)*Xe
         exude_DON = exude_DON + (1.-ExportFrac(jp))*kexcN(jp)*Xe*Qn(jp)
@@ -412,22 +412,22 @@ C==== mortality ========================================================
         exude_POFe=exude_POFe+    ExportFrac(jp) *kexcFe(jp)*Xe*Qfe(jp)
         exude_POSi = exude_POSi + kexcSi(jp)*Xe*Qsi(jp)
         gTr(ic+jp-1)=gTr(ic+jp-1)   - kexcC(jp)*Xe
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
         gTr(in+jp-1)=gTr(in+jp-1)   - kexcN(jp)*Xe*Qn(jp)
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
         gTr(ip+jp-1)=gTr(ip+jp-1)   - kexcP(jp)*Xe*Qp(jp)
 #endif
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
         gTr(isi+jp-1)=gTr(isi+jp-1) - kexcSi(jp)*Xe*Qsi(jp)
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
         gTr(ife+jp-1)=gTr(ife+jp-1) - kexcFe(jp)*Xe*Qfe(jp)
 #endif
 #endif
       ENDDO
 
-#ifdef CHLQUOTA
+#ifdef GUD_ALLOW_CHLQUOTA
       DO jp = 1, nChl
         gTr(iChl+jp-1)=gTr(iChl+jp-1) - mort_c(jp)*QChl(jp)
       ENDDO
@@ -446,7 +446,7 @@ C==== mortality ========================================================
       gTr(iPOP )=gTr(iPOP ) + exude_POP
       gTr(iPOSi)=gTr(iPOSi) + exude_POSi
       gTr(iPOFe)=gTr(iPOFe) + exude_POFe
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       exude_CDOM = fracCDOM*exude_DOP
       gTr(iCDOM)=gTr(iCDOM) + exude_CDOM
       gTr(iDOC )=gTr(iDOC )              - R_CP_CDOM*exude_CDOM

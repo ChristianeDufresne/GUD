@@ -1,9 +1,8 @@
  &GUD_FORCING_PARAMS
- /
- &GUD_EXF_PARAMS
  ironFile='../input/input/loc1_FeFlux_monsurf.bin',
  ironPeriod= -12.
  gud_inscal_iron= 1000.,
+ gud_chlInitBalanced= .TRUE.,
 #
 #PARFile='../input/input/loc1_PAR_monsurf.bin',
 #
@@ -40,6 +39,7 @@
  gud_read_phos= T,
  /
  &GUD_RADTRANS_PARAMS
+ gud_useModelCalendar=.TRUE.,
  gud_waterabsorbFile='abw25par.dat',
  gud_phytoabsorbFile='phyto_optics_1bb.dat',
  gud_particleabsorbFile='optics_detritus_3bb.dat',
@@ -52,5 +52,5 @@
  oldTwoGrazers= .TRUE.,
  diatom_growfac= 1.0,
  /
- &GUD_ALLOMETRIC_PARAMS
+ &GUD_TRAIT_PARAMS
  /

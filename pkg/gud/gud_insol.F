@@ -11,7 +11,7 @@ C           Comments: swd, April 1998
 C                     following code by mick
 C============================================================================
 CStartofinterface
-      SUBROUTINE gud_insol(Time,PARWm2,bj)
+      SUBROUTINE gud_insol(Time,PARWm2,bj,returnsolz)
       IMPLICIT NONE
 C     === Global variables ===
 #include "SIZE.h"
@@ -24,6 +24,7 @@ C     =============== Input ================================================
 C     time :: seconds since January 1, 0:00 in a 360-day year
       _RL time
       integer bj
+      logical returnsolz
 C     =============== Output ===============================================
 C     PARWm2 :: daily-average PAR in W/m2
       _RL PARWm2(1-OLy:sNy+OLy)
@@ -59,14 +60,19 @@ c latitude in radians
           cosz = ( sin(delta)*sin(lat)+              !average zenith angle
      &            (cos(delta)*cos(lat)*sin(dayhrs)/dayhrs) )
           if (cosz.le.0.005 _d 0) cosz=0.005 _d 0
-          frac = dayhrs/3.1416 _d 0           !fraction of daylight in day
+          if (returnsolz) THEN
+            if (cosz.ge. 0.999 _d 0) cosz= 0.999 _d 0
+            PARWm2(j) = acos(cosz)*180. _d 0/3.1416 _d 0
+          else
+            frac = dayhrs/3.1416 _d 0           !fraction of daylight in day
 c daily average photosynthetically active solar radiation just below surface
-          fluxi = solar*(1.0 _d 0-albedo)*cosz*frac*par
+            fluxi = solar*(1.0 _d 0-albedo)*cosz*frac*par
 c
 c convert to PARWm2
-          if (fluxi.gt.0.0 _d 0) PARWm2(j)=fluxi
+            if (fluxi.gt.0.0 _d 0) PARWm2(j)=fluxi
 c very large for polar night
-          if (fluxi.lt.0.00001 _d 0) PARWm2(j)=0.00001 _d 0
+            if (fluxi.lt.0.00001 _d 0) PARWm2(j)=0.00001 _d 0
+          endif
        enddo !j
 c
       return

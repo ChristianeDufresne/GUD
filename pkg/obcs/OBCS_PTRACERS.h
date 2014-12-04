@@ -48,6 +48,10 @@ C  OBCS_u1_adv_Tr :: >0: use 1rst O. upwind adv-scheme @ OB (=1: only if outflow
      &     OBCS_u1_adv_Tr
       INTEGER OBCS_u1_adv_Tr(PTRACERS_num)
 
+      COMMON /OBCS_PTR_R/
+     &     OBCS_ptrScale
+      _RL OBCS_ptrScale(PTRACERS_num)
+
       COMMON /OB_PTR_FILES/
      &     OBNptrFile,OBSptrFile,OBEptrFile,OBWptrFile
       CHARACTER*(MAX_LEN_FNAM)

@@ -39,92 +39,92 @@ USENH4NO2NO3 = 3
 
 DIMENSION(nplank)
 
-diazo(:)            = UNINIT_I
-useNH4(:)           = UNINIT_I
-useNO2(:)           = UNINIT_I
-useNO3(:)           = UNINIT_I
-combNO(:)           = UNINIT_I
-ap_type(:)          = UNINIT_I
+diacoc(:)           = UNINIT_I   ! 1
+diazo(:)            = UNINIT_I   ! 1
+useNH4(:)           = UNINIT_I   ! 1
+useNO2(:)           = UNINIT_I   ! 1
+useNO3(:)           = UNINIT_I   ! 1
+combNO(:)           = UNINIT_I   ! 1
+ap_type(:)          = UNINIT_I   ! 1
 
-Xmin(:)             = UNINIT_RL
-amminhib(:)         = UNINIT_RL
-acclimtimescl(:)    = UNINIT_RL
+Xmin(:)             = UNINIT_RL  ! mmol C m^-3
+amminhib(:)         = UNINIT_RL  ! (mmol N m^-3)^-1
+acclimtimescl(:)    = UNINIT_RL  ! s^-1
 
-PCmax(:)            = UNINIT_RL
-mort(:)             = UNINIT_RL
-mort2(:)            = 0.0D0
-mortTempFuncMin(:)  = UNINIT_RL
-mort2TempFuncMin(:) = UNINIT_RL
-ExportFrac(:)       = UNINIT_RL
+mort(:)             = UNINIT_RL  ! s^-1                   ! linear mortality rate
+mort2(:)            = UNINIT_RL  ! (mmol C m^-3)^-1 s^-1  ! quadratic mortality coefficient
+tempMort(:)         = UNINIT_I   ! 1     ! 1: mort temperature dependent 0: not
+tempMort2(:)        = UNINIT_I   ! 1     ! 1: mort2 temperature dependent 0: not
+ExportFrac(:)       = UNINIT_RL  ! 1     ! fraction of mortality to POM
 
-phytoTempCoeff(:)   = UNINIT_RL
-phytoTempExp1(:)    = UNINIT_RL
-phytoTempExp2(:)    = UNINIT_RL
-phytoTempOptimum(:) = UNINIT_RL
-phytoDecayPower(:)  = UNINIT_RL
+phytoTempCoeff(:)   = UNINIT_RL  ! 1
+phytoTempExp1(:)    = UNINIT_RL  ! ln(degree)
+phytoTempExp2(:)    = UNINIT_RL  ! (degree C)^-phytoDecayPower
+phytoTempOptimum(:) = UNINIT_RL  ! degree C
+phytoDecayPower(:)  = UNINIT_RL  ! 1
 
-R_NC(:)             = UNINIT_RL
-R_PC(:)             = UNINIT_RL
-R_SiC(:)            = UNINIT_RL
-R_FeC(:)            = UNINIT_RL
-R_ChlC(:)           = 0.0D0
-R_PICPOC(:)         = UNINIT_RL
+R_NC(:)             = UNINIT_RL  ! mmol N (mmol C)^-1
+R_PC(:)             = UNINIT_RL  ! mmol P (mmol C)^-1
+R_SiC(:)            = UNINIT_RL  ! mmol Si (mmol C)^-1
+R_FeC(:)            = UNINIT_RL  ! mmol Fe (mmol C)^-1
+R_ChlC(:)           = UNINIT_RL  ! mg Chl (mmol C)^-1
+R_PICPOC(:)         = UNINIT_RL  ! mmol PIC (mmol POC)^-1
 
-wsink(:)            = UNINIT_RL
-wswim(:)            = UNINIT_RL
+wsink(:)            = UNINIT_RL  ! m s^-1
+wswim(:)            = UNINIT_RL  ! m s^-1
 
-ksatNH4(:)          = UNINIT_RL
-ksatNO2(:)          = UNINIT_RL
-ksatNO3(:)          = UNINIT_RL
-ksatPO4(:)          = UNINIT_RL
-ksatSiO2(:)         = UNINIT_RL
-ksatFeT(:)          = UNINIT_RL
+respiration(:)      = UNINIT_RL  ! s^-1
+PCmax(:)            = UNINIT_RL  ! s^-1
+Qnmax(:)            = UNINIT_RL  ! mmol N (mmol C)^-1
+Qnmin(:)            = UNINIT_RL  ! mmol N (mmol C)^-1
+Qpmax(:)            = UNINIT_RL  ! mmol P (mmol C)^-1
+Qpmin(:)            = UNINIT_RL  ! mmol P (mmol C)^-1
+Qsimax(:)           = UNINIT_RL  ! mmol Si (mmol C)^-1
+Qsimin(:)           = UNINIT_RL  ! mmol Si (mmol C)^-1
+Qfemax(:)           = UNINIT_RL  ! mmol Fe (mmol C)^-1
+Qfemin(:)           = UNINIT_RL  ! mmol Fe (mmol C)^-1
+Vmax_NH4(:)         = UNINIT_RL  ! mmol N (mmol C)^-1 s^-1
+Vmax_NO2(:)         = UNINIT_RL  ! mmol N (mmol C)^-1 s^-1
+Vmax_NO3(:)         = UNINIT_RL  ! mmol N (mmol C)^-1 s^-1
+Vmax_N(:)           = UNINIT_RL  ! mmol N (mmol C)^-1 s^-1
+Vmax_PO4(:)         = UNINIT_RL  ! mmol P (mmol C)^-1 s^-1
+Vmax_SiO2(:)        = UNINIT_RL  ! mmol Si (mmol C)^-1 s^-1
+Vmax_FeT(:)         = UNINIT_RL  ! mmol Fe (mmol C)^-1 s^-1
 
-ksatPAR(:)          = UNINIT_RL
-kinhPAR(:)          = UNINIT_RL
-inhibcoef_geid(:)   = UNINIT_RL
-mQyield(:)          = UNINIT_RL
-chl2cmax(:)         = UNINIT_RL
+ksatNH4(:)          = UNINIT_RL  ! mmol N m^-3
+ksatNO2(:)          = UNINIT_RL  ! mmol N m^-3
+ksatNO3(:)          = UNINIT_RL  ! mmol N m^-3
+ksatPO4(:)          = UNINIT_RL  ! mmol P m^-3
+ksatSiO2(:)         = UNINIT_RL  ! mmol Si m^-3
+ksatFeT(:)          = UNINIT_RL  ! mmol Fe m^-3
 
+kexcC(:)            = UNINIT_RL  ! s^-1
+kexcN(:)            = UNINIT_RL  ! s^-1
+kexcP(:)            = UNINIT_RL  ! s^-1
+kexcSi(:)           = UNINIT_RL  ! s^-1
+kexcFe(:)           = UNINIT_RL  ! s^-1
+
+! not GUD_ALLOW_GEIDER
+ksatPAR(:)          = UNINIT_RL  ! (uEin m^-2 s^-1)^-1
+kinhPAR(:)          = UNINIT_RL  ! (uEin m^-2 s^-1)^-1
+
+! GUD_ALLOW_GEIDER
+mQyield(:)          = UNINIT_RL  ! mmol C (uEin)^-1
+chl2cmax(:)         = UNINIT_RL  ! mg Chl (mmol C)^-1
+inhibcoef_geid(:)   = UNINIT_RL  ! 1
 
 
 DIMENSION(nplank)
 
-grazemax(:)       = UNINIT_RL
-kgrazesat(:)      = UNINIT_RL
+grazemax(:)         = UNINIT_RL  ! s^-1
+kgrazesat(:)        = UNINIT_RL  ! mmol C m^-3
 
 
 DIMENSION(nplank,nplank)
 
-palat(:,:)  = UNINIT_RL
-asseff(:,:) = UNINIT_RL
-ExportFracPreyPred(:,:) = UNINIT_RL
-
-
-DIMENSION(nplank)
-                                    ! quota-specific
-respiration(:)         = UNINIT_RL
-Qnmax(:)               = UNINIT_RL
-Qnmin(:)               = UNINIT_RL
-Qpmax(:)               = UNINIT_RL
-Qpmin(:)               = UNINIT_RL
-Qsimax(:)              = UNINIT_RL
-Qsimin(:)              = UNINIT_RL
-Qfemax(:)              = UNINIT_RL
-Qfemin(:)              = UNINIT_RL
-Vmax_NH4(:)            = UNINIT_RL
-Vmax_NO2(:)            = UNINIT_RL
-Vmax_NO3(:)            = UNINIT_RL
-Vmax_N(:)              = UNINIT_RL
-Vmax_PO4(:)            = UNINIT_RL
-Vmax_SiO2(:)           = UNINIT_RL
-Vmax_FeT(:)            = UNINIT_RL
-
-kexcC(:)               = UNINIT_RL
-kexcN(:)               = UNINIT_RL
-kexcP(:)               = UNINIT_RL
-kexcSi(:)              = UNINIT_RL
-kexcFe(:)              = UNINIT_RL
+palat(:,:)              = UNINIT_RL  ! 1
+asseff(:,:)             = UNINIT_RL  ! 1
+ExportFracPreyPred(:,:) = UNINIT_RL  ! 1
 
 /
 
@@ -132,14 +132,14 @@ kexcFe(:)              = UNINIT_RL
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 &GUD_RADTRANS_TRAITS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#ifdef ALLOW_RADTRANS
+#ifdef GUD_ALLOW_RADTRANS
 
 DIMENSION(nPhoto,nlam)
 
-aphy_chl(:,:)          = UNINIT_RL
-aphy_chl_ps(:,:)       = UNINIT_RL
-bphy_chl(:,:)          = UNINIT_RL
-bbphy_chl(:,:)         = UNINIT_RL
+aphy_chl(:,:)          = UNINIT_RL  ! m^-1 (mg Chl m^-3)^-1
+aphy_chl_ps(:,:)       = UNINIT_RL  ! m^-1 (mg Chl m^-3)^-1
+bphy_chl(:,:)          = UNINIT_RL  ! m^-1 (mg Chl m^-3)^-1
+bbphy_chl(:,:)         = UNINIT_RL  ! m^-1 (mg Chl m^-3)^-1
 
 /
  
@@ -151,22 +151,53 @@ bbphy_chl(:,:)         = UNINIT_RL
 ! dependent and constant (not read-in) parameters
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-DIMENSION(nplank,nlam)
-
-alphachl(:,:) = UNINIT_RL  ! mmol C s-1 (uEin/m-2/s)-1 (mg Chl)-1
-
-DIMENSION(nplank)
-
-alpha_mean(:)       = UNINIT_RL
-chl2cmin(:)         = UNINIT_RL
-
 LOCAL: INTEGER jp
 LOCAL: INTEGER jp2
 LOCAL: INTEGER l
 LOCAL: INTEGER iopt
 
+CODE: DO jp = 1,nPlank
+CODE:   vmax_NH4(jp) = vmax_NH4(jp) * useNH4(jp)
+CODE:   vmax_NO2(jp) = vmax_NO2(jp) * useNO2(jp)
+CODE:   vmax_NO3(jp) = vmax_NO3(jp) * useNO3(jp)
+#ifndef GUD_ALLOW_NQUOTA
+CODE:   IF (diazo(jp).NE.0) THEN
+CODE:     useNH4(jp) = 0
+CODE:     useNO2(jp) = 0
+CODE:     useNO3(jp) = 0
+CODE:   ENDIF
+#endif
+CODE:   IF (useNO3(jp).EQ.0 .OR. useNO2(jp).EQ.0) THEN
+CODE:     combNO(jp)=0
+CODE:   ENDIF
+! Silicate parameters to zero for non-diatoms
+CODE:   IF (diacoc(jp) .NE. 1) THEN
+CODE:     vmax_SiO2(jp) = 0.0 _d 0
+CODE:     ksatSiO2(jp) = 0.0 _d 0
+CODE:     R_SiC(jp) = 0.0 _d 0
+CODE:   ENDIF
+! only Coccolithophores have PIC
+CODE:   IF (diacoc(jp) .NE. 2) THEN
+CODE:     R_PICPOC(jp) = 0.0 _d 0
+CODE:   ENDIF
+CODE: ENDDO
 
-#ifdef ALLOW_RADTRANS
+DIMENSION(nplank,nlam)
+
+alphachl(:,:) = UNINIT_RL  ! mmol C s-1 (uEin m^-2 s^-1)^-1 (mg Chl)^-1
+
+DIMENSION(nplank)
+
+alpha_mean(:)       = UNINIT_RL  ! mmol C s-1 (uEin m^-2 s^-1)^-1 (mg Chl)^-1
+chl2cmin(:)         = UNINIT_RL  ! mg Chl (mmol C)^-1
+
+mortTempFuncMin(:)  = MIN(1.0, 1.0 - tempMort(:))
+mort2TempFuncMin(:) = MIN(1.0, 1.0 - tempMort2(:))
+
+normI(:) = UNINIT_RL  ! 1
+
+
+#ifdef GUD_ALLOW_RADTRANS
 CODE: DO jp = iMinPhoto, iMaxPhoto
 CODE:  print*,'ap_type',jp,ap_type(jp)
 CODE:  iopt = ap_type(jp)
@@ -194,9 +225,9 @@ CODE: DO jp = iMinPhoto, iMaxPhoto
 CODE:  alphachl(jp,1) = mQyield(jp) * aphy_chl_ave
 CODE:  alpha_mean(jp) = alphachl(jp,1)
 CODE: ENDDO
-#endif /* ALLOW_RADTRANS */
+#endif /* GUD_ALLOW_RADTRANS */
 
-#ifdef ALLOW_RADTRANS
+#ifdef GUD_ALLOW_RADTRANS
 CODE: DO jp = 1, nplank
 CODE:  chl2cmin(jp)=chl2cmax(jp)/(1+(chl2cmax(jp)* alpha_mean(jp) *2000. _d 0)/(2*pcmax(jp)))
 CODE: ENDDO
@@ -207,7 +238,7 @@ CODE: ENDDO
 #endif
 
 CODE: WHERE(ksatPAR*kinhPAR .GT. 0.0)
-normI(:)=1.0/(ksatPAR(:)/(ksatPAR(:)+kinhPAR(:))*EXP(kinhPAR(:)/ksatPAR(:)*LOG(kinhPAR(:)/(ksatPAR(:)+kinhPAR(:)))))
+CODE: normI(:)=1.0/(ksatPAR(:)/(ksatPAR(:)+kinhPAR(:))*EXP(kinhPAR(:)/ksatPAR(:)*LOG(kinhPAR(:)/(ksatPAR(:)+kinhPAR(:)))))
 CODE: ELSEWHERE
 CODE: normI(:) = 1.0
 CODE: ENDWHERE
@@ -215,7 +246,7 @@ CODE: ENDWHERE
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! zero out unused trait entries, so they do not mess up the traits file
 CODE: DO jp=1,nplank
-#ifndef NQUOTA
+#ifndef GUD_ALLOW_NQUOTA
 CODE:  Vmax_NH4(jp) = GUD_UNUSED
 CODE:  Vmax_NO2(jp) = GUD_UNUSED
 CODE:  Vmax_NO3(jp) = GUD_UNUSED
@@ -223,36 +254,36 @@ CODE:  Vmax_N(jp) = GUD_UNUSED
 CODE:  Qnmax(jp) = GUD_UNUSED
 CODE:  Qnmin(jp) = GUD_UNUSED
 #endif
-#ifndef PQUOTA
+#ifndef GUD_ALLOW_PQUOTA
 CODE:  Vmax_PO4(jp) = GUD_UNUSED
 CODE:  Qpmax(jp) = GUD_UNUSED
 CODE:  Qpmin(jp) = GUD_UNUSED
 #endif
-#ifndef SIQUOTA
+#ifndef GUD_ALLOW_SIQUOTA
 CODE:  Vmax_SiO2(jp) = GUD_UNUSED
 CODE:  Qsimax(jp) = GUD_UNUSED
 CODE:  Qsimin(jp) = GUD_UNUSED
 #endif
-#ifndef FEQUOTA
+#ifndef GUD_ALLOW_FEQUOTA
 CODE:  Vmax_FeT(jp) = GUD_UNUSED
 CODE:  Qfemax(jp) = GUD_UNUSED
 CODE:  Qfemin(jp) = GUD_UNUSED
 #endif
-#ifndef ALLOW_EXUDE
+#ifndef GUD_ALLOW_EXUDE
 CODE:  kexcC(jp) = GUD_UNUSED
 CODE:  kexcN(jp) = GUD_UNUSED
 CODE:  kexcP(jp) = GUD_UNUSED
 CODE:  kexcSi(jp) = GUD_UNUSED
 CODE:  kexcFe(jp) = GUD_UNUSED
 #endif
-#ifdef GEIDER
+#ifdef GUD_ALLOW_GEIDER
 CODE:  ksatpar(jp) = GUD_UNUSED
 CODE:  kinhpar(jp) = GUD_UNUSED
 CODE:  normI(jp) = GUD_UNUSED
 #else
 CODE:  inhibcoef_geid(jp) = GUD_UNUSED
 #endif
-#ifndef ALLOW_RADTRANS
+#ifndef GUD_ALLOW_RADTRANS
 CODE:  ap_type(jp) = GUD_UNUSED
 #endif
 CODE:  IF (jp.LT.iMinPhoto .OR. jp.GT.iMaxPhoto) THEN

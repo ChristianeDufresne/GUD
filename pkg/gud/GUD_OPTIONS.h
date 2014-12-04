@@ -16,55 +16,78 @@ C    !DESCRIPTION:
 C options for gud package
 CEOP
 
-#define READ_PAR
-#undef  USE_QSW
-#undef  USE_AVPAR
-#undef  GEIDER
-#undef  ALLOW_RADTRANS
-#undef  ALLOW_CDOM
+C tracer selection
 
-C grazing choices:
-C   grazing a la monod:           #define GUD_GRAZING_MONOD_STYLE
-C   linear grazing a la quota:    both #undef
-C   quadratic grazing a la quota: #define GUD_GRAZING_SWITCH
-#define GUD_GRAZING_MONOD_STYLE
+#undef  GUD_ALLOW_NQUOTA
+#undef  GUD_ALLOW_PQUOTA
+#undef  GUD_ALLOW_FEQUOTA
+#undef  GUD_ALLOW_SIQUOTA
+#undef  GUD_ALLOW_CHLQUOTA
+#undef  GUD_ALLOW_CDOM
+#undef  GUD_ALLOW_CARBON
+
+C optional bits
+
+#undef  GUD_ALLOW_DENIT
+#undef  GUD_ALLOW_EXUDE
+#undef  ALLOW_OLD_VIRTUALFLUX
+
+C light
+
+#define GUD_READ_PAR
+#undef  GUD_USE_QSW
+#undef  GUD_AVPAR
+#undef  GUD_ALLOW_GEIDER
+#undef  GUD_ALLOW_RADTRANS
+
+C initialize chl with radtrans as in darwin2
+#undef  GUD_CHL_INIT_LEGACY
+
+#undef  GUD_GEIDER_RHO_SYNTH
+
+C grazing
+
+C for quadratic grazing a la quota
 #undef  GUD_GRAZING_SWITCH
 
-#undef  NOTEMP
-#define TEMP_VERSION 1
-#undef  TEMP_RANGE
+C compute palat from size ratios
+#undef  GUD_ALLOMETRIC_PALAT
 
-#undef  NINE_SPECIES_SETUP
-#undef  TWO_SPECIES_SETUP
+C turn off grazing temperature dependence
+#undef  GUD_NOZOOTEMP
 
-#undef  NQUOTA
-#undef  PQUOTA
-#undef  FEQUOTA
-#undef  SIQUOTA
-#undef  CHLQUOTA
+#undef  GUD_TIME_GRAZING
 
-#define MINFE
-#undef  PART_SCAV
-#undef  IRON_SED_SOURCE_VARIABLE
+C temperature
 
-#undef  UNCERTAINTY
+#undef  GUD_NOTEMP
+#define GUD_TEMP_VERSION 1
+#undef  GUD_TEMP_RANGE
 
-#undef  ALLOW_DENIT
-#undef  ALLOW_CDOM
-#undef  ALLOW_DIAZ
-#undef  ALLOW_EXUDE
+C iron
 
-#undef  ALLOW_CARBON
+#define GUD_MINFE
+#undef  GUD_PART_SCAV
+#undef  GUD_IRON_SED_SOURCE_VARIABLE
 
-C deprecated
-#define PORT_RAND
-#undef  OLDSEED
-
-#define ALLOW_GUD_CONS
+C debugging
 
 #undef GUD_DEBUG
 
+#define GUD_ALLOW_CONS
+
 #define GUD_UNUSED 0
+
+C deprecated
+
+#undef  GUD_WATERVAP_BUG
+
+C these are for gud_generate_random
+#undef  GUD_RANDOM_TRAITS
+#undef  GUD_TWO_SPECIES_SETUP
+#undef  GUD_NINE_SPECIES_SETUP
+#undef  GUD_ALLOW_DIAZ
 
 #endif /* ALLOW_GUD */
 #endif /* GUD_OPTIONS_H */
+

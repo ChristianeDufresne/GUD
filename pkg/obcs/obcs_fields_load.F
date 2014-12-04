@@ -282,6 +282,8 @@ C     Eastern boundary
      &                OBEptr0(1-Oly,1,1,1,iTr), iRec0, myIter, myThid )
          CALL READ_REC_YZ_RL( OBEptrFile(iTr), fp, Nr,
      &                OBEptr1(1-Oly,1,1,1,iTr), iRec1, myIter, myThid )
+         OBEptr0(:,:,:,:,iTr)=OBEptr0(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
+         OBEptr1(:,:,:,:,iTr)=OBEptr1(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
         ENDIF
 # endif /* ALLOW_OBCS_EAST */
 # ifdef ALLOW_OBCS_WEST
@@ -291,6 +293,8 @@ C     Western boundary
      &                OBWptr0(1-Oly,1,1,1,iTr), iRec0, myIter, myThid )
          CALL READ_REC_YZ_RL( OBWptrFile(iTr), fp, Nr,
      &                OBWptr1(1-Oly,1,1,1,iTr), iRec1, myIter, myThid )
+         OBWptr0(:,:,:,:,iTr)=OBWptr0(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
+         OBWptr1(:,:,:,:,iTr)=OBWptr1(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
         ENDIF
 # endif /* ALLOW_OBCS_WEST */
 # ifdef ALLOW_OBCS_NORTH
@@ -300,6 +304,8 @@ C     Northern boundary
      &                OBNptr0(1-Oly,1,1,1,iTr), iRec0, myIter, myThid )
          CALL READ_REC_XZ_RL( OBNptrFile(iTr), fp, Nr,
      &                OBNptr1(1-Oly,1,1,1,iTr), iRec1, myIter, myThid )
+         OBNptr0(:,:,:,:,iTr)=OBNptr0(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
+         OBNptr1(:,:,:,:,iTr)=OBNptr1(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
         ENDIF
 # endif /* ALLOW_OBCS_NORTH */
 # ifdef ALLOW_OBCS_SOUTH
@@ -309,6 +315,8 @@ C     Southern boundary
      &                OBSptr0(1-Oly,1,1,1,iTr), iRec0, myIter, myThid )
          CALL READ_REC_XZ_RL( OBSptrFile(iTr), fp, Nr,
      &                OBSptr1(1-Oly,1,1,1,iTr), iRec1, myIter, myThid )
+         OBSptr0(:,:,:,:,iTr)=OBSptr0(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
+         OBSptr1(:,:,:,:,iTr)=OBSptr1(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
         ENDIF
 # endif /* ALLOW_OBCS_SOUTH */
 C     end do iTr
@@ -465,6 +473,7 @@ C     Eastern boundary
           IF ( OBEptrFile(iTr) .NE. ' '  ) THEN
            CALL READ_REC_YZ_RL( OBEptrFile(iTr), fp, Nr,
      &               OBEptr0(1-Oly,1,1,1,iTr), iRec0,myIter, myThid )
+           OBEptr1(:,:,:,:,iTr)=OBEptr1(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
           ENDIF
 # endif /* ALLOW_OBCS_EAST */
 # ifdef ALLOW_OBCS_WEST
@@ -472,6 +481,7 @@ C     Western boundary
           IF ( OBWptrFile(iTr) .NE. ' '  ) THEN
            CALL READ_REC_YZ_RL( OBWptrFile(iTr), fp, Nr,
      &               OBWptr0(1-Oly,1,1,1,iTr), iRec0, myIter, myThid )
+           OBWptr1(:,:,:,:,iTr)=OBWptr1(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
           ENDIF
 # endif /* ALLOW_OBCS_WEST */
 # ifdef ALLOW_OBCS_NORTH
@@ -479,6 +489,7 @@ C     Northern boundary
           IF ( OBNptrFile(iTr) .NE. ' '  ) THEN
            CALL READ_REC_XZ_RL( OBNptrFile(iTr), fp, Nr,
      &               OBNptr0(1-Oly,1,1,1,iTr), iRec0, myIter, myThid )
+           OBNptr0(:,:,:,:,iTr)=OBNptr0(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
           ENDIF
 # endif /* ALLOW_OBCS_NORTH */
 # ifdef ALLOW_OBCS_SOUTH
@@ -486,6 +497,7 @@ C     Southern boundary
           IF ( OBSptrFile(iTr) .NE. ' '  ) THEN
            CALL READ_REC_XZ_RL( OBSptrFile(iTr), fp, Nr,
      &               OBSptr0(1-Oly,1,1,1,iTr), iRec0, myIter, myThid )
+           OBSptr1(:,:,:,:,iTr)=OBSptr1(:,:,:,:,iTr)*OBCS_ptrScale(iTr)
           ENDIF
 # endif /* ALLOW_OBCS_SOUTH */
 C     end do iTr

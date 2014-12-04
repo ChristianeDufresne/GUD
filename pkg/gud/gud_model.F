@@ -93,16 +93,16 @@ c !LOCAL VARIABLES: ====================================================
       _RL X
       _RL Qc
       _RL Qn
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
       _RL Qp
 #endif
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
       _RL Qsi
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
       _RL Qfe
 #endif
-#ifdef CHLQUOTA
+#ifdef GUD_ALLOW_CHLQUOTA
       _RL QChl
 #endif
 
@@ -173,7 +173,7 @@ c !LOCAL VARIABLES: ====================================================
 
       _RL tmp
 
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       _RL CDOM
       _RL reminPOC_CDOM
       _RL reminPON_CDOM
@@ -185,7 +185,7 @@ c !LOCAL VARIABLES: ====================================================
       _RL degrCDOM_DOFe
 #endif
 
-#ifdef ALLOW_DENIT
+#ifdef GUD_ALLOW_DENIT
       _RL denit, denitNH4
 #endif
 
@@ -217,10 +217,10 @@ C==== make all bio fields non-negative and compute quotas ==============
       POP  = MAX(0., Ptr(iPOP))
       POSi = MAX(0., Ptr(iPOSi))
       POFe = MAX(0., Ptr(iPOFe))
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       O2   = MAX(0., Ptr(iO2))
 #endif
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       CDOM = MAX(0., Ptr(iCDOM))
 #endif
 
@@ -250,13 +250,13 @@ C==== uptake and nutrient limitation ===================================
 C       for quota elements, growth is limiteed by available quota,
 C       for non-quota elements, by available nutrients in medium
 
-C       to not use PO4, ..., set ksatPO4=0 and Vmax_PO4=0 (if PQUOTA)
+C       to not use PO4, ..., set ksatPO4=0 and Vmax_PO4=0 (if GUD_ALLOW_PQUOTA)
 C       or R_PC=0 (if not)
 C       the result will be limitp = 1, uptakePO4 = 0
 
 c phosphorus
          limitp = PO4/(PO4 + ksatPO4(j))
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
          Qp  = MAX(EPS*R_PC(j), Ptr(ip+j-1)) / MAX(EPS, X)
          regQ = MAX(0., MIN(1., (Qpmax(j)-Qp)/
      &                          (Qpmax(j)-Qpmin(j)) ))
@@ -269,7 +269,7 @@ c        normalized Droop limitation
 
 c silica
          limitsi = SiO2/(SiO2 + ksatSiO2(j))
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
          Qsi = MAX(EPS*R_SiC(j), Ptr(isi+j-1)) / MAX(EPS, X)
          regQ = MAX(0., MIN(1., (Qsimax(j) - Qsi)/
      &                          (Qsimax(j) - Qsimin(j)) ))
@@ -283,7 +283,7 @@ c        linear limitation
 
 c iron
          limitfe = FeT/(FeT + ksatFeT(j))
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
          Qfe = MAX(EPS*R_FeC(j), Ptr(ife+j-1)) / MAX(EPS, X)
          regQ = MAX(0., MIN(1., (Qfemax(j)-Qfe)/
      &                          (Qfemax(j)-Qfemin(j)) ))
@@ -296,7 +296,7 @@ c        normalized Droop limitation
 #endif
 
 c nitrogen
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
 c       have nitrogen quota
         inhibNH4 = EXP(-amminhib(j)*NH4)
         limitNH4 = NH4/(NH4 + ksatNH4(j))
@@ -308,7 +308,7 @@ c       have nitrogen quota
         uptakeNH4 = Vmax_NH4(j)*limitNH4*regQ*uptakeTempFunc*X
         uptakeNO2 = Vmax_NO2(j)*limitNO2*regQ*uptakeTempFunc*X
         uptakeNO3 = Vmax_NO3(j)*limitNO3*regQ*uptakeTempFunc*X
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
         uptakeNO3 = uptakeNO3 * limitfe
 #endif
         uptakeN = MAX(uptakeNH4 + uptakeNO2 + uptakeNO3,
@@ -317,7 +317,7 @@ c       have nitrogen quota
 c       linear limitation
         limitn = MAX(0., MIN(1., (Qn - Qnmin(j))/
      &                        (Qnmax(j) - Qnmin(j)) ))
-#else /* not NQUOTA */
+#else /* not GUD_ALLOW_NQUOTA */
         Qn = R_NC(j)
         inhibNH4 = EXP(-amminhib(j)*NH4)
         limitNH4 = useNH4(j)*NH4/(NH4 + ksatNH4(j))
@@ -333,7 +333,7 @@ C       normalize to sum (approx) 1
         fracNO3 = limitNO3/(limitn + EPS)
 C if diazo, all fracN* == 0 but want no N limitation
         limitn = MIN(1.0, limitn + diazo(j))
-#endif /* NQUOTA */
+#endif /* GUD_ALLOW_NQUOTA */
 c        IF (limitn .GT. 0.0) THEN
 c          ngrow = ((10*4+2)/(10*4 + 2*limitNH4/limitn +
 c     &                       8*limitNO2/limitn + 10*limitNO3/limitn))
@@ -342,14 +342,14 @@ c        ELSE
 c        ENDIF
 
         limitnut = MIN(limitn, limitp, limitsi)
-#ifndef FEQUOTA
+#ifndef GUD_ALLOW_FEQUOTA
         limitnut = MIN(limitnut, limitfe)
 #endif
 
         limitpCO2 = 1.
 
 C==== growth ===========================================================
-#ifdef GEIDER
+#ifdef GUD_ALLOW_GEIDER
 
         alpha_I = 0 _d 0
         DO l = 1, nlam
@@ -376,7 +376,7 @@ C       NB: for quota, PCmax(j) = Vmax_c(j)
           acclim = chl2cmin(j)
         ENDIF
 
-#ifdef CHLQUOTA
+#ifdef GUD_ALLOW_CHLQUOTA
         QChl=MAX(EPS*R_ChlC(j),Ptr(ichl+j-iMinPhoto))/MAX(EPS,X)
 C       quotas are already relative to carbon
         chl2c = QChl
@@ -392,7 +392,7 @@ C       quotas are already relative to carbon
 
         alpha_I_growth = alpha_I
 C a la quota
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
         alpha_I_growth = alpha_I_growth*limitfe
 #endif
 
@@ -418,10 +418,10 @@ C         "total" PAR:
           ENDIF
         ENDIF
 
-#else /* not GEIDER */
+#else /* not GUD_ALLOW_GEIDER */
 
         IF (PARtot .GT. PARmin) THEN
-C         only 1 waveband without GEIDER
+C         only 1 waveband without GUD_ALLOW_GEIDER
           limitI = (1.0 _d 0 - EXP(-PARtot*ksatPAR(j)))*
      &             EXP(-PARtot*kinhPAR(j)) * normI(j)
           PC = PCmax(j)*limitnut*limitI*photoTempFunc(j)*limitpCO2
@@ -430,33 +430,33 @@ C         only 1 waveband without GEIDER
         ENDIF
         synthChl = 0.0
 
-#endif /* GEIDER */
+#endif /* GUD_ALLOW_GEIDER */
 
         growth = PC*ngrow*X
 
         uptakeDIC = growth
 
 C non-quota elements are taken up with fixed stoichiometry
-#ifndef NQUOTA
+#ifndef GUD_ALLOW_NQUOTA
           uptakeN = growth*R_NC(j)
           uptakeNH4 = uptakeN*fracNH4
           uptakeNO2 = uptakeN*fracNO2
           uptakeNO3 = uptakeN*fracNO3
 #endif
-#ifndef PQUOTA
+#ifndef GUD_ALLOW_PQUOTA
          uptakePO4 = growth*R_PC(j)
 #endif
-#ifndef SIQUOTA
+#ifndef GUD_ALLOW_SIQUOTA
          uptakeSiO2 = growth*R_SiC(j)
 #endif
-#ifndef FEQUOTA
+#ifndef GUD_ALLOW_FEQUOTA
          uptakeFeT = growth*R_FeC(j)
 #endif
 
 C==== chlorophyll ======================================================
-#ifdef GEIDER
-#ifdef CHLQUOTA
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_GEIDER
+#ifdef GUD_ALLOW_CHLQUOTA
+#ifdef GUD_ALLOW_NQUOTA
 C         Geider 1998
           IF (alpha_I*chl2c .GT. 0.0 _d 0) THEN
 C            rhochl = Chl2Nmax/(alpha_I*chl2c)*ngrow ???
@@ -487,12 +487,12 @@ C            rhochl = Chl2Nmax/(alpha_I*chl2c)*ngrow ???
      &       acclimtimescl(j),acclim,chl2c,X
       ENDIF
 #endif
-#endif /* NQUOTA */
-#else /* CHLQUOTA */
+#endif /* GUD_ALLOW_NQUOTA */
+#else /* GUD_ALLOW_CHLQUOTA */
          chlout(j-iMinPhoto+1) = X*Qc*chl2c
          synthChl = 0.0
-#endif /* CHLQUOTA */
-#endif /* GEIDER */
+#endif /* GUD_ALLOW_CHLQUOTA */
+#endif /* GUD_ALLOW_GEIDER */
 C=======================================================================
         consumDIC_PIC = consumDIC_PIC + uptakeDIC*R_PICPOC(j)
         consumDIC  = consumDIC  + uptakeDIC 
@@ -518,19 +518,19 @@ C=======================================================================
 C=======================================================================
 
        gTr(ic+j-1)=gTr(ic+j-1)  + uptakeDIC
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
        gTr(in+j-1)=gTr(in+j-1)  + uptakeN
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
        gTr(ip+j-1)=gTr(ip+j-1)  + uptakePO4
 #endif
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
        gTr(isi+j-1)=gTr(isi+j-1) + uptakeSiO2
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
        gTr(ife+j-1)=gTr(ife+j-1) + uptakeFeT
 #endif
-#ifdef CHLQUOTA
+#ifdef GUD_ALLOW_CHLQUOTA
        gTr(iChl+j-iMinPhoto)=gTr(iChl+j-iMinPhoto) + synthChl
 #endif
 
@@ -579,7 +579,7 @@ c        print*,'prod',prodNO2,PARtot,PAR_oxi
         prodNO3 = prodNO3*MAX(0.0, 1.0 - PARtot/PAR_oxi)
       ENDIF
 
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       reminPOP_CDOM = fracCDOM*reminPOP
       reminPOC_CDOM = R_CP_CDOM*reminPOP_CDOM
       reminPON_CDOM = R_NP_CDOM*reminPOP_CDOM
@@ -592,7 +592,7 @@ c degradation of  CDOM - high when bleached by light
       degrCDOM_DOFe = R_FeP_CDOM * degrCDOM_DOP
 #endif
 
-#ifdef ALLOW_DENIT
+#ifdef GUD_ALLOW_DENIT
       IF (O2 .LT. O2crit .AND. NO3 .LT. NO3crit) THEN
 c no remineralization for N, P, Fe (not Si?)
         reminDOC = 0. _d 0
@@ -603,7 +603,7 @@ c no remineralization for N, P, Fe (not Si?)
         reminPOP  = 0. _d 0
         reminPON  = 0. _d 0
         reminPOFe = 0. _d 0
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
         reminPOC_cdom = 0. _d 0
         reminPOP_cdom  = 0. _d 0
         reminPON_cdom  = 0. _d 0
@@ -615,35 +615,35 @@ c no remineralization for N, P, Fe (not Si?)
         degrCDOM_DOC  = R_CP_CDOM  * degrCDOM_DOP
 #endif
       ENDIF
-#endif /* ALLOW_DENIT */
+#endif /* GUD_ALLOW_DENIT */
 
 C==== tendencies =======================================================
 
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
 c production of O2 by photosynthesis
       gTr(iO2  )=gTr(iO2  ) + R_OP*consumPO4
 c loss of O2 by remineralization
       IF (O2 .GT. O2crit) THEN
         gTr(iO2)=gTr(iO2) - R_OP*reminDOP
-#ifndef ALLOW_CDOM
+#ifndef GUD_ALLOW_CDOM
         gTr(iO2)=gTr(iO2) - R_OP*reminPOP
 #endif
       ENDIF
 
       gTr(iALK)=gTr(iALK) - (prodNO3 - consumNO3)
      &                    - 2.0 _d 0*(consumDIC_PIC - disscPIC)
-#endif /* ALLOW_CARBON */
+#endif /* GUD_ALLOW_CARBON */
 
       gTr(iDIC )=gTr(iDIC ) + reminDOC + disscPIC
       gTr(iNH4 )=gTr(iNH4 ) + reminDON - prodNO2
       gTr(iNO2 )=gTr(iNO2 ) + prodNO2 - prodNO3
       gTr(iNO3 )=gTr(iNO3 )           + prodNO3
       diags(iDenitN) = 0.0
-#ifdef ALLOW_DENIT
+#ifdef GUD_ALLOW_DENIT
       IF (O2 .LT. O2crit) THEN
         denitNH4 = reminDON
         denit = denit_NP*reminDOP
-#ifndef ALLOW_CDOM
+#ifndef GUD_ALLOW_CDOM
         denitNH4 = denitNH4 + reminPON
         denit = denit + denit_NP*reminPOP
 #endif
@@ -653,12 +653,14 @@ c loss of O2 by remineralization
         gTr(iALK)=gTr(iALK) + denit_NO3/denit_np*denit
         diags(iDenitN) = denitNH4 + denit_NO3/denit_np*denit
       ENDIF
-#endif /* ALLOW_DENIT */
+#endif /* GUD_ALLOW_DENIT */
 #ifdef GUD_DEBUG
       IF (iG.eq.iDEBUG.and.jG.eq.jDEBUG.and.k.eq.kDEBUG) THEN
        print*,'consumNO3',myiter,k,NO3,consumNO3*10800
+#ifdef GUD_ALLOW_DENIT
        IF (O2 .LT. O2crit)
      &       print*,'denitNO3',denit_NO3/denit_np*denit*10800
+#endif
       ENDIF
 #endif
 
@@ -677,7 +679,7 @@ c loss of O2 by remineralization
       gTr(iPOP )=gTr(iPOP ) - reminPOP
       gTr(iPOSi)=gTr(iPOSi) - reminPOSi
       gTr(iPOFe)=gTr(iPOFe) - reminPOFe
-#ifdef ALLOW_CDOM
+#ifdef GUD_ALLOW_CDOM
       gTr(iDOC )=gTr(iDOC ) + reminPOC  - reminPOC_CDOM  + degrCDOM_DOC
       gTr(iDON )=gTr(iDON ) + reminPON  - reminPON_CDOM  + degrCDOM_DON
       gTr(iDOP )=gTr(iDOP ) + reminPOP  - reminPOP_CDOM  + degrCDOM_DOP
@@ -689,7 +691,7 @@ c loss of O2 by remineralization
       gTr(iNH4 )=gTr(iNH4 ) + reminPON
       gTr(iPO4 )=gTr(iPO4 ) + reminPOP
       gTr(iFeT )=gTr(iFeT ) + reminPOFe
-#endif /* ALLOW_CDOM */
+#endif /* GUD_ALLOW_CDOM */
 
 #endif /* ALLOW_GUD */
 

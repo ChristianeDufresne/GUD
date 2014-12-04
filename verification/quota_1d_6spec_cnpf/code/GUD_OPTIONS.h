@@ -16,54 +16,78 @@ C    !DESCRIPTION:
 C options for gud package
 CEOP
 
-#undef  GUD_DEBUG
+C tracer selection
 
-#define READ_PAR
-#undef  USE_QSW
-#undef  USE_AVPAR
-#define GEIDER
-#undef  ALLOW_RADTRANS
-#undef  ALLOW_CDOM
+#define GUD_ALLOW_NQUOTA
+#define GUD_ALLOW_PQUOTA
+#define GUD_ALLOW_FEQUOTA
+#undef  GUD_ALLOW_SIQUOTA
+#define GUD_ALLOW_CHLQUOTA
+#undef  GUD_ALLOW_CDOM
+#define GUD_ALLOW_CARBON
+
+C optional bits
+
+#define GUD_ALLOW_DENIT
+#undef  GUD_ALLOW_EXUDE
+#define ALLOW_OLD_VIRTUALFLUX
+
+C light
+
+#define GUD_READ_PAR
+#undef  GUD_USE_QSW
+#undef  GUD_AVPAR
+#define GUD_ALLOW_GEIDER
+#undef  GUD_ALLOW_RADTRANS
+
+C initialize chl with radtrans as in darwin2
+#undef  GUD_CHL_INIT_LEGACY
+
 #define GUD_GEIDER_RHO_SYNTH
 
-#undef  GUD_GRAZING_MONOD_STYLE
+C grazing
 
-#undef  NOTEMP
-#define TEMP_VERSION 2
-#undef  TEMP_RANGE
+C for quadratic grazing a la quota
+#undef  GUD_GRAZING_SWITCH
 
-#undef  NINE_SPECIES_SETUP
-#undef  TWO_SPECIES_SETUP
+C compute palat from size ratios
+#undef  GUD_ALLOMETRIC_PALAT
 
-#define NQUOTA
-#define PQUOTA
-#define FEQUOTA
-#undef  SIQUOTA
-#define CHLQUOTA
+C turn off grazing temperature dependence
+#undef  GUD_NOZOOTEMP
 
-#define MINFE
-#define PART_SCAV
-#define IRON_SED_SOURCE_VARIABLE
+#undef  GUD_TIME_GRAZING
 
-#undef  UNCERTAINTY
+C temperature
 
-#define ALLOW_DENIT
-#undef  ALLOW_CDOM
-#define ALLOW_DIAZ
-#undef  ALLOW_EXUDE
+#undef  GUD_NOTEMP
+#define GUD_TEMP_VERSION 2
+#undef  GUD_TEMP_RANGE
 
-C -> ALLOW_CARBON
-#define ALLOW_CARBON
+C iron
 
-C deprecated
-#define PORT_RAND
-#undef  OLDSEED
+#define GUD_MINFE
+#define GUD_PART_SCAV
+#define GUD_IRON_SED_SOURCE_VARIABLE
 
-#define ALLOW_GUD_CONS
+C debugging
+
+#undef  GUD_DEBUG
+
+#define GUD_ALLOW_CONS
 
 #define GUD_UNUSED 0
 
-#define ALLOW_OLD_VIRTUALFLUX
+C deprecated
+
+#undef  GUD_WATERVAP_BUG
+
+C these are for gud_generate_random
+#undef  GUD_RANDOM_TRAITS
+#undef  GUD_TWO_SPECIES_SETUP
+#undef  GUD_NINE_SPECIES_SETUP
+#undef  GUD_ALLOW_DIAZ
 
 #endif /* ALLOW_GUD */
 #endif /* GUD_OPTIONS_H */
+

@@ -1,6 +1,4 @@
  &GUD_FORCING_PARAMS
- /
- &GUD_EXF_PARAMS
  iceFile='../input/input_ocmip/fice.bin',
  ironFile='../input/input_ocmip/mah_flux_smooth.bin',
  PARFile='../input/input_ocmip/par_ocmip.bin_mth-2d.bin',
@@ -21,5 +19,5 @@
  oldTwoGrazers= .TRUE.,
  diatom_growfac= 1.0,
  /
- &GUD_ALLOMETRIC_PARAMS
+ &GUD_TRAIT_PARAMS
  /

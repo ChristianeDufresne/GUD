@@ -1,9 +1,6 @@
 ########################
  &GUD_FORCING_PARAMS
  gud_chlInitBalanced= T,
- /
-########################
- &GUD_EXF_PARAMS
  ironFile='/home/stephdut/Input/input_ecco/mahowald2009_solubile_current_smooth_oce_mth-2d.bin',
  ironPeriod= -12.,
  gud_inscal_iron= 1000.,
@@ -19,9 +16,9 @@
  /
 ########################
  &GUD_PARAMS
+ diaz_ini_fac= 0.1,
  idebug=271,
  jdebug=63,
- gud_allometric= T,
  gud_sort_biovol= T,
  gud_seed= 56,
  gud_read_phos= F,
@@ -50,7 +47,7 @@
  &GUD_RANDOM_PARAMS
  /
 ########################
- &GUD_ALLOMETRIC_PARAMS
+ &GUD_TRAIT_PARAMS
 #                1  2  3  4  5  6  7  8
 #                D  l  s  P  T  C  S  Z
  grp_nplank(:)=  9, 0, 2, 1, 5, 6, 1,14,
@@ -59,9 +56,13 @@
  grp_prey(:)=    1, 1, 1, 1, 1, 1, 1, 0,
  grp_DIACOC(:)=  1, 0, 0, 0, 0, 2, 0, 0,
  grp_DIAZO(:)=   0, 0, 0, 0, 1, 0, 0, 0,
- grp_NSOURCE(:)= 3, 3, 3, 3, 0, 3, 3, 0,
+ grp_useNH4(:)=  1, 1, 1, 1, 1, 1, 1, 0,
+ grp_useNO2(:)=  1, 1, 1, 1, 1, 1, 1, 0,
+ grp_useNO3(:)=  1, 1, 1, 1, 1, 1, 1, 0,
+ grp_combNO(:)=  1, 1, 1, 1, 1, 1, 1, 0,
  grp_tempMort(:)= 1, 1, 1, 1, 1, 1, 1, 1,
  grp_tempMort2(:)=1, 1, 1, 1, 1, 1, 1, 1,
+ grp_Xmin(:)= 7*120E-20,
 
  grp_mqyield(:)= 7*5E-5,
  grp_chl2cmax(:)= 7*.3,
@@ -113,5 +114,5 @@
  a_kg(8)= 6.,
  b_kg(8)= 0.,
 
- grp_ass_eff(:)= 7*0.5,
+ grp_ass_eff(:,:)= 64*0.5,
  /

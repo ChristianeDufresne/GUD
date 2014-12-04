@@ -16,68 +16,76 @@ C    !DESCRIPTION:
 C options for gud package
 CEOP
 
-#define READ_PAR
-#undef  USE_QSW
-#undef  USE_AVPAR
-#undef  GEIDER
+C tracer selection
 
-#undef  WAVEBANDS
+#undef  GUD_ALLOW_NQUOTA
+#undef  GUD_ALLOW_PQUOTA
+#undef  GUD_ALLOW_FEQUOTA
+#undef  GUD_ALLOW_SIQUOTA
+#undef  GUD_ALLOW_CHLQUOTA
+#undef  GUD_ALLOW_CDOM
+#define GUD_ALLOW_CARBON
 
-#define GUD_GRAZING_MONOD_STYLE
-#undef  SER_GRAZ
+C optional bits
 
-#undef  NOTEMP
-#define TEMP_VERSION 2
-#define TEMP_RANGE
-#define NOZOOTEMP
-
-C carbon-related
-#define ALLOW_CARBON
-#undef DIC_NO_NEG
+#define GUD_ALLOW_DENIT
+#undef  GUD_ALLOW_EXUDE
 #define ALLOW_OLD_VIRTUALFLUX
 
-#undef  TWO_SPECIES_SETUP
-#define NINE_SPECIES_SETUP
+C light
 
-#undef  NQUOTA
-#undef  PQUOTA
-#undef  FEQUOTA
-#undef  SIQUOTA
-#undef  CHLQUOTA
+#define GUD_READ_PAR
+#undef  GUD_USE_QSW
+#undef  GUD_AVPAR
+#undef  GUD_ALLOW_GEIDER
+#undef  GUD_ALLOW_RADTRANS
 
-#define MINFE
-#define PART_SCAV
-#define IRON_SED_SOURCE_VARIABLE
+C initialize chl with radtrans as in darwin2
+#undef  GUD_CHL_INIT_LEGACY
 
-#undef  UNCERTAINTY
+#undef  GUD_GEIDER_RHO_SYNTH
 
-#define ALLOW_DENIT
-#undef  ALLOW_CDOM
-#define ALLOW_DIAZ
-#undef  ALLOW_EXUDE
+C grazing
 
-C deprecated
-#define PORT_RAND
-#undef  OLDSEED
+C for quadratic grazing a la quota
+#undef  GUD_GRAZING_SWITCH
 
-#define ALLOW_GUD_CONS
+C compute palat from size ratios
+#undef  GUD_ALLOMETRIC_PALAT
+
+C turn off grazing temperature dependence
+#define GUD_NOZOOTEMP
+
+#undef  GUD_TIME_GRAZING
+
+C temperature
+
+#undef  GUD_NOTEMP
+#define GUD_TEMP_VERSION 2
+#undef  GUD_TEMP_RANGE
+
+C iron
+
+#define GUD_MINFE
+#define GUD_PART_SCAV
+#define GUD_IRON_SED_SOURCE_VARIABLE
+
+C debugging
+
+#undef GUD_DEBUG
+
+#define GUD_ALLOW_CONS
 
 #define GUD_UNUSED 0
 
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-C dependencies
-c if two or nine species setup we don't want specific temperature ranges
-#ifdef  TWO_SPECIES_SETUP
-#undef TEMP_RANGE
-#endif
-#ifdef  NINE_SPECIES_SETUP
-#undef TEMP_RANGE
-#endif
+C deprecated
 
-#ifdef DAR_DIAG_CHL
-#define ALLOW_PAR_DAY
-#endif
- 
+C these are for gud_generate_random
+#define GUD_RANDOM_TRAITS
+#undef  GUD_TWO_SPECIES_SETUP
+#define GUD_NINE_SPECIES_SETUP
+#define GUD_ALLOW_DIAZ
+
 #endif /* ALLOW_GUD */
 #endif /* GUD_OPTIONS_H */
 

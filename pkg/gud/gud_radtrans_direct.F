@@ -42,7 +42,7 @@ C !USES: ===============================================================
 #include "SIZE.h"                 /* Nr */
 #include "EEPARAMS.h"
 #include "GUD_SIZE.h"          /* nlam */
-#ifdef ALLOW_RADTRANS
+#ifdef GUD_ALLOW_RADTRANS
 #include "GUD_PARAMS.h"        /* WtouEin */
 #include "GUD_GENPARAMS.h"  /* gud_PAR_ilamLo/Hi
                                      gud_radmodThresh
@@ -81,7 +81,7 @@ C     amp2   :: amplitude of downward decreasing mode
       _RL amp1(nlam,Nr), amp2(nlam,Nr)
 CEOP
 
-#ifdef ALLOW_RADTRANS
+#ifdef GUD_ALLOW_RADTRANS
 
 C !LOCAL VARIABLES: ====================================================
       INTEGER k, l, kbot
@@ -222,7 +222,7 @@ C      enddo l
 C     endif kbot.gt.0
       ENDIF
 
-#endif /* ALLOW_RADTRANS */
+#endif /* GUD_ALLOW_RADTRANS */
 
       return
       end

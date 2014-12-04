@@ -78,7 +78,7 @@ c !LOCAL VARIABLES: ====================================================
       gTr(:,:,k  ,ic+j-1 )=gTr(:,:,k  ,ic+j-1 ) + flux/dzup
       gTr(:,:,k+1,ic+j-1 )=gTr(:,:,k+1,ic+j-1 ) - flux/dzdn
          ENDWHERE
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
          WHERE( dzdn.GT.0.0 )
       flux = wsink(j)*MAX(0.0, Ptr(:,:,k,bi,bj,in+j-1))
       gTr(:,:,k  ,in+j-1 )=gTr(:,:,k  ,in+j-1 ) - flux/dzup
@@ -88,7 +88,7 @@ c !LOCAL VARIABLES: ====================================================
       gTr(:,:,k+1,in+j-1 )=gTr(:,:,k+1,in+j-1 ) - flux/dzdn
          ENDWHERE
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
          WHERE( dzdn.GT.0.0 )
       flux = wsink(j)*MAX(0.0, Ptr(:,:,k,bi,bj,ip+j-1))
       gTr(:,:,k  ,ip+j-1 )=gTr(:,:,k  ,ip+j-1 ) - flux/dzup
@@ -98,7 +98,7 @@ c !LOCAL VARIABLES: ====================================================
       gTr(:,:,k+1,ip+j-1 )=gTr(:,:,k+1,ip+j-1 ) - flux/dzdn
          ENDWHERE
 #endif
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
          WHERE( dzdn.GT.0.0 )
       flux = wsink(j)*MAX(0.0, Ptr(:,:,k,bi,bj,isi+j-1))
       gTr(:,:,k  ,isi+j-1)=gTr(:,:,k  ,isi+j-1) - flux/dzup
@@ -108,7 +108,7 @@ c !LOCAL VARIABLES: ====================================================
       gTr(:,:,k+1,isi+j-1)=gTr(:,:,k+1,isi+j-1) - flux/dzdn
          ENDWHERE
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
          WHERE( dzdn.GT.0.0 )
       flux = wsink(j)*MAX(0.0, Ptr(:,:,k,bi,bj,ife+j-1))
       gTr(:,:,k  ,ife+j-1)=gTr(:,:,k  ,ife+j-1) - flux/dzup

@@ -1,7 +1,5 @@
  &GUD_FORCING_PARAMS
   useGudYearlyFields= .TRUE.,
- /
- &GUD_EXF_PARAMS
 # iceFile='gud/nasa_icefraction_mth-2d.bin',
 #
   ironFile='../input/input/Fe_const_76x72_12_',
@@ -28,5 +26,5 @@
  oldTwoGrazers= .TRUE.,
  diatom_growfac= 1.0,
  /
- &GUD_ALLOMETRIC_PARAMS
+ &GUD_TRAIT_PARAMS
  /

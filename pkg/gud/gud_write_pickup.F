@@ -39,7 +39,7 @@ CEOP
 
 #ifdef ALLOW_GUD
 C add more ALLOWs here for other fields in pickup
-#if defined(ALLOW_CARBON) || (defined(GEIDER) && !defined(CHLQUOTA))
+#if defined(GUD_ALLOW_CARBON) || (defined(GUD_ALLOW_GEIDER) && !defined(GUD_ALLOW_CHLQUOTA))
 
 C     !LOCAL VARIABLES:
 C     == Local variables ==
@@ -59,15 +59,15 @@ c     IF ( GUD_pickup_write_mdsio ) THEN
         ifld = 0
         irec = 0
 
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
         ifld = ifld + 1
         irec = irec - 1
         CALL WRITE_REC_3D_RL( fn, prec, nR, pH, irec, myIter, myThid )
         IF (ifld.LE.listDim) wrFldList(ifld) = 'pH'
 #endif
 
-#if defined(GEIDER) && !defined(CHLQUOTA)
-#ifdef ALLOW_RADTRANS
+#if defined(GUD_ALLOW_GEIDER) && !defined(GUD_ALLOW_CHLQUOTA)
+#ifdef GUD_ALLOW_RADTRANS
         DO np = 1, nPhoto
         ifld = ifld + 1
         irec = irec - 1

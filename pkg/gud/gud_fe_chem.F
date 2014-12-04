@@ -61,9 +61,11 @@ c !LOCAL VARIABLES: ====================================================
           
           FeL = ligand_tot - lig
           freefe(i,j,k) = FeT(i,j,k) - FeL
-#ifdef MINFE
+#ifdef GUD_MINFE
           freefe(i,j,k) = MIN(freefe(i,j,k), freefemax)
-          FeT(i,j,k) = FeL + freefe(i,j,k)
+          IF (maskInC(i,j,bi,bj) .GT. 0.0) THEN
+           FeT(i,j,k) = FeL + freefe(i,j,k)
+          ENDIF
 #endif
          ELSE
           freefe(i,j,k) = 0.0 _d 0

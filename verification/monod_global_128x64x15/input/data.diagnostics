@@ -1,6 +1,6 @@
  &diagnostics_list
  filename(1)= 'gud',
- frequency(1)= 43200.,
+ frequency(1)= 2592000.,
  fields(1,1)= 'TRAC01  ',
  fields(2,1)= 'TRAC02  ',
  fields(3,1)= 'TRAC03  ',

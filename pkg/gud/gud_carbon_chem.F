@@ -312,7 +312,7 @@ c ---------------------------------------------------------------
 c Add two output arguments for storing pCO2surf
 c Should we be using K0 or ff for the solubility here?
 c ---------------------------------------------------------------
-#ifdef WATERVAP_BUG
+#ifdef GUD_WATERVAP_BUG
         pCO2surfloc = co2star / fflocal
 #else
 c Corrected by Val Bennington (Nov 2010)
@@ -468,7 +468,7 @@ c Karsten Friis & Mick - Sep 2004
 
 c ---------------------------------------------------------------
 c surface pCO2 (following Dickson and Goyet, DOE...)
-#ifdef WATERVAP_BUG
+#ifdef GUD_WATERVAP_BUG
         pCO2surfloc = co2s/fflocal
 #else
 c bug fix by Bennington

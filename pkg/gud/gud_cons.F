@@ -16,6 +16,7 @@ C==============================================================
 #include "PTRACERS_FIELDS.h"
 #include "GUD_SIZE.h"
 #include "GUD_INDICES.h"
+#include "GUD_GENPARAMS.h"
 #include "GUD_TRAITS.h"
 #include "GUD_FIELDS.h"
 
@@ -24,7 +25,7 @@ C     === Global variables ===
       INTEGER myIter
       INTEGER myThid
 
-#ifdef ALLOW_GUD_CONS
+#ifdef GUD_ALLOW_CONS
 
 C============== Local variables ============================================
       _RL tmptotC
@@ -32,7 +33,7 @@ C============== Local variables ============================================
       _RL tmptotN
       _RL tmptotSi
       _RL tmptotFe
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       _RL tmptotA
       _RL tmptotO
 #endif
@@ -48,7 +49,7 @@ c
       tmptotN = 0. _d 0
       tmptotFe = 0. _d 0
       tmptotSi = 0. _d 0
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       tmptotA = 0. _d 0
       tmptotO = 0. _d 0
 #endif
@@ -75,8 +76,8 @@ c carbon budget
             iTr=ic+np-1
             tmptotC=tmptotC+Ptracer(i,j,k,bi,bj,iTr)*vol  !Phy
           ENDDO
-#ifdef ALLOW_CDOM
-          tmptotC=tmptotC+Ptracer(i,j,k,bi,bj,iCDOM)*vol  !CDOM
+#ifdef GUD_ALLOW_CDOM
+          tmptotC=tmptotC+Ptracer(i,j,k,bi,bj,iCDOM)*R_CP_CDOM*vol  !CDOM
 #endif
 
 c Phosphorus budget
@@ -84,7 +85,7 @@ c Phosphorus budget
           tmptotP=tmptotP+Ptracer(i,j,k,bi,bj,iDOP)*vol    !DOP
           tmptotP=tmptotP+Ptracer(i,j,k,bi,bj,iPOP)*vol   !POP
           DO np=1,nplank
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
             iTr=ip+np-1
             tmptotP=tmptotP+Ptracer(i,j,k,bi,bj,iTr)*vol  !Phy 
 #else
@@ -92,8 +93,8 @@ c Phosphorus budget
             tmptotP=tmptotP+Ptracer(i,j,k,bi,bj,iTr)*R_PC(np)*vol  !Phy 
 #endif
           ENDDO
-#ifdef ALLOW_CDOM
-          tmptotP=tmptotP+Ptracer(i,j,k,bi,bj,iCDOM)*R_PC_CDOM*vol     !CDOM
+#ifdef GUD_ALLOW_CDOM
+          tmptotP=tmptotP+Ptracer(i,j,k,bi,bj,iCDOM)*vol     !CDOM
 #endif
 
 c Nitrogen budget
@@ -103,7 +104,7 @@ c Nitrogen budget
           tmptotN=tmptotN+Ptracer(i,j,k,bi,bj,iDON)*vol    !DON
           tmptotN=tmptotN+Ptracer(i,j,k,bi,bj,iPON)*vol   !PON
           DO np=1,nplank
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
             iTr=in+np-1
             tmptotN=tmptotN+Ptracer(i,j,k,bi,bj,iTr)*vol  !Phy
 #else
@@ -111,8 +112,8 @@ c Nitrogen budget
             tmptotN=tmptotN+Ptracer(i,j,k,bi,bj,iTr)*R_NC(np)*vol  !Phy
 #endif
           ENDDO
-#ifdef ALLOW_CDOM
-          tmptotN=tmptotN+Ptracer(i,j,k,bi,bj,iCDOM)*R_NC_CDOM*vol  !CDOM
+#ifdef GUD_ALLOW_CDOM
+          tmptotN=tmptotN+Ptracer(i,j,k,bi,bj,iCDOM)*R_NP_CDOM*vol  !CDOM
 #endif
 
 c Iron budget
@@ -120,7 +121,7 @@ c Iron budget
           tmptotFe=tmptotFe+Ptracer(i,j,k,bi,bj,iDOFe)*vol   !DOFe
           tmptotFe=tmptotFe+Ptracer(i,j,k,bi,bj,iPOFe)*vol   !POFe
           DO np=1,nplank
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
             iTr=ife+np-1
             tmptotFe=tmptotFe+Ptracer(i,j,k,bi,bj,iTr)*vol  !Phy
 #else
@@ -128,15 +129,15 @@ c Iron budget
             tmptotFe=tmptotFe+Ptracer(i,j,k,bi,bj,iTr)*R_FeC(np)*vol  !Phy
 #endif
           ENDDO
-#ifdef ALLOW_CDOM
-          tmptotFe=tmptotFe+Ptracer(i,j,k,bi,bj,iCDOM)*R_FeC_CDOM*vol  !CDOM
+#ifdef GUD_ALLOW_CDOM
+          tmptotFe=tmptotFe+Ptracer(i,j,k,bi,bj,iCDOM)*R_FeP_CDOM*vol  !CDOM
 #endif
 
 c Silica budget
           tmptotSi=tmptotSi+Ptracer(i,j,k,bi,bj,iSiO2)*vol   !Si
           tmptotSi=tmptotSi+Ptracer(i,j,k,bi,bj,iPOSi)*vol   !POSi
           DO np=1,nplank
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
             iTr=isi+np-1
             tmptotSi=tmptotSi+Ptracer(i,j,k,bi,bj,iTr)*vol  !Phy
 #else
@@ -145,7 +146,7 @@ c Silica budget
 #endif
           ENDDO
 c------------------------------------------------------------
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
 c alkalinity budget !!!!! NOT FULL BUDGET!!!!!
           tmptotA=tmptotA+Ptracer(i,j,k,bi,bj,iALK)*vol    !ALK
 c oxygem budget !!!!!!!! NOT FULL BUDGET !!!!!!!!!!!
@@ -166,7 +167,7 @@ c oxygem budget !!!!!!!! NOT FULL BUDGET !!!!!!!!!!!
       _GLOBAL_SUM_RL(tmptotFe,myThid)
       _GLOBAL_SUM_RL(tmptotSi,myThid)
       _GLOBAL_SUM_RL(voltot,myThid)
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       _GLOBAL_SUM_RL(tmptotA,myThid)
       _GLOBAL_SUM_RL(tmptotO,myThid)
 #endif
@@ -180,7 +181,7 @@ c oxygem budget !!!!!!!! NOT FULL BUDGET !!!!!!!!!!!
      &                 tmptotNfix/voltot, tmptotNdenit/voltot
         WRITE(GUD_cons_Fe_unit,*), myIter, tmptotFe, tmptotFe/voltot
         WRITE(GUD_cons_Si_unit,*), myIter, tmptotSi, tmptotSi/voltot
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
         WRITE(GUD_cons_A_unit,*), myIter, tmptotA, tmptotA/voltot
         WRITE(GUD_cons_O_unit,*), myIter, tmptotO, tmptotO/voltot
 #endif
@@ -189,7 +190,7 @@ c oxygem budget !!!!!!!! NOT FULL BUDGET !!!!!!!!!!!
 C--   Everyone else must wait
       _BARRIER
 
-#endif /* ALLOW_GUD_CONS */
+#endif /* GUD_ALLOW_CONS */
 
       RETURN
       END

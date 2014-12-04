@@ -37,7 +37,7 @@ C  myThid               :: thread number
       INTEGER  myThid
 
 #ifdef ALLOW_GUD
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
 
 C !LOCAL VARIABLES: ====================================================
        INTEGER i,j,k,it
@@ -147,7 +147,7 @@ C      end bi,bj loops
 C     time to initialize
       ENDIF
 
-#endif /* ALLOW_CARBON */
+#endif /* GUD_ALLOW_CARBON */
 #endif /* ALLOW_GUD */
 
       RETURN

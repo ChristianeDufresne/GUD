@@ -38,7 +38,7 @@ CEOP
 C     !LOCAL VARIABLES:
       CHARACTER*(MAX_LEN_MBUF) msgBuf
       integer iUnit1, iUnit2, k
-#ifdef ALLOW_RADTRANS
+#ifdef GUD_ALLOW_RADTRANS
       character*80 title
       integer ios, i, l, ilambda, jp
       _RL planck, c, hc, oavo, hcoavo, rlamm
@@ -57,7 +57,7 @@ C     !LOCAL VARIABLES:
 
       IF (gud_linFSConserve) PTRACERS_calcSurfCor = .TRUE.
 
-#ifdef IRON_SED_SOURCE_VARIABLE
+#ifdef GUD_IRON_SED_SOURCE_VARIABLE
       kMinFeSed = 2
 #else
       kMinFeSed = 1
@@ -68,7 +68,7 @@ C     !LOCAL VARIABLES:
       ENDDO
 
 
-#ifdef ALLOW_RADTRANS
+#ifdef GUD_ALLOW_RADTRANS
 
 C band widths used to convert OASIM data to irradiation per nm
       wb_totalWidth = 0.0
@@ -370,7 +370,7 @@ c
       DO l = 1,nlam
         exCDOM(l)=EXP(-gud_Sdom*(wb_center(l)-gud_lambda_aCDOM))
       ENDDO
-#ifndef ALLOW_CDOM
+#ifndef GUD_ALLOW_CDOM
 C initialize CDOM absorption coefficient
       laCDOM = -1
       DO l = 1,nlam
@@ -395,18 +395,18 @@ C initialize CDOM absorption coefficient
       ENDIF
 #endif
 
-#endif /* ALLOW_RADTRANS */
+#endif /* GUD_ALLOW_RADTRANS */
 
 C ======================================================================
       CALL GUD_RANDOM_INIT(gud_seed, myThid)
 
       CALL GUD_INIT_TRAITS(myThid)
 
-      IF (gud_allometric) THEN
-       CALL GUD_GENERATE_ALLOMETRIC(myThid)
-      ELSE
-       CALL GUD_GENERATE(myThid)
-      ENDIF
+#ifdef GUD_RANDOM_TRAITS
+      CALL GUD_GENERATE_RANDOM(myThid)
+#else
+      CALL GUD_GENERATE_ALLOMETRIC(myThid)
+#endif
 
 C ======================================================================
 C read (overrides generated) and write trait namelists
@@ -441,7 +441,7 @@ C read (overrides generated) and write trait namelists
 C ======================================================================
 C write some traits to files
 
-#ifdef ALLOW_RADTRANS
+#ifdef GUD_ALLOW_RADTRANS
 C set spectra for individual plankton according to optical type
 C file for ap_types assigned via coin flips
       CALL MDSFINDUNIT( iUnit1, myThid )
@@ -490,7 +490,7 @@ c rows = pwaves, columns = jp
 
 9999  format(9999f10.4)
 
-#endif /* ALLOW_RADTRANS */
+#endif /* GUD_ALLOW_RADTRANS */
 
 C ======================================================================
 

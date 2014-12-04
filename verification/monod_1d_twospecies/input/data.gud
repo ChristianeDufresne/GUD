@@ -1,6 +1,4 @@
  &GUD_FORCING_PARAMS
- /
- &GUD_EXF_PARAMS
  ironFile='../input/input/loc1_FeFlux_monsurf.bin',
  PARFile='../input/input/loc1_PAR_monsurf.bin',
  ironPeriod= -12.,
@@ -18,5 +16,5 @@
  &GUD_RANDOM_PARAMS
  oldTwoGrazers= .TRUE.,
  /
- &GUD_ALLOMETRIC_PARAMS
+ &GUD_TRAIT_PARAMS
  /

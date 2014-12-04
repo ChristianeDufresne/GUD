@@ -42,7 +42,7 @@ C     !LOCAL VARIABLES:
 
       CALL GUD_EXF_INIT_VARIA(myThid)
 
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       DO bj=myByLo(mythid),myByHi(myThid)
        DO bi=myBxLo(mythid),myBxHi(myThid)
         AtmosP(:,:,bi,bj) = 1.0 _d 0
@@ -52,40 +52,38 @@ C     !LOCAL VARIABLES:
       ENDDO
 #endif
 
-#ifndef CHLQUOTA
+#ifndef GUD_ALLOW_CHLQUOTA
       chlPrev = 0.0 _d 0
 #endif
 
-#ifdef ALLOW_DIAZ
       IF (nIter0.EQ.PTRACERS_Iter0) THEN
        DO jp=1,nplank
         IF (diazo(jp) .EQ. 1) THEN
          Ptracer(:,:,:,:,:,ic+jp-1) = Ptracer(:,:,:,:,:,ic+jp-1) *
      &                                diaz_ini_fac
-#ifdef NQUOTA
+#ifdef GUD_ALLOW_NQUOTA
          Ptracer(:,:,:,:,:,in+jp-1) = Ptracer(:,:,:,:,:,in+jp-1) *
      &                                diaz_ini_fac
 #endif
-#ifdef PQUOTA
+#ifdef GUD_ALLOW_PQUOTA
          Ptracer(:,:,:,:,:,ip+jp-1) = Ptracer(:,:,:,:,:,ip+jp-1) *
      &                                diaz_ini_fac
 #endif
-#ifdef FEQUOTA
+#ifdef GUD_ALLOW_FEQUOTA
          Ptracer(:,:,:,:,:,ife+jp-1) = Ptracer(:,:,:,:,:,ife+jp-1) *
      &                                 diaz_ini_fac
 #endif
-#ifdef SIQUOTA
+#ifdef GUD_ALLOW_SIQUOTA
          Ptracer(:,:,:,:,:,isi+jp-1) = Ptracer(:,:,:,:,:,isi+jp-1) *
      &                                 diaz_ini_fac
 #endif
-#ifdef CHLQUOTA
+#ifdef GUD_ALLOW_CHLQUOTA
          Ptracer(:,:,:,:,:,ichl+jp-1) = Ptracer(:,:,:,:,:,ichl+jp-1) *
      &                                  diaz_ini_fac
 #endif
         ENDIF
        ENDDO
       ENDIF
-#endif
 
       IF (gud_read_phos .AND. nIter0.EQ.PTRACERS_Iter0) THEN
        Ptracer(:,:,:,:,:,ic:ec) = 120.0 _d 0*Ptracer(:,:,:,:,:,ic:ec)
@@ -112,11 +110,11 @@ C      use current time for insol
        ENDDO
       ENDIF
 
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
       CALL GUD_SURFFORCING_INIT( myThid )
 #endif
 
-#ifdef ALLOW_GUD_CONS
+#ifdef GUD_ALLOW_CONS
       IF ( myProcId.EQ.0 .AND. myThid.EQ.1 ) THEN
        CALL MDSFINDUNIT( GUD_cons_c_unit, mythid )
        open(GUD_cons_C_unit,file='gud_cons_C.txt',status='unknown')
@@ -128,7 +126,7 @@ C      use current time for insol
        open(GUD_cons_Fe_unit,file='gud_cons_Fe.txt',status='unknown')
        CALL MDSFINDUNIT( GUD_cons_si_unit, mythid )
        open(GUD_cons_Si_unit,file='gud_cons_Si.txt',status='unknown')
-#ifdef ALLOW_CARBON
+#ifdef GUD_ALLOW_CARBON
        CALL MDSFINDUNIT( GUD_cons_a_unit, mythid )
        open(GUD_cons_A_unit,file='gud_cons_A.txt',status='unknown')
        CALL MDSFINDUNIT( GUD_cons_o_unit, mythid )
