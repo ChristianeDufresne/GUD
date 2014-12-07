@@ -66,10 +66,7 @@ CEOP
 #ifdef ALLOW_GUD
 
 c !LOCAL VARIABLES: ====================================================
-      INTEGER j, jy, l
-#ifdef ALLOW_DIAGNOSTICS
-      CHARACTER*8   diagName
-#endif
+      INTEGER j, l
 
       _RL DIC
       _RL NH4
