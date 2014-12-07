@@ -31,50 +31,87 @@ CEOP
 C !LOCAL VARIABLES: ====================================================
 C     msgBuf   :: Informational/error meesage buffer
       CHARACTER*(MAX_LEN_MBUF) msgBuf
+      INTEGER jpg(nGroup)
       INTEGER jp,jp2,jz,g,gz,l,gmin
       _RL logvol, vol, volmin
       _RL prd_pry
       _RL kappa
-C     these used to be global in quota pkg
-      _RL qcarbon, pp_opt, pp_sig
-      _RL biovol(nplank)
-C     type-group associations
-      INTEGER group(nplank)
-      INTEGER iGroup(nplank)
-      INTEGER jpg(nGroup)
 
 C ======================================================================
-C assign types to groups and compute cell volumes
+C compute cell volumes in micrometer^3
 C
-C Cell volume is
+C in decreasing precedence (if bold quantity is set):
 C
-C   biovol = biovol0(g)*biovolfac(g)**(j-1)
+C   V = GRP_BIOVOL(j,g)
+C   V = 10**(logvolbase+(GRP_BIOVOLIND(j,g)-1)*logvolinc)
+C   V = 10**(logvolbase+(LOGVOL0IND(g)+j-2)*logvolinc)
+C   V = BIOVOL0(g)*biovolfac(g)**(j-1)
 C
-C where j is the index of the type within the group (1..grp_nplank(g)).
-C
-C biovol0(g) may optionally be taken from a logspace series
-C
-C   10**logvol0base, 10**(logvol0base+logvol0inc), ...
-C
-C if an index into this series is given in logvol0ind(g).
-C
-C Type order is either by group or, if gud_sort_biovol, by biovol.
-
-C- if logvol0ind is set, use it to compute biovol0
+C     if logvol0ind is set, use it to compute biovol0
       DO g=1,nGroup
         IF (logvol0ind(g) .GT. 0) THEN
-          logvol = logvol0base + (logvol0ind(g)-1)*logvol0inc
+          IF (biovol0(g) .NE. 0.0 _d 0) THEN
+            WRITE(msgBuf,'(2A)') 'GUD_GENERATE_ALLOMETRIC: ',
+     &      'cannot set both biovol0 and logvol0ind'
+            CALL PRINT_ERROR( msgBuf, myThid )
+            STOP 'ABNORMAL END: S/R GUD_GENERATE_ALLOMETRIC'
+          ENDIF
+          logvol = logvolbase + (logvol0ind(g)-1)*logvolinc
           biovol0(g) = 10 _d 0 ** logvol
+          biovolfac(g) = 10 _d 0 ** logvolinc
         ENDIF
       ENDDO
 
-C- compute biovol(jp) from biovol0(g) and biovolfac(g) 
-C- and set up correspondence g = group(jp)
+      DO g=1,nGroup
+       DO jp=1,grp_nplank(g)
+        IF (grp_logvolind(jp,g) .GT. 0 .AND.
+     &      grp_biovol(jp,g) .GT. 0.0 _d 0) THEN
+          WRITE(msgBuf,'(2A)') 'GUD_GENERATE_ALLOMETRIC: ',
+     &    'cannot set both grp_biovol and grp_logvolind'
+          CALL PRINT_ERROR( msgBuf, myThid )
+          STOP 'ABNORMAL END: S/R GUD_GENERATE_ALLOMETRIC'
+        ELSEIF (grp_logvolind(jp,g) .GT. 0) THEN
+C         pick from logrange
+          logvol = logvolbase + (grp_logvolind(jp,g)-1)*logvolinc
+          grp_biovol(jp,g) = 10 _d 0 ** logvol
+        ELSEIF (grp_biovol(jp,g) .EQ. 0) THEN
+          IF (biovol0(g) .GT. 0.0 _d 0) THEN
+           grp_biovol(jp,g) = biovol0(g) * biovolfac(g)**(jp-1)
+          ELSE
+           WRITE(msgBuf,'(3A)') 'GUD_GENERATE_ALLOMETRIC: ',
+     &     'Need to set one of grp_biovol, grp_logvolind, ',
+     &     'biovol0, logvol0ind'
+           CALL PRINT_ERROR( msgBuf, myThid )
+           STOP 'ABNORMAL END: S/R GUD_GENERATE_ALLOMETRIC'
+          ENDIF
+        ENDIF
+        biovol_bygroup(jp,g) = grp_biovol(jp,g)
+       ENDDO
+       DO jp=grp_nplank(g)+1,nplank
+        IF (grp_biovol(jp,g) .NE. 0.0 _d 0) THEN
+          WRITE(msgBuf,'(2A,I5,A,I5,A)') 'GUD_GENERATE_ALLOMETRIC: ',
+     &    'index',jp,'group',g,'out of range for grp_biovol'
+          CALL PRINT_ERROR( msgBuf, myThid )
+          STOP 'ABNORMAL END: S/R GUD_GENERATE_ALLOMETRIC'
+        ENDIF
+        IF (grp_logvolind(jp,g) .NE. 0) THEN
+          WRITE(msgBuf,'(2A,I5,A,I5,A)') 'GUD_GENERATE_ALLOMETRIC: ',
+     &    'index',jp,'group',g,'out of range for grp_logvolind'
+          CALL PRINT_ERROR( msgBuf, myThid )
+          STOP 'ABNORMAL END: S/R GUD_GENERATE_ALLOMETRIC'
+        ENDIF
+        biovol_bygroup(jp,g) = 0.0 _d 0
+       ENDDO
+      ENDDO
+
+C set up single list of plankton types from groups
+C type order is either by group or, if gud_sort_biovol, by biovol.
+
       IF (gud_sort_biovol) THEN
 c      sort by volume
 
        DO g=1,nGroup
-        jpg(g) = 0
+        jpg(g) = 1
        ENDDO
        DO jp=1,nplank
         volmin = 1 _d 38
@@ -82,8 +119,8 @@ c      sort by volume
 C       first check phototrophs
         DO g=1,ngroup
          IF (grp_photo(g).NE.0) THEN
-          vol = biovol0(g)*biovolfac(g)**jpg(g)
-          IF (jpg(g).LT.grp_nplank(g) .AND. vol.LT.volmin) THEN
+          vol = grp_biovol(jpg(g),g)
+          IF (jpg(g).LE.grp_nplank(g) .AND. vol.LT.volmin) THEN
            gmin = g
            volmin = vol
           ENDIF
@@ -93,8 +130,8 @@ C       then pure heterotrophs
         IF (gmin.EQ.0) THEN
          DO g=1,ngroup
           IF (grp_photo(g).EQ.0) THEN
-           vol = biovol0(g)*biovolfac(g)**jpg(g)
-           IF (jpg(g).LT.grp_nplank(g) .AND. vol.LT.volmin) THEN
+           vol = grp_biovol(jpg(g),g)
+           IF (jpg(g).LE.grp_nplank(g) .AND. vol.LT.volmin) THEN
             gmin = g
             volmin = vol
            ENDIF
@@ -106,11 +143,11 @@ C       then pure heterotrophs
         ENDIF
         group(jp) = gmin
         biovol(jp) = volmin
-        jpg(gmin) = jpg(gmin) + 1
         igroup(jp) = jpg(gmin)
+        jpg(gmin) = jpg(gmin) + 1
        ENDDO
        DO g=1,ngroup
-        IF (jpg(g).NE.grp_nplank(g)) THEN
+        IF (jpg(g).NE.grp_nplank(g)+1) THEN
          STOP 'grp_nplank'
         ENDIF
        ENDDO
@@ -128,7 +165,7 @@ C      sort by group
           STOP 'ABNORMAL END: S/R GUD_GENERATE_ALLOMETRIC'
          ENDIF
          group(jp)  = g
-         biovol(jp) = biovol0(g) * biovolfac(g)**(jp2-1)
+         biovol(jp) = grp_biovol(jp2,g)
          jp = jp + 1
         ENDDO
        ENDDO
@@ -189,10 +226,10 @@ C plankton sinking and swimming
         wswim(jp) = a_bioswim(g) * biovol(jp)**b_bioswim(g)
 
 C respiration rate is given in terms of carbon content
-        qcarbon = a_qcarbon(g) * biovol(jp)**b_qcarbon(g)
+        qcarbon(jp) = a_qcarbon(g) * biovol(jp)**b_qcarbon(g)
         respiration(jp) = a_respir(g)
-     &                    * (12. _d 9 * qcarbon)**b_respir(g)
-     &                    / qcarbon
+     &                    * (12. _d 9 * qcarbon(jp))**b_respir(g)
+     &                    / qcarbon(jp)
 
 C parameters relating to inorganic nutrients
         PCmax(jp)= a_vmax_DIC(g) * biovol(jp)**b_vmax_DIC(g)
@@ -281,13 +318,13 @@ C       grazing half-saturation
 #ifdef GUD_ALLOMETRIC_PALAT
 C assign grazing preference according to predator/prey radius ratio
 C           grazing size preference ratio
-            pp_opt = a_prdpry(gz) * biovol(jz)**b_prdpry(gz)
+            pp_opt(jz) = a_prdpry(gz) * biovol(jz)**b_prdpry(gz)
 C           standard deviation of size preference
-            pp_sig = grp_pp_sig(gz)
+            pp_sig(jz) = grp_pp_sig(gz)
             prd_pry = biovol(jz) / biovol(jp)
             palat(jp,jz) =
-     &        EXP(-(LOG(prd_pry/pp_opt)**2) / (2*pp_sig**2))
-     &        / pp_sig/2. _d 0
+     &        EXP(-(LOG(prd_pry/pp_opt(jz))**2) / (2*pp_sig(jz)**2))
+     &        / pp_sig(jz)/2. _d 0
             IF (palat(jp,jz).LT.palat_min) THEN
               palat(jp,jz) = 0. _d 0
             ENDIF

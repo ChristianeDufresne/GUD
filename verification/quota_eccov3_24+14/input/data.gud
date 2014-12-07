@@ -19,7 +19,6 @@
  diaz_ini_fac= 0.1,
  idebug=271,
  jdebug=63,
- gud_sort_biovol= T,
  gud_seed= 56,
  gud_read_phos= F,
  tempCoeffArr= 0.8,
@@ -48,6 +47,7 @@
  /
 ########################
  &GUD_TRAIT_PARAMS
+ gud_sort_biovol= T,
 #                1  2  3  4  5  6  7  8
 #                D  l  s  P  T  C  S  Z
  grp_nplank(:)=  9, 0, 2, 1, 5, 6, 1,14,

@@ -151,6 +151,20 @@ bbphy_chl(:,:)         = UNINIT_RL  ! m^-1 (mg Chl m^-3)^-1
 ! dependent and constant (not read-in) parameters
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+DIMENSION(nplank)
+
+biovol(:) = biovol(:)
+INTEGER group(:) = group(:)
+INTEGER igroup(:) = igroup(:)
+qcarbon(:) = qcarbon(:)
+pp_opt(:) = pp_opt(:)
+pp_sig(:) = pp_sig(:)
+
+DIMENSION(nplank,ngroup)
+
+biovol_bygroup(:,:) = biovol_bygroup(:,:) 
+
+
 LOCAL: INTEGER jp
 LOCAL: INTEGER jp2
 LOCAL: INTEGER l

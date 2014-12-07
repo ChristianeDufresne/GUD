@@ -188,22 +188,29 @@ ZooDM = 100D0                      ! diameter (not used so far)
 ! used in gud_generate_allometric
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-logvol0base = 0.0D0
-logvol0inc  = 0.0D0
+gud_sort_biovol = .FALSE.
 
-DIMENSION(nGroup,nGroup)
-grp_ExportFracPreyPred(:,:) = 0.5D0
-grp_ass_eff(:,:) = 0.70D0
+GUD_effective_ksat = .FALSE.
+
+
+DIMENSION(nPlank,nGroup)
+grp_biovol(:,:) = 0D0        ! volumes of types in each group (um^3)
 
 DIMENSION(nGroup)
-logvol0ind(:) = 0
 
-biovol0(1) = 0.125D0
-biovol0(2) = 0.5D0
-biovol0(3) = 4.D0
-biovol0(4) = 128.D0
-biovol0(5) = 8.D0
-biovolfac(:) = 2.0D0
+biovol0(:) = 0.0D0           ! set grp_biovol to biovol0, biovol0*biovolfac, ...
+biovolfac(:) = 1.0D0
+
+
+logvolbase = 0.0D0          ! draw volumes from list 10**logvolbase, 10**(logvolbase+logvolinc), ...
+logvolinc  = 0.0D0
+
+DIMENSION(nPlank,nGroup)
+grp_logvolind(:,:) = 0D0     ! indices into logvol list
+
+DIMENSION(nGroup)
+logvol0ind(:) = 0            ! or use consecutive values starting here for each group
+
 
 grp_nplank(:) = 0
 grp_photo(:) = 1
@@ -428,7 +435,9 @@ b_beta_graz_fe(:)   = -0.40D0
 a_beta_mort_fe(:)   =  1.00D0
 b_beta_mort_fe(:)   = -0.40D0
 
-GUD_effective_ksat = .FALSE.
+DIMENSION(nGroup,nGroup)
+grp_ExportFracPreyPred(:,:) = 0.5D0
+grp_ass_eff(:,:) = 0.70D0
 
 /
 

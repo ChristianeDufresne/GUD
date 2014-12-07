@@ -63,6 +63,8 @@
  grp_mQyield(:)= 4*1.915E-5,
 # zoo don't sink, have Chl
  grp_R_ChlC(5)= 0.,
+ biovol0(:)= .125, .5, 4., 128., 8.,
+ biovolfac(:)= 5*2.,
 # max photosynthesis rates
  a_vmax_DIC(:)= 1., 1.4, 2.1, 3.8,
  a_vmax_DIC_denom(:)= 4*86400.,

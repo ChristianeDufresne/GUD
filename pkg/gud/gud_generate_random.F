@@ -90,12 +90,8 @@ C     used to be global in monod pkg
       _RL phyto_esd(nplank)
       _RL phyto_vol(nplank)
 
-      INTEGER group(nplank)
-      INTEGER iGroup(nplank)
       INTEGER physize(nplank)
       INTEGER nsource(nplank)
-      _RL biovol(nplank)
-      _RL qcarbon(nplank)
 
 C ======================================================================
 
