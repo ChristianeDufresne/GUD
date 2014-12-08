@@ -938,7 +938,7 @@ None of these should matter for normal abundances/concentrations.
 Include the word \verb|gud| in \verb|packages.conf| in your code directory.
 This will automatically turn on gchem, ptracers and exf.
 
-Set compile-time options for gud in file \verb|GUD_OPTIONS.h|.
+Set compile-time options for gud in file \verb|GUD_OPTIONS.h| (see table below).
 
 Adjust the number of plankton types, functional groups, autotrophs, grazers,
 prey, wavebands and optical types in \verb|GUD_SIZE.h|.
@@ -953,6 +953,55 @@ In \verb|GCHEM_OPTIONS.h| you need to define \verb|GCHEM_SEPARATE_FORCING|.
 In \verb|EXF_OPTIONS.h| you may want to undef \verb|ALLOW_CLIMSST_RELAXATION|
 and \verb|ALLOW_CLIMSSS_RELAXATION| and, if you want to read in sea ice cover,
 define \verb|EXF_SEAICE_FRACTION|.
+
+{\renewcommand{\arraystretch}{1.2}
+\begin{longtable}[l]{ll>{$}l<{$}l>{$}r<{$}}
+\textbf{CPP option} & \textbf{description} \\
+\hline
+\endhead
+  \verb|GUD_ALLOW_NQUOTA|             & enable nitrogen quotas for all plankton \\
+  \verb|GUD_ALLOW_PQUOTA|             & enable phosphorus quotas for all plankton \\
+  \verb|GUD_ALLOW_FEQUOTA|            & enable iron quotas for all plankton \\
+  \verb|GUD_ALLOW_SIQUOTA|            & enable silica quotas for all plankton \\
+  \verb|GUD_ALLOW_CHLQUOTA|           & enable chlorophyll quotas for all \emph{phototrophs} \\
+  \verb|GUD_ALLOW_CDOM|               & enable a dynamic CDOM tracer \\
+  \verb|GUD_ALLOW_CARBON|             & enable air-sea carbon exchange and Alk and O$_2$ tracers \\
+  \hline
+  \verb|GUD_ALLOW_DENIT|              & enable denitrification code \\
+  \verb|GUD_ALLOW_EXUDE|              & enable exudation of individual quotas \\
+  \verb|ALLOW_OLD_VIRTUALFLUX|        & enable old virtualflux code for DIC and Alk \\
+  \hline
+  \verb|GUD_READ_PAR|                 & read PAR from file (unless \verb|GUD_ALLOW_RADTRANS|) \\
+  \verb|GUD_USE_QSW|                  & use model shortwave rad. for PAR (unless \verb|GUD_ALLOW_RADTRANS|) \\
+  \verb|GUD_AVPAR|                    & compute average PAR in layer, assuming exponential decay (\%) \\
+  \verb|GUD_ALLOW_GEIDER|             & enable GEIDER light code \\
+  \verb|GUD_ALLOW_RADTRANS|           & enable spectral radiative transfer code (requires GEIDER) \\
+  \verb|GUD_CHL_INIT_LEGACY|          & initialize chlorophyll as in darwin2 \\
+  \verb|GUD_GEIDER_RHO_SYNTH|         & use $\rho$ instead of acclimated Chl:C for chlorophyll synthesis \\
+  \hline
+  \verb|GUD_GRAZING_SWITCH|           & enable quadratic grazing as in darwin2+quota \\
+  \verb|GUD_ALLOMETRIC_PALAT|         & compute palatability from size ratios \\
+  \verb|GUD_NOZOOTEMP|                & turn off grazing temperature dependence \\
+  \verb|GUD_TIME_GRAZING|             & split growth and grazing loops so they can be timed separately \\
+  \hline
+  \verb|GUD_NOTEMP|                   & turn off all temperature dependence \\
+  \verb|GUD_TEMP_VERSION|             & select temperature version: 1, 2 or 3 \\
+  \verb|GUD_TEMP_RANGE|               & restrict phytoplankton growth to a temperature range \\
+  \hline
+  \verb|GUD_MINFE|                    & restrict maximum free iron (sic) \\
+  \verb|GUD_PART_SCAV|                & enable particle scavenging code \\
+  \verb|GUD_IRON_SED_SOURCE_VARIABLE| & enable variable iron sediment source \\
+  \hline
+  \verb|GUD_DEBUG|                    & turn on debugging output \\
+  \verb|GUD_ALLOW_CONS|               & compute and print global element totals \\
+  \verb|GUD_UNUSED|                   & value for unused traits \\
+  \hline
+  \verb|GUD_RANDOM_TRAITS|            & assign traits based on random numbers as in darwin2 \\
+  \verb|GUD_TWO_SPECIES_SETUP|        & set traits for darwin2 2-species setup (requires \verb|GUD_RANDOM_TRAITS|) \\
+  \verb|GUD_NINE_SPECIES_SETUP|       & set traits for darwin2 9-species setup (requires \verb|GUD_RANDOM_TRAITS|) \\
+  \verb|GUD_ALLOW_DIAZ|               & enable diazotrophy when using \verb|GUD_RANDOM_TRAITS| \\
+  \hline
+\end{longtable}}
 
 
 
@@ -1067,7 +1116,8 @@ Traits are generated from the parameters in \verb|&GUD_TRAIT_PARAMS|
   $\|aphy\_chl|$          & (p,l) & $\aphySUBchl$           & $\unit{m^{-1} (mg Chl m^{-3})^{-1}}$ & \\
   $\|aphy\_chl\_ps|$      & (p,l) & $\aphySUBchlSUBps$      & $\unit{m^{-1} (mg Chl m^{-3})^{-1}}$ & \\
   $\|bphy\_chl|$          & (p,l) & $\bphySUBchl$           & $\unit{m^{-1} (mg Chl m^{-3})^{-1}}$ & \\
-  $\|bbphy\_chl|$         & (p,l) & $\bbphySUBchl$          & $\unit{m^{-1} (mg Chl m^{-3})^{-1}}$ &
+  $\|bbphy\_chl|$         & (p,l) & $\bbphySUBchl$          & $\unit{m^{-1} (mg Chl m^{-3})^{-1}}$ & \\
+  \hline
 \end{longtable}}
 Dimensions: p -- nplank, l -- nlam.
 
@@ -1179,7 +1229,8 @@ value.
   \verb|ksatPAR|            & \verb|grp_ksatPAR|                & 0.012  \\
   \verb|kinhPAR|            & \verb|grp_kinhPAR|                & 0.006  \\
   \verb|asseff|             & \verb|grp_ass_eff|                & 0.7  \\
-  \verb|ExportFracPreyPred| & \verb|grp_ExportFracPreyPred|     & 0.5
+  \verb|ExportFracPreyPred| & \verb|grp_ExportFracPreyPred|     & 0.5 \\
+  \hline
 \end{longtable}}
 Palatabilities are initialized to zero and have to be set in \verb|data.traits|
 unless \verb|GUD_ALLOMETRIC_PALAT| is defined in which case they are computed
