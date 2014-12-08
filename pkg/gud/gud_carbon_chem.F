@@ -312,13 +312,8 @@ c ---------------------------------------------------------------
 c Add two output arguments for storing pCO2surf
 c Should we be using K0 or ff for the solubility here?
 c ---------------------------------------------------------------
-#ifdef GUD_WATERVAP_BUG
-        pCO2surfloc = co2star / fflocal
-#else
-c Corrected by Val Bennington (Nov 2010)
         fco2 = co2star / k0local
         pCO2surfloc = fco2/fugflocal
-#endif
 
 C ----------------------------------------------------------------
 C Reconvert units back to original values for input arguments
@@ -468,13 +463,8 @@ c Karsten Friis & Mick - Sep 2004
 
 c ---------------------------------------------------------------
 c surface pCO2 (following Dickson and Goyet, DOE...)
-#ifdef GUD_WATERVAP_BUG
-        pCO2surfloc = co2s/fflocal
-#else
-c bug fix by Bennington
         fco2 = co2s/k0local
         pco2surfloc = fco2/fugflocal
-#endif
 
 C ----------------------------------------------------------------
 c Reconvert from mol/kg -> mol/m^3

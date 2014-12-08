@@ -80,8 +80,6 @@ C debugging
 
 C deprecated
 
-#undef  GUD_WATERVAP_BUG
-
 C these are for gud_generate_random
 #undef  GUD_RANDOM_TRAITS
 #undef  GUD_TWO_SPECIES_SETUP
