@@ -35,8 +35,8 @@
 \def\useNOii{\|useNO2|}
 \def\useNOiii{\|useNO3|}
 \def\combNO{\|combNO|}
-\def\tempMort{\|tempMort|}
-\def\tempMortTWO{\|tempMort2|}
+\def\tempMort{e^{\|mort|}}
+\def\tempMortTWO{e^{\|mort2|}}
 \def\apSUBtype{\|ap\_type|}
 \def\Xmin{c^{\min}_j}
 \def\amminhib{\sigma_1}
@@ -691,8 +691,8 @@ is very fast.
 
 Mortality stops at $\X_j^{\min}$,
 \[
-  m_j c'_j = m^{(1)}_j \max\left(f^{\|mort|\min}_j, f^{\|mort|}(T)\right) (\X_j - \X_j^{\min})
-      + m^{(2)}_j \max\left(f^{\mort2\min}_j, f^{\mort2}(T)\right) (\X_j - \X_j^{\min})^2
+  m_j c'_j = m^{(1)}_j {f^{\|mort|}(T)}^{\tempMort} (\X_j - \X_j^{\min})
+      + m^{(2)}_j {f^{\|mort2|}(T)}^{\tempMortTWO} (\X_j - \X_j^{\min})^2
 \]
 Other quotas are regulated proportionally, e.g.,
 \[
@@ -827,7 +827,7 @@ changes, the above equations apply.
   f^\graz_z(T) =
   f^\remin(T) =
   f^{\|mort|}(T) =
-  f^{\mort2}(T) =
+  f^{\|mort2|}(T) =
   1
 \end{gather*}
 where the exponential is only present with \verb|GUD_TEMP_RANGE|.
@@ -844,7 +844,7 @@ where the exponential is only present with \verb|GUD_TEMP_RANGE|.
   f^\graz_z(T) =
   f^\remin(T) =
   f^{\|mort|}(T) =
-  f^{\mort2}(T) =
+  f^{\|mort2|}(T) =
   f_{\|Arr|}(T)
 \\
   f_{\|Arr|}(T) = c^{\|Arr|}_j \left[
@@ -861,7 +861,7 @@ where the second exponential in $f^\phy$ again is only present with \verb|GUD_TE
   f^\graz_z(T) =
   f^\remin(T) =
   f^{\|mort|}(T) =
-  f^{\mort2}(T) =
+  f^{\|mort2|}(T) =
   f^{\|Arr|}(T) =
   \left[ \ee^{\ds A_{\|e|} (T - T_{\|ref|})} \right]_{\ge\num{E-10}}
 \end{gather*}
@@ -1003,69 +1003,69 @@ Traits are generated from the parameters in \verb|&GUD_TRAIT_PARAMS|
   $\|tempMort|$           & (p)   & $\tempMort$             &  & 1: mortality is temp.dependent \\
   $\|tempMort2|$          & (p)   & $\tempMortTWO$          &  & 1: quadr.mort. is temp.dep. \\
   $\|ap\_type|$           & (p)   & $\apSUBtype$            &  & optical type \# \\
-  $\|Xmin|$               & (p)   & $\Xmin$                 & \unit{mmol C m^{-3}} &  \\
-  $\|amminhib|$           & (p)   & $\amminhib$             & \unit{(mmol N m^{-3})^{-1}} &  \\
-  $\|acclimtimescl|$      & (p)   & $\acclimtimescl$        & \unit{s^{-1}} &  \\
-  $\|PCmax|$              & (p)   & $\PCmax$                & \unit{s^{-1}} &  \\
-  $\|mort|$               & (p)   & $\mort$                 & \unit{s^{-1}} &  \\
-  $\|mort2|$              & (p)   & $\mortTWO$              & \unit{(mmol C m^{-3})^{-1} s^{-1}} &  \\
-  $\|ExportFrac|$         & (p)   & $\ExportFrac$           & \unit{1} &  \\
-  $\|phytoTempCoeff|$     & (p)   & $\phytoTempCoeff$       & \unit{1} &  \\
-  $\|phytoTempExp1|$      & (p)   & $\phytoTempExpONE$      & \unit{$\ln$(degree)} &  \\
-  $\|phytoTempExp2|$      & (p)   & $\phytoTempExpTWO$      & \unit{(degree C)^{-\phytoDecayPower}} &  \\
-  $\|phytoTempOptimum|$   & (p)   & $\phytoTempOptimum$     & \unit{degree C} &  \\
-  $\|phytoDecayPower|$    & (p)   & $\phytoDecayPower$      & \unit{1} &  \\
-  $\|R\_NC|$              & (p)   & $\RSUBNC$               & \unit{mmol N (mmol C)^{-1}} &  \\
-  $\|R\_PC|$              & (p)   & $\RSUBPC$               & \unit{mmol P (mmol C)^{-1}} &  \\
-  $\|R\_SiC|$             & (p)   & $\RSUBSiC$              & \unit{mmol Si (mmol C)^{-1}} &  \\
-  $\|R\_FeC|$             & (p)   & $\RSUBFeC$              & \unit{mmol Fe (mmol C)^{-1}} &  \\
-  $\|R\_ChlC|$            & (p)   & $\RSUBChlC$             & \unit{mg Chl (mmol C)^{-1}} &  \\
-  $\|R\_PICPOC|$          & (p)   & $\RSUBPICPOC$           & \unit{mmol PIC (mmol POC)^{-1}} &  \\
-  $\|wsink|$              & (p)   & $\wsink$                & \unit{m s^{-1}} &  \\
-  $\|wswim|$              & (p)   & $\wswim$                & \unit{m s^{-1}} &  \\
-  $\|ksatNH4|$            & (p)   & $\ksatNHiv$             & \unit{mmol N m^{-3}} &  \\
-  $\|ksatNO2|$            & (p)   & $\ksatNOii$             & \unit{mmol N m^{-3}} &  \\
-  $\|ksatNO3|$            & (p)   & $\ksatNOiii$            & \unit{mmol N m^{-3}} &  \\
-  $\|ksatPO4|$            & (p)   & $\ksatPOiv$             & \unit{mmol P m^{-3}} &  \\
-  $\|ksatSiO2|$           & (p)   & $\ksatSiOii$            & \unit{mmol Si m^{-3}} &  \\
-  $\|ksatFeT|$            & (p)   & $\ksatFeT$              & \unit{mmol Fe m^{-3}} &  \\
-  $\|ksatPAR|$            & (p)   & $\ksatPAR$              & \unit{(uEin m^{-2} s^{-1})^{-1}} & (for undef \verb|GUD_ALLOW_GEIDER|) \\
-  $\|kinhPAR|$            & (p)   & $\kinhPAR$              & \unit{(uEin m^{-2} s^{-1})^{-1}} & (for undef \verb|GUD_ALLOW_GEIDER|) \\
-  $\|inhibcoef\_geid|$    & (p)   & $\inhibcoefSUBgeid$     & \unit{1} &  \\
-  $\|mQyield|$            & (p)   & $\mQyield$              & \unit{mmol C (uEin)^{-1}} &  \\
-  $\|chl2cmax|$           & (p)   & $\chlTWOcmax$           & \unit{mg Chl (mmol C)^{-1}} &  \\
-  $\|grazemax|$           & (p)   & $\grazemax$             & \unit{s^{-1}} &  \\
-  $\|kgrazesat|$          & (p)   & $\kgrazesat$            & \unit{mmol C m^{-3}} &  \\
-  $\|palat|$              & (p,p) & $\palat_{j,z}$          & \unit{1} &  \\
-  $\|asseff|$             & (p,p) & $\asseff$               & \unit{1} &  \\
-  $\|ExportFracPreyPred|$ & (p,p) & $\ExportFracPreyPred$   & \unit{1} &  \\
-  $\|respiration|$        & (p)   & $\respiration$          & \unit{s^{-1}} &  \\
-  $\|Qnmax|$              & (p)   & $\Qnmax$                & \unit{mmol N (mmol C)^{-1}} &  \\
-  $\|Qnmin|$              & (p)   & $\Qnmin$                & \unit{mmol N (mmol C)^{-1}} &  \\
-  $\|Qpmax|$              & (p)   & $\Qpmax$                & \unit{mmol P (mmol C)^{-1}} &  \\
-  $\|Qpmin|$              & (p)   & $\Qpmin$                & \unit{mmol P (mmol C)^{-1}} &  \\
-  $\|Qsimax|$             & (p)   & $\Qsimax$               & \unit{mmol Si (mmol C)^{-1}} &  \\
-  $\|Qsimin|$             & (p)   & $\Qsimin$               & \unit{mmol Si (mmol C)^{-1}} &  \\
-  $\|Qfemax|$             & (p)   & $\Qfemax$               & \unit{mmol Fe (mmol C)^{-1}} &  \\
-  $\|Qfemin|$             & (p)   & $\Qfemin$               & \unit{mmol Fe (mmol C)^{-1}} &  \\
-  $\|Vmax\_NH4|$          & (p)   & $\VmaxSUBNHiv$          & \unit{mmol N (mmol C)^{-1} s^{-1}} &  \\
-  $\|Vmax\_NO2|$          & (p)   & $\VmaxSUBNOii$          & \unit{mmol N (mmol C)^{-1} s^{-1}} &  \\
-  $\|Vmax\_NO3|$          & (p)   & $\VmaxSUBNOiii$         & \unit{mmol N (mmol C)^{-1} s^{-1}} &  \\
-  $\|Vmax\_N|$            & (p)   & $\VmaxSUBN$             & \unit{mmol N (mmol C)^{-1} s^{-1}} &  \\
-  $\|Vmax\_PO4|$          & (p)   & $\VmaxSUBPOiv$          & \unit{mmol P (mmol C)^{-1} s^{-1}} &  \\
-  $\|Vmax\_SiO2|$         & (p)   & $\VmaxSUBSiOii$         & \unit{mmol Si (mmol C)^{-1} s^{-1}} &  \\
-  $\|Vmax\_FeT|$          & (p)   & $\VmaxSUBFeT$           & \unit{mmol Fe (mmol C)^{-1} s^{-1}} &  \\
-  $\|kexcC|$              & (p)   & $\kexcC$                & \unit{s^{-1}} &  \\
-  $\|kexcN|$              & (p)   & $\kexcN$                & \unit{s^{-1}} &  \\
-  $\|kexcP|$              & (p)   & $\kexcP$                & \unit{s^{-1}} &  \\
-  $\|kexcSi|$             & (p)   & $\kexcSi$               & \unit{s^{-1}} &  \\
-  $\|kexcFe|$             & (p)   & $\kexcFe$               & \unit{s^{-1}} &  \\
+  $\|Xmin|$               & (p)   & $\Xmin$                 & $\unit{mmol C m^{-3}}$ & \\
+  $\|amminhib|$           & (p)   & $\amminhib$             & $\unit{(mmol N m^{-3})^{-1}}$ & \\
+  $\|acclimtimescl|$      & (p)   & $\acclimtimescl$        & $\unit{s^{-1}}$ & \\
+  $\|PCmax|$              & (p)   & $\PCmax$                & $\unit{s^{-1}}$ & \\
+  $\|mort|$               & (p)   & $\mort$                 & $\unit{s^{-1}}$ & \\
+  $\|mort2|$              & (p)   & $\mortTWO$              & $\unit{(mmol C m^{-3})^{-1} s^{-1}}$ & \\
+  $\|ExportFrac|$         & (p)   & $\ExportFrac$           & $\unit{1}$ & \\
+  $\|phytoTempCoeff|$     & (p)   & $\phytoTempCoeff$       & $\unit{1}$ & \\
+  $\|phytoTempExp1|$      & (p)   & $\phytoTempExpONE$      & $\unit{$\ln$(degree)}$ & \\
+  $\|phytoTempExp2|$      & (p)   & $\phytoTempExpTWO$      & $\unit{(degree C)^{-\phytoDecayPower}}$ & \\
+  $\|phytoTempOptimum|$   & (p)   & $\phytoTempOptimum$     & $\unit{degree C}$ & \\
+  $\|phytoDecayPower|$    & (p)   & $\phytoDecayPower$      & $\unit{1}$ & \\
+  $\|R\_NC|$              & (p)   & $\RSUBNC$               & $\unit{mmol N (mmol C)^{-1}}$ & \\
+  $\|R\_PC|$              & (p)   & $\RSUBPC$               & $\unit{mmol P (mmol C)^{-1}}$ & \\
+  $\|R\_SiC|$             & (p)   & $\RSUBSiC$              & $\unit{mmol Si (mmol C)^{-1}}$ & \\
+  $\|R\_FeC|$             & (p)   & $\RSUBFeC$              & $\unit{mmol Fe (mmol C)^{-1}}$ & \\
+  $\|R\_ChlC|$            & (p)   & $\RSUBChlC$             & $\unit{mg Chl (mmol C)^{-1}}$ & \\
+  $\|R\_PICPOC|$          & (p)   & $\RSUBPICPOC$           & $\unit{mmol PIC (mmol POC)^{-1}}$ & \\
+  $\|wsink|$              & (p)   & $\wsink$                & $\unit{m s^{-1}}$ & \\
+  $\|wswim|$              & (p)   & $\wswim$                & $\unit{m s^{-1}}$ & \\
+  $\|ksatNH4|$            & (p)   & $\ksatNHiv$             & $\unit{mmol N m^{-3}}$ & \\
+  $\|ksatNO2|$            & (p)   & $\ksatNOii$             & $\unit{mmol N m^{-3}}$ & \\
+  $\|ksatNO3|$            & (p)   & $\ksatNOiii$            & $\unit{mmol N m^{-3}}$ & \\
+  $\|ksatPO4|$            & (p)   & $\ksatPOiv$             & $\unit{mmol P m^{-3}}$ & \\
+  $\|ksatSiO2|$           & (p)   & $\ksatSiOii$            & $\unit{mmol Si m^{-3}}$ & \\
+  $\|ksatFeT|$            & (p)   & $\ksatFeT$              & $\unit{mmol Fe m^{-3}}$ & \\
+  $\|ksatPAR|$            & (p)   & $\ksatPAR$              & $\unit{(uEin m^{-2} s^{-1})^{-1}}$ & (for undef \verb|GUD_ALLOW_GEIDER|) \\
+  $\|kinhPAR|$            & (p)   & $\kinhPAR$              & $\unit{(uEin m^{-2} s^{-1})^{-1}}$ & (for undef \verb|GUD_ALLOW_GEIDER|) \\
+  $\|inhibcoef\_geid|$    & (p)   & $\inhibcoefSUBgeid$     & $\unit{1}$ & \\
+  $\|mQyield|$            & (p)   & $\mQyield$              & $\unit{mmol C (uEin)^{-1}}$ & \\
+  $\|chl2cmax|$           & (p)   & $\chlTWOcmax$           & $\unit{mg Chl (mmol C)^{-1}}$ & \\
+  $\|grazemax|$           & (p)   & $\grazemax$             & $\unit{s^{-1}}$ & \\
+  $\|kgrazesat|$          & (p)   & $\kgrazesat$            & $\unit{mmol C m^{-3}}$ & \\
+  $\|palat|$              & (p,p) & $\palat_{j,z}$          & $\unit{1}$ & \\
+  $\|asseff|$             & (p,p) & $\asseff$               & $\unit{1}$ & \\
+  $\|ExportFracPreyPred|$ & (p,p) & $\ExportFracPreyPred$   & $\unit{1}$ & \\
+  $\|respiration|$        & (p)   & $\respiration$          & $\unit{s^{-1}}$ & \\
+  $\|Qnmax|$              & (p)   & $\Qnmax$                & $\unit{mmol N (mmol C)^{-1}}$ & \\
+  $\|Qnmin|$              & (p)   & $\Qnmin$                & $\unit{mmol N (mmol C)^{-1}}$ & \\
+  $\|Qpmax|$              & (p)   & $\Qpmax$                & $\unit{mmol P (mmol C)^{-1}}$ & \\
+  $\|Qpmin|$              & (p)   & $\Qpmin$                & $\unit{mmol P (mmol C)^{-1}}$ & \\
+  $\|Qsimax|$             & (p)   & $\Qsimax$               & $\unit{mmol Si (mmol C)^{-1}}$ & \\
+  $\|Qsimin|$             & (p)   & $\Qsimin$               & $\unit{mmol Si (mmol C)^{-1}}$ & \\
+  $\|Qfemax|$             & (p)   & $\Qfemax$               & $\unit{mmol Fe (mmol C)^{-1}}$ & \\
+  $\|Qfemin|$             & (p)   & $\Qfemin$               & $\unit{mmol Fe (mmol C)^{-1}}$ & \\
+  $\|Vmax\_NH4|$          & (p)   & $\VmaxSUBNHiv$          & $\unit{mmol N (mmol C)^{-1} s^{-1}}$ & \\
+  $\|Vmax\_NO2|$          & (p)   & $\VmaxSUBNOii$          & $\unit{mmol N (mmol C)^{-1} s^{-1}}$ & \\
+  $\|Vmax\_NO3|$          & (p)   & $\VmaxSUBNOiii$         & $\unit{mmol N (mmol C)^{-1} s^{-1}}$ & \\
+  $\|Vmax\_N|$            & (p)   & $\VmaxSUBN$             & $\unit{mmol N (mmol C)^{-1} s^{-1}}$ & \\
+  $\|Vmax\_PO4|$          & (p)   & $\VmaxSUBPOiv$          & $\unit{mmol P (mmol C)^{-1} s^{-1}}$ & \\
+  $\|Vmax\_SiO2|$         & (p)   & $\VmaxSUBSiOii$         & $\unit{mmol Si (mmol C)^{-1} s^{-1}}$ & \\
+  $\|Vmax\_FeT|$          & (p)   & $\VmaxSUBFeT$           & $\unit{mmol Fe (mmol C)^{-1} s^{-1}}$ & \\
+  $\|kexcC|$              & (p)   & $\kexcC$                & $\unit{s^{-1}}$ & \\
+  $\|kexcN|$              & (p)   & $\kexcN$                & $\unit{s^{-1}}$ & \\
+  $\|kexcP|$              & (p)   & $\kexcP$                & $\unit{s^{-1}}$ & \\
+  $\|kexcSi|$             & (p)   & $\kexcSi$               & $\unit{s^{-1}}$ & \\
+  $\|kexcFe|$             & (p)   & $\kexcFe$               & $\unit{s^{-1}}$ & \\
 \hline
 \multicolumn{5}{@{}l}{\texttt{\&GUD\_RADTRANS\_TRAITS}}\\
-  $\|aphy\_chl|$          & (p,l) & $\aphySUBchl$           & \unit{m^{-1} (mg Chl m^{-3})^{-1}} &  \\
-  $\|aphy\_chl\_ps|$      & (p,l) & $\aphySUBchlSUBps$      & \unit{m^{-1} (mg Chl m^{-3})^{-1}} &  \\
-  $\|bphy\_chl|$          & (p,l) & $\bphySUBchl$           & \unit{m^{-1} (mg Chl m^{-3})^{-1}} &  \\
-  $\|bbphy\_chl|$         & (p,l) & $\bbphySUBchl$          & \unit{m^{-1} (mg Chl m^{-3})^{-1}} &
+  $\|aphy\_chl|$          & (p,l) & $\aphySUBchl$           & $\unit{m^{-1} (mg Chl m^{-3})^{-1}}$ & \\
+  $\|aphy\_chl\_ps|$      & (p,l) & $\aphySUBchlSUBps$      & $\unit{m^{-1} (mg Chl m^{-3})^{-1}}$ & \\
+  $\|bphy\_chl|$          & (p,l) & $\bphySUBchl$           & $\unit{m^{-1} (mg Chl m^{-3})^{-1}}$ & \\
+  $\|bbphy\_chl|$         & (p,l) & $\bbphySUBchl$          & $\unit{m^{-1} (mg Chl m^{-3})^{-1}}$ &
 \end{longtable}}
 Dimensions: p -- nplank, l -- nlam.
 
@@ -1073,21 +1073,35 @@ Dimensions: p -- nplank, l -- nlam.
 
 \subsubsection{Allometric trait generation}
 
-Traits are generated based on values for functional groups and allometric
-scaling relations,
+Plankton types are organized into functional groups.  \verb|grp_nplank(g)|
+sets the number of types in group \verb|g|.  Traits may be set the same for all
+types in a group, e.g., \verb|grp_diazo(g)|, or based on allometric scaling
+relations,
 \[
   \mathrm{trait}_j = a_g \cdot V_j^{b_g}
 \]
-where $V_j$ is the volume of the given type and $a_g$ and $b_g$ are the
-scaling coefficients of the its functional group.
-The volumes $V_j$ of the types in each group are
-\[
-  V_{0 g}, f_g V_{0 g}, f_g^2 V_{0 g}, \dots
-\]
-where $V_{0 g}=\verb|biovol0(g)|$ and $f_g=\verb|biovolfac(g)|$.
+with per-group scaling coefficients $a_g$ and $b_g$.
 
-The scaling coefficients are read from
-namelist \verb|&gud_trait_params| in \verb|data.gud|.  The following table
+The volumes $V_j$ of all types can be set in four ways (in order or
+decreasing precedence),
+\[
+  V_j = \begin{cases}
+    \verb|grp_biovol(i,g)| &  \\
+    V_{\log}(\verb|grp_biovolind(i,g)|) \\
+    V_{\log}(\verb|logvol0ind(g)|+i-1) \\
+    V_{0 g} f_g^{i-1}
+  \end{cases}
+\]
+where $i$ is the index of type $j$ within the functional group.
+$V_{\log}$ is a series of volumes, evenly spaced in log space and defined by
+parameters $B=\verb|logvolbase|$ and $I=\verb|logvolinc|$,
+\[
+  V_{\log} = 10^B, 10^{B+I}, 10^{B+2I}, \dots
+\]
+and $V_{0 g}=\verb|biovol0(g)|$ and $f_g=\verb|biovolfac(g)|$.
+
+The scaling coefficients are read from namelist \verb|&gud_trait_params| in
+\verb|data.gud|.  The following table
 shows the correspondence between traits and trait parameters.  Where $b$ is
 not given, it is set to 0, i.e., all types in the group share the same trait
 value.
