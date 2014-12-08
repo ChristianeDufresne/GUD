@@ -29,14 +29,15 @@
 \let\norm=\|
 \def\|#1|{\operatorname{#1}}
 
-\def\diacoc{\|diacoc|}
-\def\diazo{\|diazo|}
-\def\useNHiv{\|useNH4|}
-\def\useNOii{\|useNO2|}
-\def\useNOiii{\|useNO3|}
-\def\combNO{\|combNO|}
-\def\tempMort{e^{\|mort|}}
-\def\tempMortTWO{e^{\|mort2|}}
+\def\hasSi{\|hasSi|_j}
+\def\hasPIC{\|hasPIC|_j}
+\def\diazo{\|diazo|_j}
+\def\useNHiv{\|useNH4|_j}
+\def\useNOii{\|useNO2|_j}
+\def\useNOiii{\|useNO3|_j}
+\def\combNO{\|combNO|_j}
+\def\tempMort{e^{\|mort|}_j}
+\def\tempMortTWO{e^{\|mort2|}_j}
 \def\apSUBtype{\|ap\_type|}
 \def\Xmin{c^{\min}_j}
 \def\amminhib{\sigma_1}
@@ -308,13 +309,13 @@ and
            f^\up_j(T) \cdot \X_j
 \]
 
-\paragraph{Si} has linear limitation when using a Si quota,
+\paragraph{Si:} Diatoms ($\|hasSi|=1$) have linear limitation when using a Si quota,
 \[
   \gamma^{\Si}_j = \left[ \frac{Q^{\Si}_j - Q^{\Si\min}_j}
                            {Q^{\Si\max}_j - Q^{\Si\min}_j}
                    \right]_0^1
 \]
-and is otherwise analogous to P.
+Otherwise Si is analogous to P.
 
 
 \paragraph{Without N quota:}
@@ -332,10 +333,10 @@ and is otherwise analogous to P.
   \gamma^\N_j = \left[ \gamma^{\NHiv}_j + \gamma^{\NOii}_j + \gamma^{\NOiii}_j \right]_0^1
 \]
 \[
-  \gamma^{\NHiv}_j = \verb|useNH4|_j \cdot \frac{\NH_4}{\NH_4 + k^{\NHiv}_j}
+  \gamma^{\NHiv}_j = \verb|useNH4| \cdot \frac{\NH_4}{\NH_4 + k^{\NHiv}_j}
 \]
 \[
-  \gamma^{\NOii}_j = \verb|useNO2|_j \cdot
+  \gamma^{\NOii}_j = \verb|useNO2| \cdot
   \ee^{-\sigma_1 \NH_4} \cdot
   \begin{cases}
     \dfrac{\NO_2}{\NO_2 + k^{\NOii}_j} & \text{if not }\verb|combNO| \\[3ex]
@@ -343,11 +344,11 @@ and is otherwise analogous to P.
   \end{cases}
 \]
 \[
-  \gamma^{\NOiii}_j = \verb|useNO3|_j \cdot
+  \gamma^{\NOiii}_j = \verb|useNO3| \cdot
   \ee^{-\sigma_1 \NH_4} \cdot
   \begin{cases}
-    \dfrac{\NO_3}{\NO_3 + k^{\NOiii}_j} & \text{if not }\verb|combNO| \\[3ex]
-    \dfrac{\NO_3}{\NO_2 + \NO_3 + k^{\NOiii}_j} & \text{if }\verb|combNO|
+    \dfrac{\NO_3}{\NO_3 + k^{\NOiii}_j} & \text{if not }\verb|combNO|_j \\[3ex]
+    \dfrac{\NO_3}{\NO_2 + \NO_3 + k^{\NOiii}_j} & \text{if }\verb|combNO|_j
   \end{cases}
 \]
 \begin{align}
@@ -994,7 +995,8 @@ Traits are generated from the parameters in \verb|&GUD_TRAIT_PARAMS|
 \hline
 \endhead
 \multicolumn{5}{@{}l}{\texttt{\&GUD\_TRAITS}}\\
-  $\|diacoc|$             & (p)   & $\diacoc$               &  & 1: diatom, 2: diazo, 0: neither \\
+  $\|hasSi|$              & (p)   & $\hasSi$                &  & 1 for diatoms \\
+  $\|hasPIC|$             & (p)   & $\hasPIC$               &  & 0: set $\RSUBPICPOC=0$ \\
   $\|diazo|$              & (p)   & $\diazo$                &  & 1: diazotroph, 0: not \\
   $\|useNH4|$             & (p)   & $\useNHiv$              &  & 1: can use $\NH_4$ \\
   $\|useNO2|$             & (p)   & $\useNOii$              &  & 1: can use $\NO_2$ \\
@@ -1110,7 +1112,8 @@ value.
 \textbf{trait} & {\boldmath$a$} & \textbf{default} & {\boldmath$b$} & \textbf{default} \\
 \hline
 \endhead
-  \verb|diacoc|             & \verb|grp_diacoc|                 & 0         \\
+  \verb|hasSi|              & \verb|grp_hasSI|                  & 0         \\
+  \verb|hasPIC|             & \verb|grp_hasPIC|                 & 0         \\
   \verb|diazo|              & \verb|grp_diazo|                  & 0         \\
   \verb|useNH4|             & \verb|grp_useNH4|                 & 1         \\
   \verb|useNO2|             & \verb|grp_useNO2|                 & 1         \\

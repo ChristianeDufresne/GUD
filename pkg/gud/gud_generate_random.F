@@ -92,6 +92,7 @@ C     used to be global in monod pkg
 
       INTEGER physize(nplank)
       INTEGER nsource(nplank)
+      INTEGER diacoc(nplank)
 
 C ======================================================================
 
@@ -813,6 +814,17 @@ c       chl2cmin(np) = 0.003  _d 0 * 12. _d 0  ! mg Chl a/mmol C
         ksatSiO2(np) = 0.0
         Vmax_SiO2(np) = 0.0
         R_SiC(np) = 0.0
+      ENDIF
+
+      IF (diacoc(np) .EQ. 1) THEN
+        hasSi(np) = 1
+        hasPIC(np) = 0
+      ELSEIF (diacoc(np) .EQ. 2) THEN
+        hasSi(np) = 0
+        hasPIC(np) = 1
+      ELSE
+        hasSi(np) = 0
+        hasPIC(np) = 0
       ENDIF
 
       ENDDO  ! np

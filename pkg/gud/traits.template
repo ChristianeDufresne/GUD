@@ -20,10 +20,6 @@ UNINIT_RL = -999999999D0
 SMALL = 0
 LARGE = 1
 
-NODIACOC = 0
-DIATOM   = 1
-COCCO    = 2
-
 USENH4NO2    = 1
 USENH4ONLY   = 2
 USENH4NO2NO3 = 3
@@ -39,7 +35,8 @@ USENH4NO2NO3 = 3
 
 DIMENSION(nplank)
 
-diacoc(:)           = UNINIT_I   ! 1
+hasSi(:)            = UNINIT_I   ! 1
+hasPIC(:)           = UNINIT_I   ! 1
 diazo(:)            = UNINIT_I   ! 1
 useNH4(:)           = UNINIT_I   ! 1
 useNO2(:)           = UNINIT_I   ! 1
@@ -185,13 +182,13 @@ CODE:   IF (useNO3(jp).EQ.0 .OR. useNO2(jp).EQ.0) THEN
 CODE:     combNO(jp)=0
 CODE:   ENDIF
 ! Silicate parameters to zero for non-diatoms
-CODE:   IF (diacoc(jp) .NE. 1) THEN
+CODE:   IF (hasSi(jp) .EQ. 0) THEN
 CODE:     vmax_SiO2(jp) = 0.0 _d 0
 CODE:     ksatSiO2(jp) = 0.0 _d 0
 CODE:     R_SiC(jp) = 0.0 _d 0
 CODE:   ENDIF
 ! only Coccolithophores have PIC
-CODE:   IF (diacoc(jp) .NE. 2) THEN
+CODE:   IF (hasPIC(jp) .EQ. 0) THEN
 CODE:     R_PICPOC(jp) = 0.0 _d 0
 CODE:   ENDIF
 CODE: ENDDO

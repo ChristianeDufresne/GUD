@@ -187,7 +187,8 @@ C compute traits from trait parameters
 C ----------------------------------------------------------------------
 C non-allometric traits (same within group)
 
-        diacoc(jp)     = grp_diacoc(g)
+        hasSi(jp)      = grp_hasSi(g)
+        hasPIC(jp)     = grp_hasPIC(g)
         diazo(jp)      = grp_diazo(g)
         useNH4(jp)     = grp_useNH4(g)
         useNO2(jp)     = grp_useNO2(g)
