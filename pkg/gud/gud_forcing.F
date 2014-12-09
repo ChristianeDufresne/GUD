@@ -141,8 +141,11 @@ C     scavenging
       DO k=1,Nr
       DO j=1,sNy
       DO i=1,sNx
-#ifdef GUD_PART_SCAV
+#ifdef GUD_PART_SCAV_POP
         scav_poc = MAX(0 _d 0, Ptracer(i,j,k,bi,bj,iPOP))/scav_R_POPPOC
+        scv = scav_rat*scav_inter*(scav_poc**scav_exp)
+#elif defined(GUD_PART_SCAV)
+        scav_poc = MAX(0 _d 0, Ptracer(i,j,k,bi,bj,iPOC))
         scv = scav_rat*scav_inter*(scav_poc**scav_exp)
 #else
         scv = scav

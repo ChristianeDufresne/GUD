@@ -67,7 +67,7 @@ C temperature
 C iron
 
 #define GUD_MINFE
-#define GUD_PART_SCAV
+#define GUD_PART_SCAV_POP
 #define GUD_IRON_SED_SOURCE_VARIABLE
 
 C debugging

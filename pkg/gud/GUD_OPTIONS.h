@@ -80,6 +80,9 @@ C debugging
 
 C deprecated
 
+C base particle scavenging on POP as in darwin2
+#undef  GUD_PART_SCAV_POP
+
 C these are for gud_generate_random
 #undef  GUD_RANDOM_TRAITS
 #undef  GUD_TWO_SPECIES_SETUP
