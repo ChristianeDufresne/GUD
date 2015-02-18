@@ -106,6 +106,9 @@ c !LOCAL VARIABLES: ====================================================
       _RL graz2CDOM, exude_CDOM
 #endif
 
+      _RL EPS
+      PARAMETER (EPS=1D-38)
+
 C==== make all bio fields non-negative and compute quotas ==============
 
 C fixed carbon quota, for now 1.0 (may change later)
@@ -113,11 +116,7 @@ C fixed carbon quota, for now 1.0 (may change later)
       X(:) = MAX(0., Ptr(ic:ec))/Qc(:)
 C other elements: get quota from corresponding ptracer or set to fixed
 c ratio if not variable.
-      WHERE (X(:) .GT. 0.0 _d 0)
-        Xi(:) = 1.0 _d 0/X(:)
-      ELSEWHERE
-        Xi(:) = 0.
-      ENDWHERE
+      Xi(:) = 1.0 _d 0/MAX(EPS, X(:))
 #ifdef GUD_ALLOW_NQUOTA
       Qn(:) = MAX(0., Ptr(in:en))*Xi(:)
 #else
