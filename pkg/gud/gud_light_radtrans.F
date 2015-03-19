@@ -144,16 +144,12 @@ c         absorption by phyto
            actot  = actot  + phychl(jp)*aphy_chl(iMinPhoto+jp-1,l)
            bctot  = bctot  + phychl(jp)*bphy_chl(iMinPhoto+jp-1,l)
            bbctot = bbctot + phychl(jp)*bbphy_chl(iMinPhoto+jp-1,l)
-      if(k.eq.1.and.l.eq.1)print*,'ac',jp,phychl(jp),
-     & aphy_chl(iMinPhoto+jp-1,l)
           ENDDO
 c         add water and CDOM
           a_k(k,l)  = aw(l) + aCDOM(l) + actot  + part*apart_P(l)
           bt_k(k,l) = bw(l)            + bctot  + part*bpart_P(l)
           bb_k(k,l) = gud_bbw*bw(l) + bbctot + part*bbpart_P(l)
           bb_k(k,l) = MAX(gud_bbmin, bb_k(k,l))
-      print*,'abs',k,l,a_k(k,l),bt_k(k,l),bb_k(k,l),aw(l),aCDOM(l),
-     &   actot, part*apart_P(l)
          ENDDO
 
 C       k
@@ -162,8 +158,6 @@ C ======================================================================
 
         Edwsf(:) = OASIM_Ed(i,j,bi,bj,:)
         Eswsf(:) = OASIM_Es(i,j,bi,bj,:)
-        print*,'ed',edwsf
-        print*,'es',eswsf
 
         CALL GUD_RADTRANS_DIRECT(
      I                dz_k,rmud,Edwsf,Eswsf,a_k,bt_k,bb_k,
@@ -172,8 +166,6 @@ C ======================================================================
      O                PAR_k,
      O                amp1,amp2,
      I                myThid)
-
-        print*,'PAR',PAR_k(1,:)
 
         DO l = 1,nlam
          DO k = 1,Nr
