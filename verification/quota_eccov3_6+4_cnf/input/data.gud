@@ -97,7 +97,8 @@
 #
  gud_effective_ksat= T,
 #
- grp_ExportFrac(:)= .4, .4, .1, .1, .4, .4, .1, .6
+ grp_ExportFracMort(:)= .4, .4, .1, .1, .4, .4, .1, .6
+ grp_ExportFracMort2(:)= .4, .4, .1, .1, .4, .4, .1, .6
  grp_ExportFracPreyPred(1:7,8)= 7*.8,
  grp_R_ChlC(8)= 0.,
  a_graz(8)= 2.2648072697136064,

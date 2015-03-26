@@ -60,7 +60,8 @@
  grp_tempMort(:)=        0, 0, 0, 0, 1,
  grp_tempMort2(:)=       0, 0, 0, 0, 1,
  grp_ExportFracPreyPred(1:4,5)= 2*.19999998807907104, 2*.5,
- grp_ExportFrac(:)=     2*.19999998807907104, 3*.5,
+ grp_ExportFracMort(:)=     2*.19999998807907104, 3*.5,
+ grp_ExportFracMort2(:)=     2*.19999998807907104, 3*.5,
  grp_mQyield(:)= 4*1.915E-5,
 # zoo don't sink, have Chl
  grp_R_ChlC(5)= 0.,

@@ -1,6 +1,7 @@
  &GUD_TRAITS 
 # small zoo
- EXPORTFRAC(25:26)= 2*0.2,
+ EXPORTFRACMort(25:26)= 2*0.2,
+ EXPORTFRACMort2(25:26)= 2*0.2,
 
  PALAT=  1444*0.0 ,
  PALAT(  1,25)=  1.0,
