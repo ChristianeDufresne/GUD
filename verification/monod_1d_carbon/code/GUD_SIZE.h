@@ -16,6 +16,7 @@ C Contains dimensions and index ranges for gud model.
       integer iMinPrey, iMaxPrey
       integer iMinPred, iMaxPred
       integer nChl
+      integer nPPplank
       parameter(nplank=11)
       parameter(nGroup=5)
       parameter(nlam=1)
@@ -26,6 +27,7 @@ C Contains dimensions and index ranges for gud model.
       parameter(iMinPred=iMaxPhoto+1, iMaxPred=nplank)
 C     to turn off nitrogen quota, set to zero
       parameter(nChl=0)
+      parameter(nPPplank=0)
 
 CEOP
 #endif /* ALLOW_GUD */

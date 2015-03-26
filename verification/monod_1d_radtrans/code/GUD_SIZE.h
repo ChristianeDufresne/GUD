@@ -16,6 +16,7 @@ C Contains dimensions and index ranges for cell model.
       integer iMinPrey, iMaxPrey
       integer iMinPred, iMaxPred
       integer nChl
+      integer nPPplank
       parameter(nlam=13)
       parameter(nopt=4)
       parameter(nplank=80)
@@ -26,6 +27,7 @@ C Contains dimensions and index ranges for cell model.
       parameter(nPhoto=iMaxPhoto+1-iMinPhoto)
 C     to turn off nitrogen quota, set to zero
       parameter(nChl=0)
+      parameter(nPPplank=0)
 
 CEOP
 #endif /* ALLOW_GUD */

@@ -16,6 +16,7 @@ C Contains dimensions and index ranges for cell model.
       integer iMinPrey, iMaxPrey
       integer iMinPred, iMaxPred
       integer nChl
+      integer nPPplank
       parameter(nlam=1)
       parameter(nopt=1)
       parameter(nplank=8)
@@ -25,6 +26,7 @@ C Contains dimensions and index ranges for cell model.
       parameter(iMinPrey=1, iMaxPrey=iMaxPhoto)
       parameter(iMinPred=iMaxPhoto+1, iMaxPred=nplank)
       parameter(nChl=nPhoto)
+      parameter(nPPplank=0)
 
 CEOP
 #endif /* ALLOW_GUD */

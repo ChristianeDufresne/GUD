@@ -34,6 +34,16 @@
  fields(31,1)= 'atten   ',
  fields(32,1)= 'surfPAR ',
  fields(33,1)= 'exfPAR  ',
+ fields(34,1)= 'PP      ',
+ fields(35,1)= 'PP0001  ',
+ fields(36,1)= 'PP0002  ',
+ fields(37,1)= 'PP0003  ',
+ fields(38,1)= 'PP0004  ',
+ fields(39,1)= 'PP0005  ',
+ fields(40,1)= 'PP0006  ',
+ fields(41,1)= 'PP0007  ',
+ fields(42,1)= 'PP0008  ',
+ fields(43,1)= 'PP0009  ',
  &
  &diag_statis_parms
  &
