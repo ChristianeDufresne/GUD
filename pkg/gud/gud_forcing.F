@@ -292,6 +292,11 @@ C === diagnostics ======================================================
      &          bi,bj,myThid)
        CALL DIAGNOSTICS_FILL(diags(1,1,1,iDenit),'Denit   ',0,Nr,3,
      &          bi,bj,myThid)
+       DO iTr=1,nPPplank
+        WRITE(diagname, '(A,I4.4)') 'PP', iTr
+        CALL DIAGNOSTICS_FILL(diags(1,1,1,iPPplank+iTr-1), diagname,
+     &          0,Nr,3,bi,bj,myThid)
+       ENDDO
 #ifdef GUD_ALLOW_CARBON
        CALL DIAGNOSTICS_FILL(pH,     'pH      ',0,Nr,1,bi,bj,myThid)
        CALL DIAGNOSTICS_FILL(pCO2,   'pCO2    ',0,Nr,1,bi,bj,myThid)

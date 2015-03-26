@@ -501,6 +501,9 @@ C=======================================================================
         consumFeT  = consumFeT  + uptakeFeT 
 
         diags(iPP) = diags(iPP) + growth
+        IF (j .LE. nPPplank) THEN
+          diags(iPPplank+j-1) = diags(iPPplank+j-1) + growth
+        ENDIF
         IF (diazo(j) .GT. 0.0 _d 0) THEN
          diags(iNfix)=diags(iNfix)+uptakeN-uptakeNH4-uptakeNO2-uptakeNO3
         ENDIF

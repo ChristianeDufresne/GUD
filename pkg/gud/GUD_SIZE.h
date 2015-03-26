@@ -23,6 +23,7 @@ C   nChl = iMaxPhoto
       integer iMinPrey, iMaxPrey
       integer iMinPred, iMaxPred
       integer nChl
+      integer nPPplank
       parameter(nplank=4)
       parameter(nGroup=5)
       parameter(nlam=1)
@@ -32,6 +33,7 @@ C   nChl = iMaxPhoto
       parameter(iMinPred=iMaxPhoto+1, iMaxPred=nplank)
       parameter(nPhoto=iMaxPhoto+1-iMinPhoto)
       parameter(nChl=iMaxPhoto)
+      parameter(nPPplank=0)
 
 CEOP
 #endif /* ALLOW_GUD */

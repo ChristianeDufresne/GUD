@@ -43,7 +43,7 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
       WRITE(diagName,'(A)')'PP'
       WRITE(diagTitle,'(A)')'Primary Production'
-      diagUnits = 'mmol P/m^3/s    '
+      diagUnits = 'mmol C/m^3/s    '
       diagCode  = 'SM P    MR      '
       CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I           diagName, diagCode, diagUnits, diagTitle, 0, myThid )
@@ -94,6 +94,15 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
         WRITE(diagName,'(A,I2.2)')'PAR',j
         WRITE(diagTitle,'(A,I2)')'PAR waveband ',j
         diagUnits = 'uEin/m^2/s      '
+        diagCode  = 'SM P    MR      '
+        CALL DIAGNOSTICS_ADDTOLIST( diagNum,
+     I             diagName, diagCode, diagUnits, diagTitle, 0, myThid )
+      ENDDO
+
+      DO j = 1, nPPplank
+        WRITE(diagName,'(A,I4.4)')'PP',j
+        WRITE(diagTitle,'(A,I4)')'Primary Production plankton ',j
+        diagUnits = 'mmol C/m^3/s    '
         diagCode  = 'SM P    MR      '
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I             diagName, diagCode, diagUnits, diagTitle, 0, myThid )

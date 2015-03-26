@@ -15,12 +15,14 @@ C Contains indices into diagnostics array
       integer iNfix
       integer iDenit
       integer iDenitN
+      integer iPPplank
       integer gud_nDiag
       PARAMETER(iPP=   1)
       PARAMETER(iNfix= 2)
       PARAMETER(iDenit=3)
       PARAMETER(iDenitN=4)
-      PARAMETER(gud_nDiag=iDenitN)
+      PARAMETER(iPPplank=5)
+      PARAMETER(gud_nDiag=iPPplank+nPPplank-1)
 
 CEOP
 #endif /* ALLOW_GUD */
