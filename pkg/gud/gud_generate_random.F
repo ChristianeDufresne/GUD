@@ -484,10 +484,18 @@ c mortality and export fraction rates
 c big/small phyto mortality rates..
       IF(physize(np) .EQ. 1)then
         mortdays = Bigmort +RandnoMort*Bigmortrange
+        ExportFracMort(np)=Bigexport
+        ExportFracMort2(np)=Bigexport
+#ifdef GUD_ALLOW_EXUDE
         ExportFrac(np)=Bigexport
+#endif
       ELSE
         mortdays = Smallmort +RandNoMort*Smallmortrange
+        ExportFracMort(np)=Smallexport
+        ExportFracMort2(np)=Smallexport
+#ifdef GUD_ALLOW_EXUDE
         ExportFrac(np)=Smallexport
+#endif
       ENDIF
 #ifdef GUD_TWO_SPECIES_SETUP
       IF(physize(np) .EQ. 1)then
@@ -847,8 +855,14 @@ c assume zoo(1) = small, zoo(2) = big
        physize(iMaxPred) = 1
        grazemax(iMinPred) = GrazeFast
        grazemax(iMaxPred) = GrazeFast
+       ExportFracMort(iMinPred) = ZooexfacSmall
+       ExportFracMort(iMaxPred) = ZooexfacBig
+       ExportFracMort2(iMinPred) = ZooexfacSmall
+       ExportFracMort2(iMaxPred) = ZooexfacBig
+#ifdef ALLOW_GUD_EXUDE
        ExportFrac(iMinPred) = ZooexfacSmall
        ExportFrac(iMaxPred) = ZooexfacBig
+#endif
        mort(iMinPred) = ZoomortSmall
        mort(iMaxPred) = ZoomortBig
        mort2(iMinPred) = ZoomortSmall2
@@ -895,7 +909,11 @@ c     not oldTwoGrazers
 
        DO nz = iMinPred, iMaxPred
         grazemax(nz) = GrazeRate
+        ExportFracMort(nz) = Zooexfac
+        ExportFracMort2(nz) = Zooexfac
+#ifdef GUD_ALLOW_EXUDE
         ExportFrac(nz) = Zooexfac
+#endif
         mort(nz) = Zoomort
         mort2(nz) = Zoomort2
         dmzoo(nz) = ZooDM

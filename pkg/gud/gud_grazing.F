@@ -84,6 +84,7 @@ c !LOCAL VARIABLES: ====================================================
 
       _RL Xe
       _RL mortX
+      _RL mortX2
 
       _RL exude_DOC
       _RL exude_DON
@@ -362,42 +363,50 @@ C==== mortality ========================================================
 
       DO jp = 1, nplank
         Xe = MAX(0 _d 0, X(jp) - Xmin(jp))
-        mortX = mort(jp)*Xe*MAX(mortTempFuncMin(jp), mortTempFunc) +
-     &          mort2(jp)*Xe*Xe*MAX(mort2TempFuncMin(jp), mort2TempFunc)
+        mortX = mort(jp)*Xe*MAX(mortTempFuncMin(jp), mortTempFunc)
+        mortX2= mort2(jp)*Xe*Xe*MAX(mort2TempFuncMin(jp), mort2TempFunc)
 
-        mort_c(jp) = mortX
+        mort_c(jp) = mortX + mortX2
 
-        exude_DOC = exude_DOC + (1.-ExportFrac(jp))*mortX
-        exude_POC = exude_POC +     ExportFrac(jp) *mortX
+        exude_DOC = exude_DOC + (1.-ExportFracMort(jp)) *mortX
+     &                        + (1.-ExportFracMort2(jp))*mortX2
+        exude_POC = exude_POC +     ExportFracMort(jp)  *mortX
+     &                        +     ExportFracMort2(jp) *mortX2
 
-        exude_DON = exude_DON + (1.-ExportFrac(jp))*mortX*Qn(jp)
-        exude_PON = exude_PON +     ExportFrac(jp) *mortX*Qn(jp)
+        exude_DON = exude_DON + (1.-ExportFracMort(jp)) *mortX *Qn(jp)
+     &                        + (1.-ExportFracMort2(jp))*mortX2*Qn(jp)
+        exude_PON = exude_PON +     ExportFracMort(jp)  *mortX *Qn(jp)
+     &                        +     ExportFracMort2(jp) *mortX2*Qn(jp)
 
-        exude_DOP = exude_DOP + (1.-ExportFrac(jp))*mortX*Qp(jp)
-        exude_POP = exude_POP +     ExportFrac(jp) *mortX*Qp(jp)
+        exude_DOP = exude_DOP + (1.-ExportFracMort(jp)) *mortX *Qp(jp)
+     &                        + (1.-ExportFracMort2(jp))*mortX2*Qp(jp)
+        exude_POP = exude_POP +     ExportFracMort(jp)  *mortX *Qp(jp)
+     &                        +     ExportFracMort2(jp) *mortX2*Qp(jp)
 
-        exude_DOFe = exude_DOFe + (1.-ExportFrac(jp))*mortX*Qfe(jp)
-        exude_POFe = exude_POFe +     ExportFrac(jp) *mortX*Qfe(jp)
+        exude_DOFe= exude_DOFe+ (1.-ExportFracMort(jp)) *mortX *Qfe(jp)
+     &                        + (1.-ExportFracMort2(jp))*mortX2*Qfe(jp)
+        exude_POFe= exude_POFe+     ExportFracMort(jp)  *mortX *Qfe(jp)
+     &                        +     ExportFracMort2(jp) *mortX2*Qfe(jp)
 
-        exude_POSi = exude_POSi + mortX*Qsi(jp)
+        exude_POSi = exude_POSi + mort_c(jp)*Qsi(jp)
 
-        exude_PIC = exude_PIC + mortX*R_PICPOC(jp)
+        exude_PIC = exude_PIC + mort_c(jp)*R_PICPOC(jp)
 
         respir_c = respiration(jp)*Xe*reminTempFunc
         respir = respir + respir_c
 
-        gTr(ic+jp-1)=gTr(ic+jp-1)  - mortX - respir_c
+        gTr(ic+jp-1)=gTr(ic+jp-1)  - mort_c(jp) - respir_c
 #ifdef GUD_ALLOW_NQUOTA
-        gTr(in+jp-1)=gTr(in+jp-1)  - mortX*Qn(jp)
+        gTr(in+jp-1)=gTr(in+jp-1)  - mort_c(jp)*Qn(jp)
 #endif
 #ifdef GUD_ALLOW_PQUOTA
-        gTr(ip+jp-1)=gTr(ip+jp-1)  - mortX*Qp(jp)
+        gTr(ip+jp-1)=gTr(ip+jp-1)  - mort_c(jp)*Qp(jp)
 #endif
 #ifdef GUD_ALLOW_SIQUOTA
-        gTr(isi+jp-1)=gTr(isi+jp-1) - mortX*Qsi(jp)
+        gTr(isi+jp-1)=gTr(isi+jp-1) - mort_c(jp)*Qsi(jp)
 #endif
 #ifdef GUD_ALLOW_FEQUOTA
-        gTr(ife+jp-1)=gTr(ife+jp-1) - mortX*Qfe(jp)
+        gTr(ife+jp-1)=gTr(ife+jp-1) - mort_c(jp)*Qfe(jp)
 #endif
 
 #ifdef GUD_ALLOW_EXUDE

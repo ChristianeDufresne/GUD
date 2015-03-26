@@ -230,7 +230,11 @@ grp_R_SiC(:) = 0D0
 grp_R_FeC(:) = 1.0D-3/120.0D0
 grp_R_ChlC(:) = 16D0/120D0
 grp_R_PICPOC(:) = 0.8D0
+grp_ExportFracMort(:) = 0.5D0
+grp_ExportFracMort2(:) = 0.5D0
+#ifdef GUD_ALLOW_EXUDE
 grp_ExportFrac(:) = 0.5D0
+#endif
 grp_mort(:) =  0.02D0 / pday
 grp_mort2(:) = 0.0D0
 grp_tempMort(:) = 1

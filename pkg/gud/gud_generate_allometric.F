@@ -205,7 +205,11 @@ C mortality
         mort(jp) = grp_mort(g)
         mort2(jp) = grp_mort2(g)
 C       if 0, temperature dependent, if 1, not.
+        ExportFracMort(jp) = grp_ExportFracMort(g)
+        ExportFracMort2(jp) = grp_ExportFracMort2(g)
+#ifdef GUD_ALLOW_EXUDE
         ExportFrac(jp) = grp_ExportFrac(g)
+#endif
 
 C temperature function parameters
         phytoTempCoeff(jp)   = grp_tempcoeff1(g)
