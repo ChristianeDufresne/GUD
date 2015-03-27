@@ -234,11 +234,14 @@ C === plankton =========================================================
      &         mortTempFunc, mort2TempFunc,
      &         uptakeTempFunc, myThid)
 #endif
+        diagsl(:) = diags(i, j, k, :)
         CALL GUD_GRAZING(ptr,
      U                    gtr,
+     U                    diagsl,
      I                    grazTempFunc, reminTempFunc,
      I                    mortTempFunc, mort2TempFunc,
      I                    myTime, myIter, myThid )
+        diags(i, j, k, :) = diagsl
         gPtr(i, j, k, 1:nGud) = gtr(:)
       endif
       enddo
@@ -295,6 +298,11 @@ C === diagnostics ======================================================
        DO iTr=1,nPPplank
         WRITE(diagname, '(A,I4.4)') 'PP', iTr
         CALL DIAGNOSTICS_FILL(diags(1,1,1,iPPplank+iTr-1), diagname,
+     &          0,Nr,3,bi,bj,myThid)
+       ENDDO
+       DO iTr=1,nGRplank
+        WRITE(diagname, '(A,I4.4)') 'GR', iTr
+        CALL DIAGNOSTICS_FILL(diags(1,1,1,iGRplank+iTr-1), diagname,
      &          0,Nr,3,bi,bj,myThid)
        ENDDO
 #ifdef GUD_ALLOW_CARBON

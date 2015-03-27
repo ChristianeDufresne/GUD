@@ -9,6 +9,7 @@ C !INTERFACE: ==========================================================
       SUBROUTINE GUD_GRAZING(
      I     Ptr,
      U     gTr,
+     U     diags,
      I     grazTempFunc, reminTempFunc, mortTempFunc, mort2TempFunc,
      I     myTime,myIter,myThid)
 
@@ -19,6 +20,7 @@ C !USES: ===============================================================
       IMPLICIT NONE
 #include "GUD_SIZE.h"
 #include "GUD_INDICES.h"
+#include "GUD_DIAGS.h"
 #include "GUD_GENPARAMS.h"
 #include "GUD_TRAITS.h"
 
@@ -38,7 +40,9 @@ C  myThid :: thread number
 
 C !INPUT/OUTPUT PARAMETERS: ============================================
 C  gTr    :: accumulates computed tendencies
+C  diags  :: accumulates diagnostics
       _RL gTr(nGud)
+      _RL diags(gud_nDiag)
 CEOP
 
 #ifdef ALLOW_GUD
@@ -347,6 +351,10 @@ C==== tendencies =======================================================
 #ifdef GUD_ALLOW_CHLQUOTA
       gTr(iChl:eChl)=gTr(iChl:eChl) - preygraz(1:nChl)*QChl(:)
 #endif
+
+      DO jp = 1, nGRplank
+        diags(iGRplank+jp-1) = preygraz(jp)
+      ENDDO
 
 C==== mortality ========================================================
       exude_DOC  = 0.0 _d 0

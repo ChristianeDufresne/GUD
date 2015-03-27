@@ -24,6 +24,7 @@ C   nChl = iMaxPhoto
       integer iMinPred, iMaxPred
       integer nChl
       integer nPPplank
+      integer nGRplank
       parameter(nplank=4)
       parameter(nGroup=5)
       parameter(nlam=1)
@@ -34,6 +35,7 @@ C   nChl = iMaxPhoto
       parameter(nPhoto=iMaxPhoto+1-iMinPhoto)
       parameter(nChl=iMaxPhoto)
       parameter(nPPplank=0)
+      parameter(nGRplank=0)
 
 CEOP
 #endif /* ALLOW_GUD */

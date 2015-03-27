@@ -108,6 +108,15 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
      I             diagName, diagCode, diagUnits, diagTitle, 0, myThid )
       ENDDO
 
+      DO j = 1, nGRplank
+        WRITE(diagName,'(A,I4.4)')'GR',j
+        WRITE(diagTitle,'(A,I4)')'Grazing loss of plankton ',j
+        diagUnits = 'mmol C/m^3/s    '
+        diagCode  = 'SM P    MR      '
+        CALL DIAGNOSTICS_ADDTOLIST( diagNum,
+     I             diagName, diagCode, diagUnits, diagTitle, 0, myThid )
+      ENDDO
+
 #ifdef GUD_ALLOW_CARBON
       WRITE(diagName,'(A)')'pH'
       WRITE(diagTitle,'(A)')'pH'
