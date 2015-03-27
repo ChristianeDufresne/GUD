@@ -44,6 +44,15 @@
  fields(41,1)= 'PP0007  ',
  fields(42,1)= 'PP0008  ',
  fields(43,1)= 'PP0009  ',
+ fields(44,1)= 'GR0001  ',
+ fields(45,1)= 'GR0002  ',
+ fields(46,1)= 'GR0003  ',
+ fields(47,1)= 'GR0004  ',
+ fields(48,1)= 'GR0005  ',
+ fields(49,1)= 'GR0006  ',
+ fields(50,1)= 'GR0007  ',
+ fields(51,1)= 'GR0008  ',
+ fields(52,1)= 'GR0009  ',
  &
  &diag_statis_parms
  &

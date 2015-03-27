@@ -17,6 +17,7 @@ C Contains dimensions and index ranges for cell model.
       integer iMinPred, iMaxPred
       integer nChl
       integer nPPplank
+      integer nGRplank
       parameter(nlam=1)
       parameter(nopt=1)
       parameter(nplank=8)
@@ -27,6 +28,7 @@ C Contains dimensions and index ranges for cell model.
       parameter(iMinPred=iMaxPhoto+1, iMaxPred=nplank)
       parameter(nChl=nPhoto)
       parameter(nPPplank=0)
+      parameter(nGRplank=0)
 
 CEOP
 #endif /* ALLOW_GUD */
