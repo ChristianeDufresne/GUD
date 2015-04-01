@@ -82,7 +82,7 @@ C     msgBuf    - Informational/error meesage buffer
       _RL volp
       _RL sm
       _RL PI
-      INTEGER np,nz,l,i
+      INTEGER np,nz,l,i,iopt
       INTEGER signvar
       PARAMETER ( PI    = 3.14159265358979323844D0   )
 
@@ -294,7 +294,6 @@ c Diaz will be 0 if not defined, and will have nsource = 0.
        RandNoAPType3 = gud_random(myThid)
        RandNoAPType2 = gud_random(myThid)
        RandNoAPType1 = gud_random(myThid)
-       IF (ap_type(np) .LT. 0) THEN
        IF (nsource(np).EQ.0) then   !if diazo
         IF (physize(np).EQ.1.0d0) then !if BIG
         ap_type(np) = 1                !euk (assume diatom association)
@@ -330,13 +329,11 @@ c Diaz will be 0 if not defined, and will have nsource = 0.
         ap_type(np) = 4               !Pro LL                 
         ENDIF
        ENDIF
-       ENDIF
        print*,'ap',np,nsource(np),ap_type(np)
       ENDIF
 c
       IF (nOpt.EQ.12) then
        RandNoAPType4 = gud_random(myThid)
-       IF (ap_type(np) .LT. 0) THEN
        IF (nsource(np).EQ.0) then   !if diazo
         IF (physize(np).EQ.1.0d0) then !if BIG
          IF (diacoc(np).EQ.1.0d0) then
@@ -373,7 +370,6 @@ c
          ENDIF
         ENDIF
        ENDIF
-       ENDIF
       ENDIF
 
 #ifdef GUD_TWO_SPECIES_SETUP
@@ -393,6 +389,20 @@ c
       ap_type(np) = 10
 #endif
 
+      print*,'ap_type',np,ap_type(np)
+      iopt = ap_type(np)
+      IF (1 .LE. iopt .AND. iopt .LE. nOpt) THEN
+        DO l = 1, nlam
+         aphy_chl(np,l) = aphy_chl_type(iopt,l)
+         aphy_chl_ps(np,l) = aphy_chl_ps_type(iopt,l)
+         bphy_chl(np,l) = bphy_chl_type(iopt,l)
+         bbphy_chl(np,l) = bbphy_chl_type(iopt,l)
+        ENDDO
+      ELSE
+        WRITE(msgBuf,'(A,2I4)')'invalid optical phyto type:',np,iopt
+        CALL PRINT_ERROR( msgBuf, myThid )
+        STOP 'ABNORMAL END: S/R GUD_READTRAITS'
+      ENDIF
 
 #else
 c ANNA number of RandNo's carreid out MUST MATCH regardless of wavebands or not.
@@ -769,6 +779,7 @@ c ANNA i.e. let alpha vary only with aphy_chl_ps
 c ANNA value is mean of vals for big and small.
         mQyield(np) = 4.0 _d -5
 #endif
+
 
 c big/small phyto C:Chl max
       IF(physize(np) .EQ. 1)then

@@ -223,6 +223,7 @@ grp_useNH4(:) = 1
 grp_useNO2(:) = 1
 grp_useNO3(:) = 1
 grp_combNO(:) = 1
+grp_aptype(:) = 0
 grp_Xmin(:) = 0D0                 ! used to be 120D-20 for phyto
 grp_R_NC(:) = 16.0D0/120.0D0
 grp_R_PC(:) = 1D0/120.0D0

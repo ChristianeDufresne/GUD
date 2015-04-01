@@ -42,7 +42,6 @@ useNH4(:)           = UNINIT_I   ! 1
 useNO2(:)           = UNINIT_I   ! 1
 useNO3(:)           = UNINIT_I   ! 1
 combNO(:)           = UNINIT_I   ! 1
-ap_type(:)          = UNINIT_I   ! 1
 
 Xmin(:)             = UNINIT_RL  ! mmol C m^-3
 amminhib(:)         = UNINIT_RL  ! (mmol N m^-3)^-1
@@ -213,24 +212,13 @@ normI(:) = UNINIT_RL  ! 1
 
 
 #ifdef GUD_ALLOW_RADTRANS
+
+INTEGER ap_type(:) = ap_type(:)
+
 CODE: DO jp = iMinPhoto, iMaxPhoto
-CODE:  print*,'ap_type',jp,ap_type(jp)
-CODE:  iopt = ap_type(jp)
-CODE:  IF (1 .LE. iopt .AND. iopt .LE. nOpt) THEN
-CODE:   DO l = 1, nlam
-CODE:    aphy_chl(jp,l) = aphy_chl_type(iopt,l)
-CODE:    aphy_chl_ps(jp,l) = aphy_chl_ps_type(iopt,l)
-CODE:    bphy_chl(jp,l) = bphy_chl_type(iopt,l)
-CODE:    bbphy_chl(jp,l) = bbphy_chl_type(iopt,l)
-CODE:    alphachl(jp,l) = mQyield(jp) * aphy_chl_ps(jp,l)
-CODE:   ENDDO
-CODE:  ELSE
-CODE:   WRITE(msgBuf,'(A,2I4)')'invalid optical phyto type:',jp,iopt
-CODE:   CALL PRINT_ERROR( msgBuf, myThid )
-CODE:   STOP 'ABNORMAL END: S/R GUD_READTRAITS'
-CODE:  ENDIF
 CODE:  alpha_mean(jp) = 0.0 _d 0
 CODE:  DO l = 1, nlam
+CODE:   alphachl(jp,l) = mQyield(jp) * aphy_chl_ps(jp,l)
 CODE:   alpha_mean(jp) = alpha_mean(jp) + wb_width(l)*alphachl(jp,l)
 CODE:  ENDDO
 CODE:  alpha_mean(jp) = alpha_mean(jp)/wb_totalWidth
@@ -298,16 +286,12 @@ CODE:  normI(jp) = GUD_UNUSED
 #else
 CODE:  inhibcoef_geid(jp) = GUD_UNUSED
 #endif
-#ifndef GUD_ALLOW_RADTRANS
-CODE:  ap_type(jp) = GUD_UNUSED
-#endif
 CODE:  IF (jp.LT.iMinPhoto .OR. jp.GT.iMaxPhoto) THEN
 CODE:   diazo(jp) = GUD_UNUSED
 CODE:   useNH4(jp) = GUD_UNUSED
 CODE:   useNO2(jp) = GUD_UNUSED
 CODE:   useNO3(jp) = GUD_UNUSED
 CODE:   combNO(jp) = GUD_UNUSED
-CODE:   ap_type(jp) = GUD_UNUSED
 CODE:   amminhib(jp) = GUD_UNUSED
 CODE:   acclimtimescl(jp) = GUD_UNUSED
 CODE:   PCmax(jp) = GUD_UNUSED

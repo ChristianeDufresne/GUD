@@ -32,7 +32,7 @@ C !LOCAL VARIABLES: ====================================================
 C     msgBuf   :: Informational/error meesage buffer
       CHARACTER*(MAX_LEN_MBUF) msgBuf
       INTEGER jpg(nGroup)
-      INTEGER jp,jp2,jz,g,gz,l,gmin
+      INTEGER jp,jp2,jz,g,gz,l,gmin,iopt
       _RL logvol, vol, volmin
       _RL prd_pry
       _RL kappa
@@ -304,6 +304,23 @@ C we compute it for NO3 and scale for others
         ksatPAR(jp) = grp_ksatPAR(g)
         kinhPAR(jp) = grp_kinhPAR(g)
 #endif /* GUD_ALLOW_GEIDER */
+
+#ifdef GUD_ALLOW_RADTRANS
+        ap_type(jp) = grp_aptype(g)
+        iopt = ap_type(jp)
+        IF (1 .LE. iopt .AND. iopt .LE. nOpt) THEN
+          DO l = 1, nlam
+           aphy_chl(jp,l) = aphy_chl_type(iopt,l)
+           aphy_chl_ps(jp,l) = aphy_chl_ps_type(iopt,l)
+           bphy_chl(jp,l) = bphy_chl_type(iopt,l)
+           bbphy_chl(jp,l) = bbphy_chl_type(iopt,l)
+          ENDDO
+        ELSEIF (jp .LE. iMaxPhoto) THEN
+          WRITE(msgBuf,'(A,2I4)')'invalid optical phyto type:',jp,iopt
+          CALL PRINT_ERROR( msgBuf, myThid )
+          STOP 'ABNORMAL END: S/R GUD_READTRAITS'
+        ENDIF
+#endif
 
 C     jp
       ENDDO
