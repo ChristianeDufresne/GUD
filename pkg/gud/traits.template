@@ -53,9 +53,7 @@ tempMort(:)         = UNINIT_I   ! 1     ! 1: mort temperature dependent 0: not
 tempMort2(:)        = UNINIT_I   ! 1     ! 1: mort2 temperature dependent 0: not
 ExportFracMort(:)   = UNINIT_RL  ! 1     ! fraction of linear mortality to POM
 ExportFracMort2(:)  = UNINIT_RL  ! 1     ! fraction of quadratic mortality to POM
-#ifdef GUD_ALLOW_EXUDE
 ExportFrac(:)       = UNINIT_RL  ! 1     ! fraction of exudation to POM
-#endif
 
 phytoTempCoeff(:)   = UNINIT_RL  ! 1
 phytoTempExp1(:)    = UNINIT_RL  ! ln(degree)

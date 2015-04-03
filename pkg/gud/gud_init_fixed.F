@@ -37,10 +37,10 @@ CEOP
 
 C     !LOCAL VARIABLES:
       CHARACTER*(MAX_LEN_MBUF) msgBuf
-      integer iUnit1, iUnit2, k
+      integer iUnit1, iUnit2, k, jp
 #ifdef GUD_ALLOW_RADTRANS
       character*80 title
-      integer ios, i, l, ilambda, jp
+      integer ios, i, l, ilambda
       _RL planck, c, hc, oavo, hcoavo, rlamm
       _RL lambdain, ain, apsin, bin, bbin
 #endif
@@ -437,6 +437,23 @@ C read (overrides generated) and write trait namelists
       WRITE(msgBuf,'(A)') ' ==================================='
       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &                    SQUEEZE_RIGHT, myThid )
+
+C ======================================================================
+C deprecation checks
+
+#ifndef GUD_ALLOW_EXUDE
+      DO jp = 1, nPlank
+       IF (ExportFrac(jp) .NE. UNINIT_RL) THEN
+        WRITE(msgBuf,'(2A)')'ExportFrac can only be used with ',
+     &     'GUD_ALLOW_EXUDE.'
+        CALL PRINT_ERROR( msgBuf, myThid )
+        WRITE(msgBuf,'(2A)')'Use ExportFracMort and ExportFracMort2 ',
+     &     'for export due to mortality.'
+        CALL PRINT_ERROR( msgBuf, myThid )
+        STOP 'ABNORMAL END: S/R GUD_INIT_FIXED'
+       ENDIF
+      ENDDO
+#endif
 
 C ======================================================================
 C write some traits to files
