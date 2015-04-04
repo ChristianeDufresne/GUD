@@ -48,6 +48,8 @@
 \def\mortTempFuncMin{f^{\|mort|\min}_j}
 \def\mortTWOTempFuncMin{f^{\|mort2|\min}_j}
 \def\ExportFrac{f^{\exp}_j}
+\def\ExportFracMort{f^{\exp\|mort|}_j}
+\def\ExportFracMortTWO{f^{\exp\|mort2|}_j}
 \def\phytoTempCoeff{c_j}
 \def\phytoTempExpONE{e_{1j}}
 \def\phytoTempExpTWO{e_{2j}}
@@ -202,17 +204,17 @@ Inorganic nutrients:
   \DDt \SiO_2 &= -\sum_j U^{\SiOii}_j + r_{\POSi} \POSi \\
   \DDt \FeT   &= -\sum_j U^{\Fe}_j + r_{\DOFe} \DOFe + (r_{\POFe} \POFe) + S_{\Fe} \\[-1ex]
 \noalign{Plankton:}
-  \DDt \X_j   &= U^{\DIC}_j - m_j \X'_j - R^\C_j - G_j + g_j^\C \\
+  \DDt \X_j   &= U^{\DIC}_j - M_j - R^\C_j - G_j + g_j^\C \\
 \noalign{with P quota:}
-  \DDt p_j    &= U^{\POiv}_j - m_j p'_j - G_j Q^\P_j + g_j^\P \\
+  \DDt p_j    &= U^{\POiv}_j - M_j Q^\P_j - G_j Q^\P_j + g_j^\P \\
 \noalign{with N quota:}
-  \DDt n_j    &= U^{\N}_j - m_j n'_j - G_j Q^\N_j + g_j^\N \\
+  \DDt n_j    &= U^{\N}_j - M_j Q^\N_j - G_j Q^\N_j + g_j^\N \\
 \noalign{with Si quota:}
-  \DDt \si_j  &= U^{\SiOii}_j - m_j \si'_j - G_j Q^{\Si}_j \\
+  \DDt \si_j  &= U^{\SiOii}_j - M_j Q^{\Si}_j - G_j Q^{\Si}_j \\
 \noalign{with Fe quota:}
-  \DDt \fe_j  &= U^{\Fe}_j - m_j \fe'_j - G_j Q^{\Fe}_j + g_j^{\Fe} \\
+  \DDt \fe_j  &= U^{\Fe}_j - M_j Q^{\Fe}_j - G_j Q^{\Fe}_j + g_j^{\Fe} \\
 \noalign{with Chl quota:}
-  \DDt \chl_j &= S^{\chl}_j - m_j \chl'_j - G_j \cdot \chlc_j
+  \DDt \chl_j &= S^{\chl}_j - M_j \cdot \chlc_j - G_j \cdot \chlc_j
 \end{align*}
 With \verb|GUD_ALLOW_CDOM|, all particulate remineralization terms (in parenthesis)
 except Si are absent.  Terms: $U$ -- uptake; $P$ -- nitrification;
@@ -496,26 +498,25 @@ is stored for the next time step.
 \subsection{Organic matter pools}
 
 \begin{align*}
-  \DDt \DOC  &= \sum_j (1-f^\export_j) m_j \X_j  + g^{\DOC}  - r_{\DOC} \DOC
+  \DDt \DOC  &= \sum_j M_j^{\DOM} \;\;\;\;\;+ g^{\DOC}  - r_{\DOC} \DOC
 \\
-  \DDt \DOP  &= \sum_j (1-f^\export_j) m_j p_j   + g^{\DOP}  - r_{\DOP} \DOP
+  \DDt \DOP  &= \sum_j M_j^{\DOM} Q_j^{\P}  + g^{\DOP}  - r_{\DOP} \DOP
 \\
-  \DDt \DON  &= \sum_j (1-f^\export_j) m_j n_j   + g^{\DON}  - r_{\DON} \DON
+  \DDt \DON  &= \sum_j M_j^{\DOM} Q_j^{\N}  + g^{\DON}  - r_{\DON} \DON
 \\
-  \DDt \DOFe &= \sum_j (1-f^\export_j) m_j \fe_j + g^{\DOFe} - r_{\DOFe} \DOFe
+  \DDt \DOFe &= \sum_j M_j^{\DOM} Q_j^{\Fe} + g^{\DOFe} - r_{\DOFe} \DOFe
 \\
-  \DDt \PIC  &= \sum_j (1-f^\export_j) m_j \X_j R^\PICPOC_j + g^{\PIC}
-                -\kappa^\diss_\C \PIC
+  \DDt \PIC  &= \sum_j M_j^{\DOM} R_j^{PICPOC} + g^{\PIC} - \kappa^\diss_\C \PIC
 \\
-  \DDt \POC  &= \sum_j f^\export_j m_j \X_j  + g^{\POC}  - r_{\POC} \POC
+  \DDt \POC  &= \sum_j M_j^{\POM} \;\;\;\;\;+ g^{\POC}  - r_{\POC} \POC
 \\
-  \DDt \POP  &= \sum_j f^\export_j m_j p_j   + g^{\POP}  - r_{\POP} \POP
+  \DDt \POP  &= \sum_j M_j^{\POM} Q_j^{\P}  + g^{\POP}  - r_{\POP} \POP
 \\
-  \DDt \PON  &= \sum_j f^\export_j m_j n_j   + g^{\PON}  - r_{\PON} \PON
+  \DDt \PON  &= \sum_j M_j^{\POM} Q_j^{\N}  + g^{\PON}  - r_{\PON} \PON
 \\
-  \DDt \POSi &= \sum_j f^\export_j m_j \si_j + g^{\POSi} - r_{\POSi} \POSi
+  \DDt \POSi &= \sum_j M_j^{\POM} Q_j^{\Si} + g^{\POSi} - r_{\POSi} \POSi
 \\
-  \DDt \POFe &= \sum_j f^\export_j m_j \fe_j + g^{\POFe} - r_{\POFe} \POFe
+  \DDt \POFe &= \sum_j M_j^{\POM} Q_j^{\Fe} + g^{\POFe} - r_{\POFe} \POFe
 \end{align*}
 
 
@@ -615,13 +616,14 @@ where
 and
 \[
   r_\scav = \begin{cases}
-    r_\scav I_\scav \left(\dfrac{\POP}{R^{\POP:\POC}_\scav}\right)^{e_\scav}
+    r_\scav I_\scav \POC^{e_\scav}
     & \text{if \tt GUD\_PART\_SCAV}, \\
     {\tt scav}
     & \text{else.}
     \end{cases}
 \]
-\textbf{Should be POC directly? or POFe??}
+If \verb|GUD_PART_SCAV_POP| is defined, $\POC$ is replaced by
+$\POP\!/R^{\POP:\POC}_\scav$.
 
 %The free iron concentration $\Fe'$ is determined as detailed in App.~\ref{app:fe}.
 %\subsection{Fe chemistry}\label{app:fe}
@@ -690,31 +692,46 @@ is very fast.
 
 \subsection{Mortality and Respiration}
 
-Mortality stops at $\X_j^{\min}$,
-\[
-  m_j c'_j = m^{(1)}_j {f^{\|mort|}(T)}^{\tempMort} (\X_j - \X_j^{\min})
-      + m^{(2)}_j {f^{\|mort2|}(T)}^{\tempMortTWO} (\X_j - \X_j^{\min})^2
-\]
-Other quotas are regulated proportionally, e.g.,
-\[
-  m_j p'_j = m_j c'_j Q^\P_j
-\]
-Respiration also,
+Respiration and mortality stop at $\X_j^{\min}$
+(maybe should not use $\X_j^{\min}$ for respiration?)
 \[
   R^\C_j = r^\resp_j f^\remin(T) (\X_j - \X_j^{\min})
 \]
-(maybe should not use $\X_j^{\min}$ for respiration?)
-
-
-
-\subsection{Exudation ({\tt \#define GUD\_ALLOW\_EXUDE})}
-
-Basically, mortality is increased on a per-element basis, i.e.,
 \[
-  m_j^{\P} p'_j = m_j p'_j + \kappa^{\|exc|}_{\P\,j} (\X_j - \X_j^{\min}) Q^\P_j
+  M_j = m^{(1)}_j {f^{\|mort|}(T)}^{\tempMort} (\X_j - \X_j^{\min})
+      + m^{(2)}_j {f^{\|mort2|}(T)}^{\tempMortTWO} (\X_j - \X_j^{\min})^2
 \]
-is used in place of $m_j p'_j$ in the $p_j$ and $\POP$, $\DOP$ equations, etc.
-Export fractions are the same as for mortality.
+The released matter splits into dissolved and particulate organic pools,
+\[
+  M^{\DOM}_j = (1 - f_j^{\exp\|mort|}) m^{(1)}_j {f^{\|mort|}(T)}^{\tempMort} (\X_j - \X_j^{\min})
+            + (1 - f_j^{\exp\|mort2|}) m^{(2)}_j {f^{\|mort2|}(T)}^{\tempMortTWO} (\X_j - \X_j^{\min})^2
+\]
+\[
+  M^{\POM}_j = f_j^{\exp\|mort|} m^{(1)}_j {f^{\|mort|}(T)}^{\tempMort} (\X_j - \X_j^{\min})
+            + f_j^{\exp\|mort2|} m^{(2)}_j {f^{\|mort2|}(T)}^{\tempMortTWO} (\X_j - \X_j^{\min})^2
+\]
+
+
+
+\subsection{Exudation}
+
+If {\verb|GUD_ALLOW_EXUDE| is defined, an additional per-element loss term
+is introduced, e.g.,
+\[
+  \DDt p_j = \dots - E^\P_j
+\]
+with
+\[
+  E^\P_j = \kappa^{\|exc|}_{\P\,j} (\X_j - \X_j^{\min}) Q^\P_j
+\]
+and fed into organic matter pools, e.g.,
+\[
+  \DDt \DOP = \dots + \sum_j (1 - f^{\exp}_j) E^\P_j
+\]
+and
+\[
+  \DDt \POP = \dots + \sum_j f^{\exp}_j E^\P_j
+\]
 (Maybe should NOT use $\X_j^{\min}$ in this case, or have a separate one for each quota?)
 
 
@@ -1053,14 +1070,15 @@ Traits are generated from the parameters in \verb|&GUD_TRAIT_PARAMS|
   $\|combNO|$             & (p)   & $\combNO$               &  & 1: combine $\NO_{2/3}$ limit.terms \\
   $\|tempMort|$           & (p)   & $\tempMort$             &  & 1: mortality is temp.dependent \\
   $\|tempMort2|$          & (p)   & $\tempMortTWO$          &  & 1: quadr.mort. is temp.dep. \\
-  $\|ap\_type|$           & (p)   & $\apSUBtype$            &  & optical type \# \\
   $\|Xmin|$               & (p)   & $\Xmin$                 & $\unit{mmol C m^{-3}}$ & \\
   $\|amminhib|$           & (p)   & $\amminhib$             & $\unit{(mmol N m^{-3})^{-1}}$ & \\
   $\|acclimtimescl|$      & (p)   & $\acclimtimescl$        & $\unit{s^{-1}}$ & \\
   $\|PCmax|$              & (p)   & $\PCmax$                & $\unit{s^{-1}}$ & \\
   $\|mort|$               & (p)   & $\mort$                 & $\unit{s^{-1}}$ & \\
   $\|mort2|$              & (p)   & $\mortTWO$              & $\unit{(mmol C m^{-3})^{-1} s^{-1}}$ & \\
-  $\|ExportFrac|$         & (p)   & $\ExportFrac$           & $\unit{1}$ & \\
+  $\|ExportFrac|$         & (p)   & $\ExportFrac$           & $\unit{1}$ & export fraction for exudation \\
+  $\|ExportFracMort|$     & (p)   & $\ExportFracMort$       & $\unit{1}$ & export fraction for linear mortality \\
+  $\|ExportFracMort2|$    & (p)   & $\ExportFracMortTWO$    & $\unit{1}$ & export fraction for quadratic mortality \\
   $\|phytoTempCoeff|$     & (p)   & $\phytoTempCoeff$       & $\unit{1}$ & \\
   $\|phytoTempExp1|$      & (p)   & $\phytoTempExpONE$      & $\unit{$\ln$(degree)}$ & \\
   $\|phytoTempExp2|$      & (p)   & $\phytoTempExpTWO$      & $\unit{(degree C)^{-\phytoDecayPower}}$ & \\
@@ -1176,7 +1194,9 @@ value.
   \verb|acclimtimescl|      & \verb|grp_acclimtimescl|          & 1/20/\day \\
   \verb|mort|               & \verb|grp_mort|                   & 0.02/\day \\
   \verb|mort2|              & \verb|grp_mort2|                  & 0.0       \\
-  \verb|ExportFrac|         & \verb|grp_ExportFrac|             & 0.5       \\
+  \verb|ExportFrac|         & \verb|grp_ExportFrac|             & {\rm undef} \\
+  \verb|ExportFracMort|     & \verb|grp_ExportFracMort|         & 0.5       \\
+  \verb|ExportFracMort2|    & \verb|grp_ExportFracMort2|        & 0.5       \\
   \verb|phytoTempCoeff|     & \verb|grp_tempcoeff1|             & 1/3       \\
   \verb|phytoTempExp1|      & \verb|grp_tempcoeff3|             & 1.04      \\
   \verb|phytoTempExp2|      & \verb|grp_tempcoeff2|             & 0.001     \\
@@ -1228,8 +1248,10 @@ value.
   \verb|inhibcoef_geid|     & \verb|grp_inhibcoef_geid|         & 0.0  \\
   \verb|ksatPAR|            & \verb|grp_ksatPAR|                & 0.012  \\
   \verb|kinhPAR|            & \verb|grp_kinhPAR|                & 0.006  \\
-  \verb|asseff|             & \verb|grp_ass_eff|                & 0.7  \\
-  \verb|ExportFracPreyPred| & \verb|grp_ExportFracPreyPred|     & 0.5 \\
+  \verb|asseff|             & \verb|grp_ass_eff|                & 0.7   & (nGroup$\times$nGroup) \\
+  \verb|ExportFracPreyPred| & \verb|grp_ExportFracPreyPred|     & 0.5   & (nGroup$\times$nGroup) \\
+  \hline
+  \verb|*phy_chl*| & \multicolumn{4}{l}{assigned according to {\tt grp\_aptype}} \\
   \hline
 \end{longtable}}
 Palatabilities are initialized to zero and have to be set in \verb|data.traits|
