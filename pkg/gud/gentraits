@@ -3,6 +3,7 @@ import sys
 import os
 import re
 import string
+sys.path[:0] = '../../tools/python'
 from fortran import OrderedDict
 
 #headername = 'GUD_TRAITS.h'
