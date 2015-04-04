@@ -91,11 +91,4 @@ verification/*/run/*
 
 verification/tr_*
 
-pkg/gud/GUD_GENPARAMS.h
-pkg/gud/gud_readgenparams.F
-pkg/gud/GUD_TRAITPARAMS.h
-pkg/gud/gud_readtraitparams.F
-pkg/gud/GUD_TRAITS.h
-pkg/gud/gud_init_traits.F
-pkg/gud/gud_readtraits.F
 

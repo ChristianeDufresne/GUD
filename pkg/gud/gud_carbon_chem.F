@@ -71,6 +71,8 @@ C       s   = salinity (PSU)
         INTEGER myThid
 CEOP
 
+#ifdef GUD_ALLOW_CARBON
+
 C     == Local variables ==
 C INPUT
 C       phlo= lower limit of pH range
@@ -325,6 +327,8 @@ c       Reconvert from mol/kg -> mol/m^3
         ta=ta/m3perkg
         diclocal=diclocal/m3perkg
 
+#endif
+
         RETURN
         END
 
@@ -385,6 +389,8 @@ C       s   = salinity (PSU)
         INTEGER i,j,k,bi,bj,myIter
         INTEGER myThid
 CEOP
+
+#ifdef GUD_ALLOW_CARBON
 
 C     == Local variables ==
         _RL  phguess
@@ -473,6 +479,8 @@ c Reconvert from mol/kg -> mol/m^3
         ta=ta/m3perkg
         diclocal=diclocal/m3perkg
 
+#endif
+
         RETURN
         END
 
@@ -537,6 +545,8 @@ C general
         INTEGER kLevel
         INTEGER myThid
 CEOP
+
+#ifdef GUD_ALLOW_CARBON
 
 C LOCAL VARIABLES
         _RL  t
@@ -825,6 +835,8 @@ c add Bennington
          endif
          end do
         end do
+
+#endif
 
         RETURN
         END

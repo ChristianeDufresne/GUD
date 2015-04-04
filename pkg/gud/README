@@ -70,21 +70,19 @@ the_model_main
 [1mgud_calc_pco2[0m 
 
 
-# generated files:
+# partly generated from embedded templates using tools/python/cog:
 
-GUD_GENPARAMS.h         # ./gentraits params.template
-gud_readgenparams.F
-GUD_TRAITPARAMS.h       # ./gentraits traitparams.template
-gud_readtraitparams.F
-GUD_TRAITS.h            # ./gentraits traits.template
-gud_readtraits.F
-gud_init_traits.F
-
-# these have embedded templates, update using tools/python/cogapp
 gud_check.F             # uses check.py
-GUD_EXF.h               # use exf.py
-gud_exf_init_fixed.F    # ...
+GUD_EXF.h               # parameters in exf.py
+gud_exf_init_fixed.F
 gud_exf_init_varia.F
 gud_exf_load.F
 gud_readparms.F
+GUD_GENPARAMS.h         # parameters in params.py
+gud_readgenparams.F
+GUD_TRAITPARAMS.h       # parameters in traitparams.py
+gud_readtraitparams.F
+GUD_TRAITS.h            # parameters in traits.py
+gud_readtraits.F
+gud_init_traits.F
 
