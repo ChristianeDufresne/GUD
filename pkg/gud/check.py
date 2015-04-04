@@ -1,23 +1,6 @@
-__all__ = ['exfflds', 'checkflds', 'checklflds']
+__all__ = ['checkflds', 'checklflds']
 
 import fortran
-
-# add here new fields to be read in through namelist gud_forcing_params
-# first entry is name of the variable to read into
-# second is the prefix for runtime paramaters such as PARfile
-exfflds = [
-    ['surfPAR', 'PAR'],
-    ['inputFe', 'iron'],
-    ['iceFrac', 'ice'],
-    ['windSpeed', 'wind'],
-    ['atmospCO2', 'pCO2']
-    ]
-
-#conditional = {
-#    'alk':  ('#ifdef ALLOW_CARBON\n', '\n#endif'),
-#    'o2':   ('#ifdef ALLOW_CARBON\n', '\n#endif'),
-#    'cdom': ('#ifdef ALLOW_CDOM\n', '\n#endif'),
-#}
 
 p,conds = fortran.readparameters('GUD_SIZE.h', 'GUD_INDICES.h', conditions=True)
 conditional = {}

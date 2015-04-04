@@ -80,12 +80,11 @@ GUD_TRAITS.h            # ./gentraits traits.template
 gud_readtraits.F
 gud_init_traits.F
 
-# these have embedded templates
-gud_check.F             # python -m cogapp/__main__ -c -r gud_check.F
-GUD_EXF.h               # python -m cogapp/__main__ -c -r GUD_EXF.h
-GUD_EXF_DEFAULTS.h      # ...
-GUD_EXF_NAMELIST.h
-gud_exf_init_fixed.F
+# these have embedded templates, update using tools/python/cogapp
+gud_check.F             # uses check.py
+GUD_EXF.h               # use exf.py
+gud_exf_init_fixed.F    # ...
 gud_exf_init_varia.F
 gud_exf_load.F
+gud_readparms.F
 

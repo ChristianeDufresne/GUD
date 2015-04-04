@@ -7,7 +7,7 @@ TGTS=$(GENPARAMS_TGT) $(TRAITPARAMS_TGT) $(TRAITS_TGT)
 all: $(TGTS) cog
 
 cog: FORCE
-	../../tools/python/cog -c -r gud_check.F GUD_EXF.h GUD_EXF_NAMELIST.h GUD_EXF_DEFAULTS.h gud_exf_init_fixed.F gud_exf_init_varia.F gud_exf_load.F
+	../../tools/python/cog -c -r gud_check.F GUD_EXF.h gud_exf_init_fixed.F gud_exf_init_varia.F gud_exf_load.F gud_readparms.F
 
 FORCE:
 
