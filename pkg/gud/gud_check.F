@@ -31,6 +31,7 @@ C     !USES:
 #include "GCHEM.h"
 #include "GUD_SIZE.h"
 #include "GUD_INDICES.h"
+#include "GUD_GENPARAMS.h"
 #include "GUD_TRAITS.h"
 
 C     !INPUT PARAMETERS:
@@ -82,6 +83,22 @@ C check all required palat are set
         ENDIF
        ENDDO
       ENDDO
+
+C check we are not using hollexp and also inhib_graz or GUD_GRAZING_SWITCH
+      IF (hollexp .NE. 1.0 _d 0) THEN
+        IF (inhib_graz_exp .NE. 0) THEN
+          WRITE(msgBuf,'(2A)') 'GUD_CHECK: ERROR: ',
+     &    'hollexp.NE.1 and inhib_graz_exp should not be used together'
+          CALL PRINT_ERROR( msgBuf , 1)
+          STOP 'ABNORMAL END: S/R GUD_CHECK'
+        ENDIF
+#ifdef GUD_GRAZING_SWITCH
+        WRITE(msgBuf,'(2A)') 'GUD_CHECK: ERROR: ',
+     & 'hollexp.NE.1 and GUD_GRAZING_SWITCH should not be used together'
+        CALL PRINT_ERROR( msgBuf , 1)
+        STOP 'ABNORMAL END: S/R GUD_CHECK'
+#endif
+      ENDIF
 
 C log tracer names together with what they should be
       WRITE(msgBuf,'(A)') 'GUD_CHECK: iPtr gud   PTRACERS_names'
