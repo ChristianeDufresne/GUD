@@ -91,7 +91,7 @@ c      ENDIF
 
       CALL TIMER_START('GUD_LIGHT [GUD_FORCING]',myThid)
 #ifdef GUD_ALLOW_RADTRANS
-      CALL GUD_LIGHT_RADTRANS(PAR,endTime,bi,bj,myTime,myIter,myThid)
+      CALL GUD_LIGHT_RADTRANS(PAR,myTime,bi,bj,myTime,myIter,myThid)
 #else
       CALL GUD_LIGHT(PAR, midTime, bi, bj, myTime, myIter, myThid)
 #endif

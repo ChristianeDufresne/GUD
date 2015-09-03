@@ -76,7 +76,7 @@ C     (usually initialized to 0 if gud_chlInitBalanced)
         ENDDO
        ENDDO
 #else
-       CALL GUD_LIGHT_RADTRANS(PAR, bi, bj, myTime, myIter, myThid)
+       CALL GUD_LIGHT_RADTRANS(PAR,myTime,bi,bj,myTime,myIter,myThid)
 #endif
 #else
 C!!!!! do not take ice into account for backwards compatibility

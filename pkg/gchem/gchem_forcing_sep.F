@@ -65,7 +65,7 @@ C  bi,bj                :: tile indices
 C  k                    :: vertical level
       INTEGER bi,bj,iMin,iMax,jMin,jMax,isub,iTracer
       INTEGER k
-      _RL midTime
+      _RL midTime, subTime
 #if (defined ALLOW_OBCS) || (defined ALLOW_DIAGNOSTICS)
       INTEGER iTr
 #endif
@@ -330,12 +330,12 @@ c articficial supply of nutrients
            CALL TIMER_START('GUD_FORCING [GCHEM_FORCING_SEP]',myThid)
 C          time at middle of sub-timestep
            midTime = myTime - deltaTclock + .5*deltaTclock/nsubtime
-           endTime = myTime - deltaTclock + deltaTclock/nsubtime
+           subTime = myTime - deltaTclock + deltaTclock/nsubtime
            DO isub=1,nsubtime
             CALL GUD_FORCING( gchem_dTsub,iMin,iMax,jMin,jMax,bi,bj,
-     &                        midTime,endTime,myIter,myThid)
+     &                        midTime,subTime,myIter,myThid)
             midTime = midTime + deltaTclock/nsubtime
-            endTime = endTime + deltaTclock/nsubtime
+            subTime = subTime + deltaTclock/nsubtime
            ENDDO
            CALL TIMER_STOP ('GUD_FORCING [GCHEM_FORCING_SEP]',myThid)
          
