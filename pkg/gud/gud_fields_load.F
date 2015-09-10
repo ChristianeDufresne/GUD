@@ -46,6 +46,8 @@ c--   read forcing fields from files and temporal interpolation
         CALL GUD_EXF_LOAD(myTime, myIter, myThid)
       ENDIF
 
+      CALL GUD_MONITOR(myTime, myIter, myThid)
+
 #endif /* ALLOW_EXF */
 
 #ifdef ALLOW_DIAGNOSTICS
