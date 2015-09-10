@@ -19,7 +19,7 @@ C   iMaxPred = nplank
 C   nChl = iMaxPhoto
 
       integer nplank, nGroup, nlam, nopt
-      integer iMinPhoto, iMaxPhoto
+      integer iMinPhoto, iMaxPhoto, nPhoto
       integer iMinPrey, iMaxPrey
       integer iMinPred, iMaxPred
       integer nChl
