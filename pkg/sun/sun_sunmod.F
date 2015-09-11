@@ -53,7 +53,8 @@ c   Compute unit sun vector in geocentric inertial coordinates
       call sun_sun2000 (radeg, iyr, imon, iday, sec, suni, rs)
 
 c   Get Greenwich mean sidereal angle
-      day = float(iday) + sec/86400.0D0
+      day = iday
+      day = day + sec/86400.0D0
       call sun_gha2000 (radeg, iyr, imon, day, gha)
       ghar = gha/radeg
 

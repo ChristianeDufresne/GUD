@@ -66,7 +66,7 @@ CEOP
 
 c   Compute floating point days since Jan 1.5, 2000 
 c    Note that the Julian day starts at noon on the specified date
-       rjd = float(sun_jd(iyr,imon,iday))
+       rjd = sun_jd(iyr,imon,iday)
        t = rjd - 2451545.0D0 + (sec-43200.0D0)/86400.0D0
 
 c  Compute solar ephemeris parameters

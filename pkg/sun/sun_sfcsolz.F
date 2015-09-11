@@ -48,7 +48,8 @@ c  Local direction vector
 c
 c  Solar zenith angle
       solz = -1.0
-      gmt = float(isec)/3600.
+      gmt = isec
+      gmt = gmt/3600.
       call sun_sunmod(rad,iday,imon,iyr,gmt,up,no,ea,solz,rs)
 c
       return
