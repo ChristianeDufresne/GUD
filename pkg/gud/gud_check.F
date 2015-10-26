@@ -101,21 +101,21 @@ C check we are not using hollexp and also inhib_graz or GUD_GRAZING_SWITCH
       ENDIF
 
 C log tracer names together with what they should be
-      WRITE(msgBuf,'(A)') 'GUD_CHECK: iPtr gud   PTRACERS_names'
+      WRITE(msgBuf,'(A)') 'GUD_CHECK: iPtr gud       PTRACERS_names'
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 CCOG[[[cog
 CCOGfor name,name6,cond1,cond2 in checkflds: cog.out('''
 CCOG{cond1}      WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-CCOG     &  i{name6},'{name6}   ', PTRACERS_names(i{name6})
+CCOG     &  i{name6},'{name6}    ', PTRACERS_names(i{name6})
 CCOG      CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
 CCOG     &                   SQUEEZE_RIGHT,myThid)
 CCOG{cond2}'''.format(name=name, name6=name6, cond1=cond1, cond2=cond2))
 CCOGfor name,name5,cond1,cond2 in checklflds: cog.out('''
 CCOG{cond1}      DO j = 1, e{name}+1-i{name}
 CCOG        iPtr = i{name} + j - 1
-CCOG        WRITE(msgBuf,'(A,I4,X,A,I1,A,A32)') 'GUD_CHECK: ',
-CCOG     &    iPtr, '{name5}(',j,') ', PTRACERS_names(iPtr)
+CCOG        WRITE(msgBuf,'(A,I4,X,A,I4,X,A32)') 'GUD_CHECK: ',
+CCOG     &    iPtr, '{name5}', j, PTRACERS_names(iPtr)
 CCOG        CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
 CCOG     &                     SQUEEZE_RIGHT,myThid)
 CCOG      ENDDO
@@ -123,100 +123,100 @@ CCOG{cond2}'''.format(name=name, name5=name5, cond1=cond1, cond2=cond2))
 CCOG]]]
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iDIC   ,'DIC      ', PTRACERS_names(iDIC   )
+     &  iDIC   ,'DIC       ', PTRACERS_names(iDIC   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iNH4   ,'NH4      ', PTRACERS_names(iNH4   )
+     &  iNH4   ,'NH4       ', PTRACERS_names(iNH4   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iNO2   ,'NO2      ', PTRACERS_names(iNO2   )
+     &  iNO2   ,'NO2       ', PTRACERS_names(iNO2   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iNO3   ,'NO3      ', PTRACERS_names(iNO3   )
+     &  iNO3   ,'NO3       ', PTRACERS_names(iNO3   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iPO4   ,'PO4      ', PTRACERS_names(iPO4   )
+     &  iPO4   ,'PO4       ', PTRACERS_names(iPO4   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iSiO2  ,'SiO2     ', PTRACERS_names(iSiO2  )
+     &  iSiO2  ,'SiO2      ', PTRACERS_names(iSiO2  )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iFeT   ,'FeT      ', PTRACERS_names(iFeT   )
+     &  iFeT   ,'FeT       ', PTRACERS_names(iFeT   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iDOC   ,'DOC      ', PTRACERS_names(iDOC   )
+     &  iDOC   ,'DOC       ', PTRACERS_names(iDOC   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iDON   ,'DON      ', PTRACERS_names(iDON   )
+     &  iDON   ,'DON       ', PTRACERS_names(iDON   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iDOP   ,'DOP      ', PTRACERS_names(iDOP   )
+     &  iDOP   ,'DOP       ', PTRACERS_names(iDOP   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iDOFe  ,'DOFe     ', PTRACERS_names(iDOFe  )
+     &  iDOFe  ,'DOFe      ', PTRACERS_names(iDOFe  )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iPOC   ,'POC      ', PTRACERS_names(iPOC   )
+     &  iPOC   ,'POC       ', PTRACERS_names(iPOC   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iPON   ,'PON      ', PTRACERS_names(iPON   )
+     &  iPON   ,'PON       ', PTRACERS_names(iPON   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iPOP   ,'POP      ', PTRACERS_names(iPOP   )
+     &  iPOP   ,'POP       ', PTRACERS_names(iPOP   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iPOSi  ,'POSi     ', PTRACERS_names(iPOSi  )
+     &  iPOSi  ,'POSi      ', PTRACERS_names(iPOSi  )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iPOFe  ,'POFe     ', PTRACERS_names(iPOFe  )
+     &  iPOFe  ,'POFe      ', PTRACERS_names(iPOFe  )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iPIC   ,'PIC      ', PTRACERS_names(iPIC   )
+     &  iPIC   ,'PIC       ', PTRACERS_names(iPIC   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 
 #ifdef GUD_ALLOW_CARBON
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iALK   ,'ALK      ', PTRACERS_names(iALK   )
+     &  iALK   ,'ALK       ', PTRACERS_names(iALK   )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 #endif
 
 #ifdef GUD_ALLOW_CARBON
       WRITE(msgBuf,'(A,I4,X,A,A32)') 'GUD_CHECK: ',
-     &  iO2    ,'O2       ', PTRACERS_names(iO2    )
+     &  iO2    ,'O2        ', PTRACERS_names(iO2    )
       CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                   SQUEEZE_RIGHT,myThid)
 #endif
@@ -224,8 +224,8 @@ CCOG]]]
 #ifdef GUD_ALLOW_CDOM
       DO j = 1, eCDOM+1-iCDOM
         iPtr = iCDOM + j - 1
-        WRITE(msgBuf,'(A,I4,X,A,I1,A,A32)') 'GUD_CHECK: ',
-     &    iPtr, 'CDOM (',j,') ', PTRACERS_names(iPtr)
+        WRITE(msgBuf,'(A,I4,X,A,I4,X,A32)') 'GUD_CHECK: ',
+     &    iPtr, 'CDOM ', j, PTRACERS_names(iPtr)
         CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                     SQUEEZE_RIGHT,myThid)
       ENDDO
@@ -233,52 +233,52 @@ CCOG]]]
 
       DO j = 1, ec+1-ic
         iPtr = ic + j - 1
-        WRITE(msgBuf,'(A,I4,X,A,I1,A,A32)') 'GUD_CHECK: ',
-     &    iPtr, 'c    (',j,') ', PTRACERS_names(iPtr)
+        WRITE(msgBuf,'(A,I4,X,A,I4,X,A32)') 'GUD_CHECK: ',
+     &    iPtr, 'c    ', j, PTRACERS_names(iPtr)
         CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                     SQUEEZE_RIGHT,myThid)
       ENDDO
 
       DO j = 1, en+1-in
         iPtr = in + j - 1
-        WRITE(msgBuf,'(A,I4,X,A,I1,A,A32)') 'GUD_CHECK: ',
-     &    iPtr, 'n    (',j,') ', PTRACERS_names(iPtr)
+        WRITE(msgBuf,'(A,I4,X,A,I4,X,A32)') 'GUD_CHECK: ',
+     &    iPtr, 'n    ', j, PTRACERS_names(iPtr)
         CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                     SQUEEZE_RIGHT,myThid)
       ENDDO
 
       DO j = 1, ep+1-ip
         iPtr = ip + j - 1
-        WRITE(msgBuf,'(A,I4,X,A,I1,A,A32)') 'GUD_CHECK: ',
-     &    iPtr, 'p    (',j,') ', PTRACERS_names(iPtr)
+        WRITE(msgBuf,'(A,I4,X,A,I4,X,A32)') 'GUD_CHECK: ',
+     &    iPtr, 'p    ', j, PTRACERS_names(iPtr)
         CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                     SQUEEZE_RIGHT,myThid)
       ENDDO
 
       DO j = 1, efe+1-ife
         iPtr = ife + j - 1
-        WRITE(msgBuf,'(A,I4,X,A,I1,A,A32)') 'GUD_CHECK: ',
-     &    iPtr, 'fe   (',j,') ', PTRACERS_names(iPtr)
+        WRITE(msgBuf,'(A,I4,X,A,I4,X,A32)') 'GUD_CHECK: ',
+     &    iPtr, 'fe   ', j, PTRACERS_names(iPtr)
         CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                     SQUEEZE_RIGHT,myThid)
       ENDDO
 
       DO j = 1, esi+1-isi
         iPtr = isi + j - 1
-        WRITE(msgBuf,'(A,I4,X,A,I1,A,A32)') 'GUD_CHECK: ',
-     &    iPtr, 'si   (',j,') ', PTRACERS_names(iPtr)
+        WRITE(msgBuf,'(A,I4,X,A,I4,X,A32)') 'GUD_CHECK: ',
+     &    iPtr, 'si   ', j, PTRACERS_names(iPtr)
         CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                     SQUEEZE_RIGHT,myThid)
       ENDDO
 
       DO j = 1, eChl+1-iChl
         iPtr = iChl + j - 1
-        WRITE(msgBuf,'(A,I4,X,A,I1,A,A32)') 'GUD_CHECK: ',
-     &    iPtr, 'Chl  (',j,') ', PTRACERS_names(iPtr)
+        WRITE(msgBuf,'(A,I4,X,A,I4,X,A32)') 'GUD_CHECK: ',
+     &    iPtr, 'Chl  ', j, PTRACERS_names(iPtr)
         CALL PRINT_MESSAGE(msgBuf,standardMessageUnit,
      &                     SQUEEZE_RIGHT,myThid)
       ENDDO
-CCOG[[[end]]] (checksum: e21f19feade13abd66bbaa1ed14e956c)
+CCOG[[[end]]] (checksum: 3f0709abce46f03c0815cb999a4cfbcd)
 
       _END_MASTER(myThid)
 
