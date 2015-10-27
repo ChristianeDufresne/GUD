@@ -162,6 +162,7 @@ CCOG]]]
      &    palat_min,
      &    inhib_graz,
      &    inhib_graz_exp,
+     &    hillnum,
      &    hollexp,
      &    phygrazmin,
      &    depthdenit
@@ -225,6 +226,7 @@ CCOG]]]
       _RL palat_min
       _RL inhib_graz
       _RL inhib_graz_exp
+      _RL hillnum
       _RL hollexp
       _RL phygrazmin
       _RL depthdenit
@@ -294,7 +296,7 @@ CCOG]]]
       INTEGER kMinFeSed
       INTEGER kMaxFeSed
 
-CCOG[[[end]]] (checksum: b3c6f8f3b043596ec3ac39512a73e9cb)
+CCOG[[[end]]] (checksum: c1e1d4db70633629279e5b20cbd31f13)
 
 #endif /* ALLOW_GUD */
 

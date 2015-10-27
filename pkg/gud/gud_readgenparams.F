@@ -131,6 +131,7 @@ CCOG]]]
      &    palat_min,
      &    inhib_graz,
      &    inhib_graz_exp,
+     &    hillnum,
      &    hollexp,
      &    phygrazmin,
      &    depthdenit
@@ -171,7 +172,7 @@ CCOG]]]
      &    kMinFeSed,
      &    kMaxFeSed
 
-CCOG[[[end]]] (checksum: 40ac427b18356738f0095d9b61bc2273)
+CCOG[[[end]]] (checksum: 154ce07fe840a12980a789424096bacf)
 
 CCOG[[[cog
 CCOGfor tp,dims,param,pre,post in locals[0]: cog.out('''
@@ -360,6 +361,8 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       inhib_graz     = 1.0 _d 0             ! for quota-style grazing ((mmol C m-3)-1)
       inhib_graz_exp = 0.0 _d 0             ! exponent 0.0 turns it off
 
+      hillnum  = 0.0 _d 0                   ! exponent for limiting quota uptake in grazing
+
       hollexp = 1.0 _d 0                    ! grazing exponential 1= holling 2, 2=holling 3
 
       phygrazmin = 120 _d -10               ! minimum total prey conc
@@ -427,7 +430,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       kMinFeSed = 1
       kMaxFeSed = 0
 
-CCOG[[[end]]] (checksum: 80c36b1aa4223d067e3f87fc317c76de)
+CCOG[[[end]]] (checksum: e7a7d5ed2eb4d1860820fe131d7dc445)
 
 
 

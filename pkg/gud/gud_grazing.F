@@ -182,17 +182,21 @@ C       regulate grazing near full quota
         regQn = MAX(0., MIN(1., (Qnmax(jz)-Qn(jz))/
      &                          (Qnmax(jz)-Qnmin(jz)) ))
         regQc = MIN(regQc, 1.0 _d 0 - regQn)
+        regQn = regQn**hillnum
 #endif
 #ifdef GUD_ALLOW_PQUOTA
         regQp = MAX(0., MIN(1., (Qpmax(jz)-Qp(jz))/
      &                          (Qpmax(jz)-Qpmin(jz)) ))
         regQc = MIN(regQc, 1.0 _d 0 - regQp)
+        regQp = regQp**hillnum
 #endif
 #ifdef GUD_ALLOW_FEQUOTA
         regQfe= MAX(0., MIN(1., (Qfemax(jz)-Qfe(jz))/
      &                          (Qfemax(jz)-Qfemin(jz)) ))
         regQc = MIN(regQc, 1.0 _d 0 - regQfe)
+        regQfe=regQfe**hillnum
 #endif
+        regQc = regQc**hillnum
 
         sumprey = 0.0
         sumpref = 0.0

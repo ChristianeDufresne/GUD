@@ -155,6 +155,8 @@ _RL palat_min = 0 _d 0                    ! was 1D-4 in quota; smaller palat are
 _RL inhib_graz     = 1.0 _d 0             ! for quota-style grazing ((mmol C m-3)-1)
 _RL inhib_graz_exp = 0.0 _d 0             ! exponent 0.0 turns it off
 
+_RL hillnum  = 0.0 _d 0                   ! exponent for limiting quota uptake in grazing
+
 _RL hollexp = 1.0 _d 0                    ! grazing exponential 1= holling 2, 2=holling 3
 
 _RL phygrazmin = 120 _d -10               ! minimum total prey conc
