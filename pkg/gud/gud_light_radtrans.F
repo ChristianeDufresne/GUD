@@ -156,8 +156,18 @@ C       k
         ENDDO
 C ======================================================================
 
-        Edwsf(:) = OASIM_Ed(i,j,bi,bj,:)
-        Eswsf(:) = OASIM_Es(i,j,bi,bj,:)
+C use read-in light
+        DO l = 1,nlam
+          Edwsf(l) = OASIM_Ed(i,j,bi,bj,l)
+          Eswsf(l) = OASIM_Es(i,j,bi,bj,l)
+        ENDDO
+
+        IF (icefile .NE. ' ' .and. myiter .ge. 0) THEN
+         DO l = 1,nlam
+          Edwsf(l) = Edwsf(l)*(1.0 _d 0 - iceFrac(i,j,bi,bj))
+          Eswsf(l) = Eswsf(l)*(1.0 _d 0 - iceFrac(i,j,bi,bj))
+         ENDDO
+        ENDIF
 
         CALL GUD_RADTRANS_DIRECT(
      I                dz_k,rmud,Edwsf,Eswsf,a_k,bt_k,bb_k,
