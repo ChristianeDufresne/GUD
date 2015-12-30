@@ -8,6 +8,9 @@ C $Name$
 #ifdef ALLOW_DARWIN
 #include "DARWIN_OPTIONS.h"
 #endif
+#ifdef ALLOW_GUD
+#include "GUD_OPTIONS.h"
+#endif
 
 CBOP
 C     !ROUTINE: OFFLINE_GET_SURFFORCING
@@ -133,7 +136,7 @@ C         the product ghat*diffKzS (and not ghat alone).
 #endif
 
 C--   Interpolate surface forcing
-#if ( (defined ALLOW_DIC) || (defined ALLOW_DARWIN) )
+#if defined ALLOW_DIC || defined ALLOW_DARWIN || defined ALLOW_GUD
 #ifdef ALLOW_OLD_VIRTUALFLUX
         IF ( SFluxFile.NE.' ' ) THEN
           DO j=1-OLy,sNy+OLy
@@ -146,7 +149,7 @@ C--   Interpolate surface forcing
           ENDDO
         ENDIF
 #endif /* ALLOW_OLD_VIRTUALFLUX */
-#endif /* ALLOW_DIC or ALLOW_DARWIN */
+#endif /* ALLOW_DIC or ALLOW_DARWIN or ALLOW_GUD */
 
 C--    kept from older version:
 c           surfaceForcingT(i,j,bi,bj) = bWght*hflx0(i,j,bi,bj)
