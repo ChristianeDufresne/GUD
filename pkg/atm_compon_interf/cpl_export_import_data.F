@@ -96,9 +96,6 @@ C-    Fetch data from coupling layer.
 
         CALL ATM_IMPORT_FIELDS( myIter, myThid )
 
-C     Fill diagnostics with updated coupling fields just received from Coupler
-        CALL CPL_DIAGNOSTICS_FILL( myTime, myIter, myThid )
-
       ENDIF
 
 #endif /* COMPONENT_MODULE */
