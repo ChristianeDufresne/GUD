@@ -80,10 +80,10 @@ C set guess of pH for first step here
 C determine inorganic carbon chem coefficients
           DO j=jMin,jMax
            DO i=iMin,iMax
-            surfsalt(i,j) = 
-     &              max(4. _d 0, min(50. _d 0, salt(i,j,k,bi,bj)))
-            surftemp(i,j) =
-     &              max(-4. _d 0, min(39. _d 0, theta(i,j,k,bi,bj)))
+            surfsalt(i,j) = MAX(surfSaltMinInit,
+     &                      MIN(surfSaltMaxInit, salt(i,j,k,bi,bj)))
+            surftemp(i,j) = MAX(surfTempMinInit,
+     &                      MIN(surfTempMaxInit, theta(i,j,k,bi,bj)))
            ENDDO
           ENDDO
           
@@ -104,17 +104,17 @@ C$TAF LOOP = parallel
            DO i=iMin,iMax
             IF ( maskC(i,j,k,bi,bj) .NE. 0. _d 0) THEN
 c put bounds on tracers so pH solver doesn't blow up
-             surfdic  = MAX(0.01 _d 0, MIN(4. _d 0,
-     &                            ptr2mol * Ptracer(i,j,k,bi,bj,iDIC)))
+             surfdic  = ptr2mol * MAX(surfDICMinInit,
+     &                  MIN(surfDICMaxInit, Ptracer(i,j,k,bi,bj,iDIC)))
      &                  * maskC(i,j,k,bi,bj)
-             surfalk  = MAX(0.01 _d 0, MIN(4. _d 0,
-     &                            ptr2mol * Ptracer(i,j,k,bi,bj,iALK)))
+             surfalk  = ptr2mol * MAX(surfALKMinInit,
+     &                  MIN(surfALKMaxInit, Ptracer(i,j,k,bi,bj,iALK)))
      &                  * maskC(i,j,k,bi,bj)
-             surfphos = MAX(1 _d -13, MIN(1 _d -2,
-     &                            ptr2mol * Ptracer(i,j,k,bi,bj,iPO4)))
+             surfphos = ptr2mol * MAX(surfPO4MinInit,
+     &                  MIN(surfPO4MaxInit, Ptracer(i,j,k,bi,bj,iPO4)))
      &                  * maskC(i,j,k,bi,bj)
-             surfsi   = MAX(1. _d -11, MIN(0.5 _d 0,
-     &                            ptr2mol * Ptracer(i,j,k,bi,bj,iSiO2)))
+             surfsi   = ptr2mol * MAX(surfSiMinINit,
+     &                  MIN(surfSiMaxInit, Ptracer(i,j,k,bi,bj,iSiO2)))
      &                  * maskC(i,j,k,bi,bj)
 C$TAF init dic_surf = static, 10
              DO it=1,10

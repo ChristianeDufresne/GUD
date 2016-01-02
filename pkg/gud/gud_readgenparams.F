@@ -117,6 +117,30 @@ CCOG]]]
      &    R_OP,
      &    R_OC,
      &    m3perkg,
+     &    surfSaltMinInit,
+     &    surfSaltMaxInit,
+     &    surfTempMinInit,
+     &    surfTempMaxInit,
+     &    surfDICMinInit,
+     &    surfDICMaxInit,
+     &    surfALKMinInit,
+     &    surfALKMaxInit,
+     &    surfPO4MinInit,
+     &    surfPO4MaxInit,
+     &    surfSiMinInit,
+     &    surfSiMaxInit,
+     &    surfSaltMin,
+     &    surfSaltMax,
+     &    surfTempMin,
+     &    surfTempMax,
+     &    surfDICMin,
+     &    surfDICMax,
+     &    surfALKMin,
+     &    surfALKMax,
+     &    surfPO4Min,
+     &    surfPO4Max,
+     &    surfSiMin,
+     &    surfSiMax,
 #endif
      &    diaz_ini_fac,
      &    O2crit,
@@ -172,7 +196,7 @@ CCOG]]]
      &    kMinFeSed,
      &    kMaxFeSed
 
-CCOG[[[end]]] (checksum: 154ce07fe840a12980a789424096bacf)
+CCOG[[[end]]] (checksum: 0fd3b81aadfb01a149f5aa4ceff2c449)
 
 CCOG[[[cog
 CCOGfor tp,dims,param,pre,post in locals[0]: cog.out('''
@@ -332,6 +356,32 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       R_OC           = 170 _d 0/120.0 _d 0
       m3perkg        = 1. _d 0 / 1024.5 _d 0
 
+      surfSaltMinInit = 4.0 _d 0
+      surfSaltMaxInit = 50.0 _d 0
+      surfTempMinInit = -4.0 _d 0
+      surfTempMaxInit = 39.0 _d 0
+      surfDICMinInit = 10.0 _d 0    ! mmol m^-3
+      surfDICMaxInit = 4000.0 _d 0  ! mmol m^-3
+      surfALKMinInit = 10.0 _d 0    ! mmol m^-3
+      surfALKMaxInit = 4000.0 _d 0  ! mmol m^-3
+      surfPO4MinInit = 1.0 _d -10   ! mmol m^-3
+      surfPO4MaxInit = 10.0 _d 0    ! mmol m^-3
+      surfSiMinInit  = 1.0 _d -8    ! mmol m^-3
+      surfSiMaxInit  = 500.0 _d 0   ! mmol m^-3
+
+      surfSaltMin = 4.0 _d 0
+      surfSaltMax = 50.0 _d 0
+      surfTempMin = -4.0 _d 0
+      surfTempMax = 39.0 _d 0
+      surfDICMin = 400.0 _d 0   ! mmol m^-3
+      surfDICMax = 4000.0 _d 0  ! mmol m^-3
+      surfALKMin = 400.0 _d 0   ! mmol m^-3
+      surfALKMax = 4000.0 _d 0  ! mmol m^-3
+      surfPO4Min = 1.0 _d -10   ! mmol m^-3
+      surfPO4Max = 10.0 _d 0    ! mmol m^-3
+      surfSiMin  = 1.0 _d -8    ! mmol m^-3
+      surfSiMax  = 500.0 _d 0   ! mmol m^-3
+
 #endif
       diaz_ini_fac = 1 _d 0                 ! reduce tracer concentrations by this factor on initialization
 
@@ -430,7 +480,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       kMinFeSed = 1
       kMaxFeSed = 0
 
-CCOG[[[end]]] (checksum: 7143e78ae3f2d4cc7f76a708727304ba)
+CCOG[[[end]]] (checksum: 26ea3d95cb8d84dbd61bc493b7e81241)
 
 
 

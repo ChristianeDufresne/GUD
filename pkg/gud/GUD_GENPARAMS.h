@@ -148,6 +148,30 @@ CCOG]]]
      &    R_OP,
      &    R_OC,
      &    m3perkg,
+     &    surfSaltMinInit,
+     &    surfSaltMaxInit,
+     &    surfTempMinInit,
+     &    surfTempMaxInit,
+     &    surfDICMinInit,
+     &    surfDICMaxInit,
+     &    surfALKMinInit,
+     &    surfALKMaxInit,
+     &    surfPO4MinInit,
+     &    surfPO4MaxInit,
+     &    surfSiMinInit,
+     &    surfSiMaxInit,
+     &    surfSaltMin,
+     &    surfSaltMax,
+     &    surfTempMin,
+     &    surfTempMax,
+     &    surfDICMin,
+     &    surfDICMax,
+     &    surfALKMin,
+     &    surfALKMax,
+     &    surfPO4Min,
+     &    surfPO4Max,
+     &    surfSiMin,
+     &    surfSiMax,
 #endif
      &    diaz_ini_fac,
      &    O2crit,
@@ -212,6 +236,30 @@ CCOG]]]
       _RL R_OP
       _RL R_OC
       _RL m3perkg
+      _RL surfSaltMinInit
+      _RL surfSaltMaxInit
+      _RL surfTempMinInit
+      _RL surfTempMaxInit
+      _RL surfDICMinInit
+      _RL surfDICMaxInit
+      _RL surfALKMinInit
+      _RL surfALKMaxInit
+      _RL surfPO4MinInit
+      _RL surfPO4MaxInit
+      _RL surfSiMinInit
+      _RL surfSiMaxInit
+      _RL surfSaltMin
+      _RL surfSaltMax
+      _RL surfTempMin
+      _RL surfTempMax
+      _RL surfDICMin
+      _RL surfDICMax
+      _RL surfALKMin
+      _RL surfALKMax
+      _RL surfPO4Min
+      _RL surfPO4Max
+      _RL surfSiMin
+      _RL surfSiMax
 #endif
       _RL diaz_ini_fac
       _RL O2crit
@@ -296,7 +344,7 @@ CCOG]]]
       INTEGER kMinFeSed
       INTEGER kMaxFeSed
 
-CCOG[[[end]]] (checksum: c1e1d4db70633629279e5b20cbd31f13)
+CCOG[[[end]]] (checksum: 2e1a6f2a841d16ad62df8ae50dbeb1b7)
 
 #endif /* ALLOW_GUD */
 

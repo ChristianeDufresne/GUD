@@ -125,6 +125,32 @@ _RL gud_atmos_pCO2 = 278 _d -6
 _RL R_OP           = 170 _d 0
 _RL R_OC           = 170 _d 0/120.0 _d 0
 _RL m3perkg        = 1. _d 0 / 1024.5 _d 0
+
+_RL surfSaltMinInit = 4.0 _d 0
+_RL surfSaltMaxInit = 50.0 _d 0
+_RL surfTempMinInit = -4.0 _d 0
+_RL surfTempMaxInit = 39.0 _d 0
+_RL surfDICMinInit = 10.0 _d 0    ! mmol m^-3
+_RL surfDICMaxInit = 4000.0 _d 0  ! mmol m^-3
+_RL surfALKMinInit = 10.0 _d 0    ! mmol m^-3
+_RL surfALKMaxInit = 4000.0 _d 0  ! mmol m^-3
+_RL surfPO4MinInit = 1.0 _d -10   ! mmol m^-3
+_RL surfPO4MaxInit = 10.0 _d 0    ! mmol m^-3
+_RL surfSiMinInit  = 1.0 _d -8    ! mmol m^-3
+_RL surfSiMaxInit  = 500.0 _d 0   ! mmol m^-3
+
+_RL surfSaltMin = 4.0 _d 0
+_RL surfSaltMax = 50.0 _d 0
+_RL surfTempMin = -4.0 _d 0
+_RL surfTempMax = 39.0 _d 0
+_RL surfDICMin = 400.0 _d 0   ! mmol m^-3
+_RL surfDICMax = 4000.0 _d 0  ! mmol m^-3
+_RL surfALKMin = 400.0 _d 0   ! mmol m^-3
+_RL surfALKMax = 4000.0 _d 0  ! mmol m^-3
+_RL surfPO4Min = 1.0 _d -10   ! mmol m^-3
+_RL surfPO4Max = 10.0 _d 0    ! mmol m^-3
+_RL surfSiMin  = 1.0 _d -8    ! mmol m^-3
+_RL surfSiMax  = 500.0 _d 0   ! mmol m^-3
 #endif
 
 _RL diaz_ini_fac = 1 _d 0                 ! reduce tracer concentrations by this factor on initialization
