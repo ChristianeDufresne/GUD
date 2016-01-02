@@ -361,7 +361,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       inhib_graz     = 1.0 _d 0             ! for quota-style grazing ((mmol C m-3)-1)
       inhib_graz_exp = 0.0 _d 0             ! exponent 0.0 turns it off
 
-      hillnum  = 0.0 _d 0                   ! exponent for limiting quota uptake in grazing
+      hillnum  = 1.0 _d 0                   ! exponent for limiting quota uptake in grazing
 
       hollexp = 1.0 _d 0                    ! grazing exponential 1= holling 2, 2=holling 3
 
@@ -430,7 +430,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       kMinFeSed = 1
       kMaxFeSed = 0
 
-CCOG[[[end]]] (checksum: e7a7d5ed2eb4d1860820fe131d7dc445)
+CCOG[[[end]]] (checksum: 7143e78ae3f2d4cc7f76a708727304ba)
 
 
 
