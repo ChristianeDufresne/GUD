@@ -315,11 +315,6 @@ C$taf loop = parallel
 C$taf loop = parallel
           DO bi=myBxLo(myThid),myBxHi(myThid)
 
-           jMin=1
-           jMax=sNy
-           iMin=1
-           iMax=sNx
-
 #ifdef GUD_ALLOW_NUT_SUPPLY
 c articficial supply of nutrients
            CALL GUD_NUT_SUPPLY( pTracer(1-OLx,1-OLy,1,bi,bj,iPO4),
