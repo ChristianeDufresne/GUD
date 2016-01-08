@@ -701,13 +701,13 @@ cmm   accumulate average
       else
         kk=gencost_pointer3d(k)
         call cost_averagesgeneric(
-     &       gencost_barfile(k),
-     &       gencost_bar3d(1-Olx,1-Oly,1,1,1,kk),
-     &       gencost_mod3d(1-Olx,1-Oly,1,1,1,kk),
-     &       gencost_dummy(k),
-     &       first, last,
-     &       startofgen(k), endofgen(k), ingen(k),
-     &       sum1gen(k), genrec(k), nr, mythid )
+     &     gencost_barfile(k),
+     &     gencost_bar3d(1-Olx,1-Oly,1,1,1,kk),
+     &     gencost_mod3d(1-Olx,1-Oly,1,1,1,kk),
+     &     gencost_dummy(k),
+     &     first, last,
+     &     startofgen(k), endofgen(k), ingen(k),
+     &     sum1gen(k), genrec(k), nr, mythid )
 #endif
       endif
 
@@ -756,12 +756,12 @@ cph   In the mean time increment ad hoc during day
        enddo
 #endif
 
-#ifdef ALLOW_COST_ATLANTIC
+c#ifdef ALLOW_COST_ATLANTIC
 c--   Compute meridional heat transport
-      call timer_start('cost_atlantic      [ECCO SPIN-DOWN]', mythid)
-      call cost_atlantic(  mytime, myiter,mythid )
-      call timer_stop ('cost_atlantic      [ECCO SPIN-DOWN]', mythid)
-#endif
+c     call timer_start('cost_atlantic      [ECCO SPIN-DOWN]', mythid)
+c     call cost_atlantic(  mytime, myiter,mythid )
+c     call timer_stop ('cost_atlantic      [ECCO SPIN-DOWN]', mythid)
+c#endif
 
 #endif /* ECCO_CTRL_DEPRECATED */
 

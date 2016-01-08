@@ -794,6 +794,9 @@ c
          il = ilnblnk(gencost_datafile(k))
          write(msgbuf,'(a,a)') ' data file = ',gencost_datafile(k)(1:il)
          call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
+        endif
+catn: take gencost_nrec outside datafile block because some costs
+c do not need datafile.
          if (gencost_nrec(k).GT.1) then
           write(msgbuf,'(a)') '  starts and ends at : '
           call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
@@ -808,7 +811,7 @@ c
      &                            gencost_nrecperiod(k)
           call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
          endif
-        endif
+catn        endif
 c
          il = ilnblnk(gencost_barfile(k))
          write(msgbuf,'(a,a)') ' model file = ',gencost_barfile(k)(1:il)
@@ -837,7 +840,7 @@ c
           endif
          enddo
 c
-         write(msgbuf,'(a,L2)') ' gencost_flag = ',gencost_flag(k)
+         write(msgbuf,'(a,i2)') ' gencost_flag = ',gencost_flag(k)
          call print_message( msgbuf, msgunit, SQUEEZE_RIGHT , mythid)
          write(msgbuf,'(a,i2)') ' gencost_outputlevel = ',
      &         gencost_outputlevel(k)

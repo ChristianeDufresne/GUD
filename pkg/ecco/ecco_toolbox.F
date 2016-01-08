@@ -517,10 +517,10 @@ CBOP
 C     !ROUTINE: ecco_addcost
 C     !INTERFACE:
       subroutine ecco_addcost(
-     I                   localdif, localweight, difmask, nnzobs,
-     I                   objf_local, num_local,
-     I                   myThid
-     &                   )
+     I               localdif, localweight, difmask, nnzobs, dosumsq,
+     U               objf_local, num_local,
+     I               myThid
+     &               )
 
 C     !DESCRIPTION: \bv
 C     adds to a cost function term
@@ -548,6 +548,8 @@ c     == routine arguments ==
 
       _RL objf_local(nsx,nsy)
       _RL num_local(nsx,nsy)
+
+      logical dosumsq
 
 #ifdef ALLOW_ECCO
 
@@ -587,7 +589,11 @@ c--     Compute normalized model-obs cost function
                 localwww  = localweight(i,j,k,bi,bj)
      &                    * difmask(i,j,k,bi,bj)
                 junk      = localdif(i,j,k,bi,bj)
-                localcost = localcost + junk*junk*localwww
+                if(dosumsq) then
+                  localcost = localcost + junk*junk*localwww
+                else
+                  localcost = localcost + junk*localwww
+                endif
                 if ( localwww .ne. 0. )
      &               num_local(bi,bj) = num_local(bi,bj) + 1. _d 0
               enddo
@@ -958,6 +964,68 @@ CEOP
       RETURN
       END
 
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+CBOP
+C     !ROUTINE: ecco_multfield
+C     !INTERFACE:
+      subroutine ecco_multfield( fld, nnzloc, fld2, myThid )
+C     !DESCRIPTION: \bv
+C     multiply a field by another field, fld2 is updated on output
+C     \ev
+
+C     !USES:
+      IMPLICIT NONE
+
+C     == global variables ==
+#include "EEPARAMS.h"
+#include "SIZE.h"
+
+c     == routine arguments ==
+
+      INTEGER myThid
+      INTEGER nnzloc
+      _RL fld   (1-olx:snx+olx,1-oly:sny+oly,nnzloc,nsx,nsy)
+      _RL fld2  (1-olx:snx+olx,1-oly:sny+oly,nnzloc,nsx,nsy)
+
+#ifdef ALLOW_ECCO
+
+c     == local variables ==
+
+      integer bi,bj
+      integer i,j,k
+      integer itlo,ithi
+      integer jtlo,jthi
+      integer jmin,jmax
+      integer imin,imax
+
+CEOP
+
+      jtlo = mybylo(mythid)
+      jthi = mybyhi(mythid)
+      itlo = mybxlo(mythid)
+      ithi = mybxhi(mythid)
+      jmin = 1-oly
+      jmax = sny+oly
+      imin = 1-olx
+      imax = snx+olx
+
+        do bj = jtlo,jthi
+          do bi = itlo,ithi
+            do k = 1,nnzloc
+             do j = jmin,jmax
+              do i = imin,imax
+                fld2(i,j,k,bi,bj) = fld(i,j,k,bi,bj)*
+     &                   fld2(i,j,k,bi,bj)
+              enddo
+             enddo
+            enddo
+          enddo
+        enddo
+
+#endif /* ALLOW_ECCO */
+
+      RETURN
+      END
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 CBOP
 C     !ROUTINE: ecco_readbar

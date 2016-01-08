@@ -90,7 +90,6 @@ C     small  :: a small number (to avoid floating point exceptions)
 
 C     dfdy    :: gradient of the Coriolis paramater, df/dy, 1/(m*s)
 C     dfdx    :: gradient of the Coriolis paramater, df/dx, 1/(m*s)
-C     gradf   :: gradient of the Coriolis paramater at a cell centre, 1/(m*s)
 C     Rurms  :: a local mixing length used in calculation of urms (m)
 C     RRhines :: The Rhines scale (m)
 C     Rmix    :: Mixing length
@@ -100,11 +99,9 @@ C     N2S     :: Square of the buoyancy frequency (1/s**2) averaged to south of 
 C     N       :: Buoyancy frequency, SQRT(N2)
 C     BVint   :: The vertical integral of N (m/s)
 C     ubar    :: Zonal velocity on a tracer point (m/s)
-C     vbar    :: Meridional velocity on a tracer point (m/s)
 C     Ubaro   :: Barotropic velocity (m/s)
       _RL dfdy(   1-Olx:sNx+Olx,1-Oly:sNy+Oly)
       _RL dfdx(   1-Olx:sNx+Olx,1-Oly:sNy+Oly)
-      _RL gradf(  1-Olx:sNx+Olx,1-Oly:sNy+Oly)
       _RL dummy(  1-Olx:sNx+Olx,1-Oly:sNy+Oly)
       _RL Rurms(  1-Olx:sNx+Olx,1-Oly:sNy+Oly)
       _RL RRhines(1-Olx:sNx+Olx,1-Oly:sNy+Oly)
@@ -134,9 +131,8 @@ C     tfluxX   :: thickness flux in x direction
 C     tfluxY   :: thickness flux in y direction
 C     fCoriU   :: Coriolis parameter averaged to U points
 C     fCoriV   :: Coriolis parameter averaged to V points
-C     cori     :: Coriolis parameter forced to be finite near the equator
-C     coriU    :: As for cori, but, at U point
-C     coriV    :: As for cori, but, at V point
+C     coriU    :: As fCoriU, but limited
+C     coriV    :: As fCoriV, but limited
 C     surfkz   :: Depth of surface layer (in r units)
       _RL Rmid(1-Olx:sNx+Olx,1-Oly:sNy+Oly)
       _RL KPV(1-Olx:sNx+Olx,1-Oly:sNy+Oly,Nr)
@@ -148,7 +144,6 @@ C     surfkz   :: Depth of surface layer (in r units)
       _RL dSigmaDy(1-Olx:sNx+Olx,1-Oly:sNy+Oly,Nr)
       _RL tfluxX(1-Olx:sNx+Olx,1-Oly:sNy+Oly,Nr)
       _RL tfluxY(1-Olx:sNx+Olx,1-Oly:sNy+Oly,Nr)
-      _RL cori(1-Olx:sNx+Olx,1-Oly:sNy+Oly)
       _RL coriU(1-Olx:sNx+Olx,1-Oly:sNy+Oly)
       _RL coriV(1-Olx:sNx+Olx,1-Oly:sNy+Oly)
       _RL fCoriU(1-Olx:sNx+Olx,1-Oly:sNy+Oly)
@@ -261,61 +256,38 @@ C     Gradient of Coriolis
        ENDDO
       ENDDO
 
-C     Coriolis at C points enforcing a minimum value so
+C     Coriolis at U and V points enforcing a minimum value so
 C     that it is defined at the equator
       DO j=1-Oly,sNy+Oly
-       DO i=1-Olx,sNx+Olx
-        cori(i,j)  = SIGN( MAX( ABS(fCori(i,j,bi,bj)),GM_K3D_minCori ),
-     &                          fCori(i,j,bi,bj) )
-       ENDDO
-      ENDDO
-C     Coriolis at U and V points
-      DO j=1-Oly,sNy+Oly
        DO i=1-Olx+1,sNx+Olx
-C       Limited so that the inverse is defined at the equator
-        coriU(i,j) = op5*( cori(i,j)+cori(i-1,j) )
-        coriU(i,j) = SIGN( MAX( ABS(coriU(i,j)),GM_K3D_minCori ),
-     &       coriU(i,j) )
-
 C       Not limited
-        fCoriU(i,j) = op5*( fCori(i,j,bi,bj)+fCori(i-1,j,bi,bj) )
+        fCoriU(i,j)= op5*( fCori(i,j,bi,bj)+fCori(i-1,j,bi,bj) )
+C       Limited so that the inverse is defined at the equator
+        coriU(i,j) = SIGN( MAX( ABS(fCoriU(i,j)),GM_K3D_minCori ),
+     &                              fCoriU(i,j) )
        ENDDO
       ENDDO
       DO j=1-Oly+1,sNy+Oly
        DO i=1-Olx,sNx+Olx
-C       Limited so that the inverse is defined at the equator
-        coriV(i,j) = op5*( cori(i,j)+cori(i,j-1) )
-        coriV(i,j) = SIGN( MAX( ABS(coriV(i,j)),GM_K3D_minCori ),
-     &       coriV(i,j) )
-
 C       Not limited
-        fCoriV(i,j) = op5*( fCori(i,j,bi,bj)+fCori(i,j-1,bi,bj) )
+        fCoriV(i,j)= op5*( fCori(i,j,bi,bj)+fCori(i,j-1,bi,bj) )
+C       Limited so that the inverse is defined at the equator
+        coriV(i,j) = SIGN( MAX( ABS(fCoriV(i,j)),GM_K3D_minCori ),
+     &                              fCoriV(i,j) )
        ENDDO
       ENDDO
-C     Computing beta
-      IF ( selectCoriMap.EQ.1 ) THEN
-       DO j=1-Oly,sNy+Oly
-        DO i=1-Olx,sNx+Olx
-         gradf(i,j) =  beta
-        ENDDO
-       ENDDO
-      ELSEIF ( selectCoriMap.EQ.2 ) THEN
-       DO j=1-Oly,sNy+Oly
-        DO i=1-Olx,sNx+Olx
-         gradf(i,j) = recip_rSphere*fCoriCos(i,j,bi,bj)
-        ENDDO
-       ENDDO 
-      ENDIF
 C     Some dummy values at the edges
       i=1-Olx
       DO j=1-Oly,sNy+Oly
-       coriU(i,j)=cori(i,j)
-       fCoriU(i,j)=fCori(i,j,bi,bj)
+       fCoriU(i,j)= fCori(i,j,bi,bj)
+       coriU(i,j) = SIGN( MAX( ABS(fCori(i,j,bi,bj)),GM_K3D_minCori ),
+     &                             fCori(i,j,bi,bj) )
       ENDDO
       j=1-Oly
       DO i=1-Olx,sNx+Olx
-       coriV(i,j)=cori(i,j)
-       fCoriV(i,j)=fCori(i,j,bi,bj)
+       fCoriV(i,j)= fCori(i,j,bi,bj)
+       coriV(i,j) = SIGN( MAX( ABS(fCori(i,j,bi,bj)),GM_K3D_minCori ),
+     &                             fCori(i,j,bi,bj) )
       ENDDO
 
 C     Zeroing some cumulative fields
@@ -338,8 +310,6 @@ C     Zeroing some cumulative fields
 C     initialise remaining 2d variables
       DO j=1-Oly,sNy+Oly
        DO i=1-Olx,sNx+Olx
-        dfdy(i,j)=zeroRL
-        dfdy(i,j)=zeroRL
         Rurms(i,j)=zeroRL
         RRhines(i,j)=zeroRL
         Rmix(i,j)=zeroRL
@@ -395,7 +365,6 @@ C     This code does two things:
 C     1) go from C grid velocity points to A grid velocity points
 C     2) go from model grid directions to east/west directions
       DO k = 1,Nr
-
        DO i = 1-Olx,sNx+Olx
         j=sNy+Oly
         tmpU(i,j)=zeroRL
@@ -415,19 +384,33 @@ C     2) go from model grid directions to east/west directions
          tmpV(i,j) = tmpV(i,j) * maskC(i,j,k,bi,bj)
         ENDDO
        ENDDO
-
-       DO j = 1-oly,sny+oly
-        DO i = 1-olx,snx+olx
-        ENDDO
-       ENDDO
-
-C     rotation
+C     Rotation
        DO j = 1-oly,sny+oly
         DO i = 1-olx,snx+olx
          ubar(i,j,k) =
      &        angleCosC(i,j,bi,bj)*tmpU(i,j)
      &        -angleSinC(i,j,bi,bj)*tmpV(i,j)
         ENDDO
+       ENDDO
+      ENDDO
+
+C     Calculate the barotropic velocity by vertically integrating
+C     and the dividing by the depth of the water column
+C     Note that Ubaro is at the C-point.
+      DO k=1,Nr
+       DO j=1-Oly,sNy+Oly
+        DO i=1-Olx,sNx+Olx
+         Ubaro(i,j) = Ubaro(i,j) +
+     &        drF(k)*hfacC(i,j,k,bi,bj)*ubar(i,j,k)
+        ENDDO
+       ENDDO
+      ENDDO
+      DO j=1-Oly,sNy+Oly
+       DO i=1-Olx,sNx+Olx
+        IF (kLow_C(i,j).GT.0) THEN
+C         The minus sign is because r_Low<0
+          Ubaro(i,j) = -Ubaro(i,j)/r_Low(i,j,bi,bj)
+        ENDIF
        ENDDO
       ENDDO
 
@@ -452,26 +435,6 @@ C     N2(k=1) is always zero
       ENDDO
 C     Calculate the minimum drho/dz
       maxDRhoDz = -rhoConst*GM_K3D_minN2/gravity
-
-C     Calculate the barotropic velocity by vertically integrating
-C     and the dividing by the depth of the water column
-C     Note that Ubaro is at the C-point.
-      DO k=1,Nr
-       DO j=1-Oly,sNy+Oly
-        DO i=1-Olx,sNx+Olx
-         Ubaro(i,j) = Ubaro(i,j) +
-     &        drF(k)*hfacC(i,j,k,bi,bj)*ubar(i,j,k)
-        ENDDO
-       ENDDO
-      ENDDO
-      DO j=1-Oly,sNy+Oly
-       DO i=1-Olx,sNx+Olx
-        IF (kLow_C(i,j).GT.0) THEN
-C         The minus sign is because r_Low<0
-          Ubaro(i,j) = -Ubaro(i,j)/r_Low(i,j,bi,bj)
-        ENDIF
-       ENDDO
-      ENDDO
 
 C     Integrate the buoyancy frequency vertically using the trapezoidal method.
 C     Assume that N(z=-H)=0
@@ -499,14 +462,13 @@ C     Calculate the eigenvalues and eigenvectors
 C       Calculate the Rossby Radius
         DO j=1-Oly+1,sNy+Oly
          DO i=1-Olx+1,sNx+Olx
-          Req  = SQRT(BVint(i,j)/(2*pi*gradf(i,j)))
+          Req  = SQRT(BVint(i,j)/(2. _d 0*pi*gradf(i,j,bi,bj)))
           Rdef(i,j,bi,bj) = MIN(Rmid(i,j),Req)
          ENDDO
         ENDDO
       ENDIF
 
 C     Average dsigma/dx and dsigma/dy onto the centre points
-
       DO k=1,Nr
        DO j=1-Oly,sNy+Oly-1
         DO i=1-Olx,sNx+Olx-1
@@ -595,7 +557,7 @@ C       Set the bottom urms to zero
         IF (k.GT.0) urms(i,j,k) = 0.0
 
 C       Calculate the Rhines scale
-        RRhines(i,j) = SQRT(urms(i,j,1)/gradf(i,j))
+        RRhines(i,j) = SQRT(urms(i,j,1)/gradf(i,j,bi,bj))
 
 C       Calculate the estimated length scale
         Rmix(i,j) = MIN(Rdef(i,j,bi,bj), RRhines(i,j))
@@ -604,7 +566,7 @@ C       Calculate the estimated length scale
 C       Calculate the Doppler shifted long Rossby wave speed
 C       Ubaro is at the C-point.
         cDopp(i,j) = Ubaro(i,j)
-     &                - gradf(i,j)*Rdef(i,j,bi,bj)*Rdef(i,j,bi,bj)
+     &                - gradf(i,j,bi,bj)*Rdef(i,j,bi,bj)*Rdef(i,j,bi,bj)
 C       Limit the wave speed to the namelist variable GM_K3D_maxC
         IF (ABS(cDopp(i,j)).GT.GM_K3D_maxC) THEN
           cDopp(i,j) = MAX(GM_K3D_maxC, cDopp(i,j))
@@ -707,16 +669,16 @@ C          Calculate the meridional slope at the southern cell face (V grid)
        ENDDO
       ENDDO
 
-C     Calculate the thickness flux and diffusivity.  These may be altered later
-C     depending on namelist options.
+C     Calculate gradients of PV stretching term and PV diffusivity.
+C     These may be altered later depending on namelist options.
 C     Enforce a zero slope bottom boundary condition for the bottom most cells (k=Nr)
       k=Nr
       DO j=1-Oly,sNy+Oly
        DO i=1-Olx,sNx+Olx
-C          Zonal thickness flux at the western cell face
+C          Zonal gradient of PV stretching term: at the western cell face
            tfluxX(i,j,k) = -fCoriU(i,j)*SlopeX(i,j,k)
      &                      *recip_drF(k)*recip_hFacW(i,j,k,bi,bj)
-C          Meridional thickness flux at the southern cell face
+C     Meridional gradient of PV stretching term: at the southern cell face
            tfluxY(i,j,k) = -fCoriV(i,j)*SlopeY(i,j,k)
      &                     *recip_drF(k)*recip_hFacS(i,j,k,bi,bj)
 
@@ -727,16 +689,15 @@ C          constant diffusivity KPV is overwritten later
        ENDDO
       ENDDO
 
-C     Calculate the thickness flux and diffusivity and for other cells (k<Nr)
+C     Calculate gradients of PV stretching term and PV diffusivity: for other cells (k<Nr)
       DO k=Nr-1,1,-1
        DO j=1-Oly,sNy+Oly
         DO i=1-Olx,sNx+Olx
-C        Zonal thickness flux at the western cell face
+C          Zonal gradient of PV stretching term: at the western cell face
          tfluxX(i,j,k)=-fCoriU(i,j)*(SlopeX(i,j,k)-SlopeX(i,j,k+1))
      &        *recip_drF(k)*recip_hFacW(i,j,k,bi,bj)
      &        *maskW(i,j,k,bi,bj)
-
-C        Meridional thickness flux at the southern cell face
+C     Meridional gradient of PV stretching term: at the southern cell face
          tfluxY(i,j,k)=-fCoriV(i,j)*(SlopeY(i,j,k)-SlopeY(i,j,k+1))
      &        *recip_drF(k)*recip_hFacS(i,j,k,bi,bj)
      &        *maskS(i,j,k,bi,bj)

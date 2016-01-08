@@ -160,11 +160,16 @@ def _flat2D(fld, center='Atlantic'):
                             tmp[0::n,:].transpose()))
     # Arctic face is special
     arctic  = fld[2*(n*nx):2*(n*nx)+nx,:]
-    arctice = np.concatenate((arctic[::-1,:nx/2].transpose(),
+    arctice = np.concatenate((np.triu(arctic[::-1,:nx/2].transpose()),
                               np.zeros((nx/2,nx))),axis=1)
-    arcticw = np.concatenate((arctic[:,nx:nx/2-1:-1].transpose(),
-                              np.zeros((nx/2,nx/2)),
-                              arctic[nx:nx/2-1:-1,nx/2-1::-1]),axis=1)
+    # arcticw = np.concatenate((arctic[:,nx:nx/2-1:-1].transpose(),
+    #                           np.zeros((nx/2,nx/2)),
+    #                           arctic[nx:nx/2-1:-1,nx/2-1::-1]),axis=1)
+    mskr = np.tri(nx/2)[::-1,:]
+    arcticw = np.concatenate((arctic[0:nx/2,nx:nx/2-1:-1].transpose(),
+                              arctic[nx/2:nx,nx:nx/2-1:-1].transpose()*mskr,
+                              np.triu(arctic[nx:nx/2-1:-1,nx:nx/2-1:-1]),
+                              arctic[nx:nx/2-1:-1,nx/2-1::-1]*mskr),axis=1)
     #
     if center == 'Pacific':
         gfld = np.concatenate( ( np.concatenate((eastern,arctice)),
@@ -230,6 +235,67 @@ def mds(fld,center='Atlantic'):
     return mdsfld
 
 def faces(fld):
+    """convert mds multidimensional data into a list with 6 faces"""
+    
+    ndim = len(fld.shape)
+    if ndim == 2:
+        f = _faces2D(fld)
+    else:
+        # use list for dynamical memory allocation, because it is fast
+        if ndim == 3:
+            ff = []
+            nk = fld.shape[0]
+            for k in range(nk):
+                fld2D = fld[k,:,:]
+                f2D = _faces2D(fld2D)
+                ff.append(f2D)
+        elif ndim == 4:
+            ff = []
+            nk = fld.shape[1]
+            nl = fld.shape[0]
+            for l in range(nl):
+                for k in range(nk):
+                    fld2D = fld[l,k,:,:]
+                    f2D = _faces2D(fld2D)
+                    ff.append(f2D)
+        elif ndim == 5:
+            ff = []
+            nk = fld.shape[2]
+            nl = fld.shape[1]
+            nm = fld.shape[0]
+            for m in range(nm):
+                for l in range(nl):
+                    for k in range(nk):
+                        fld2D = fld[m,l,k,:,:]
+                        f2D = _faces2D(fld2D)
+                        ff.append(f2D)
+        # permute list indices so that face index is the first
+        ff = np.transpose(ff)
+        f  = []
+        for listIndex in range(len(ff)):
+            # for each face turn list into array, glue together and reshape
+            nx = ff[listIndex][0].shape[-1]
+            ny = ff[listIndex][0].shape[-2]
+            if   ndim == 3: rshp =       (nk,ny,nx)
+            elif ndim == 4: rshp =    (nl,nk,ny,nx)
+            elif ndim == 5: rshp = (nm,nl,nk,ny,nx)
+            f.append(np.concatenate(np.array(ff[listIndex])).reshape(rshp))
+
+    return f
+
+def faces2mds(ff):
+    """convert 6 faces to mds 2D data,
+    inverse opertation of llc.faces"""
+    
+    ndims = len(ff[0].shape)
+    shp = list(ff[0].shape)
+    shp[-2]=2*ff[0].shape[-2]
+    wd = np.concatenate( (ff[3],ff[4]),axis=-2 ).reshape(shp)
+    f  = np.concatenate( (ff[0],ff[1],ff[2],wd),axis=-2)
+
+    return f
+
+def _faces2D(fld):
     """convert mds 2D data into a list with 6 faces"""
     
     nx = fld.shape[-1]
@@ -242,13 +308,10 @@ def faces(fld):
     f.append(fld[n*nx:2*(n*nx),:])
     # arctic face
     f.append(fld[2*(n*nx):2*(n*nx)+nx,:])
-    # western hemisphere (why is this so complicated?)
-    tmp = fld[2*(n*nx)+nx:,::-1]
-    wd = np.concatenate((tmp[2::n,:].transpose(),
-                         tmp[1::n,:].transpose(),
-                         tmp[0::n,:].transpose())).transpose()
-    f.append(wd[:nx,::-1])
-    f.append(wd[nx:,::-1])
+    # western hemisphere
+    wd = fld[2*(n*nx)+nx:,:].reshape(2*nx,n*nx)
+    f.append(wd[:nx,:])
+    f.append(wd[nx:,:])
     # pseudo-sixth face
     f.append(np.zeros((nx,nx)))
 
@@ -256,11 +319,19 @@ def faces(fld):
 
 
 def _sqCoord(a):
-    b = np.squeeze(a)
+    b = np.copy(np.squeeze(a))
     # it appears to be important, that here we do not mask the array
     # but reset zeros to NaN (only used for coordinate arrays!!!)
 #    b = np.ma.masked_where(b==0., b)
-    b[b==0.] = np.NaN
+#    b[b==0.] = np.NaN
+    return b
+
+def _sqData(a):
+    b = np.copy(np.squeeze(a))
+    # it appears to be important, that here we do not mask the array
+    # but reset zeros to NaN (only used for coordinate arrays!!!)
+    b = np.ma.masked_where(b==0., b)
+    b = np.ma.masked_where(np.isnan(b), b)
     return b
 
 def pcol(*arguments, **kwargs):
@@ -295,6 +366,28 @@ def pcol(*arguments, **kwargs):
         mapit = True
         m = arguments[3]
 
+    if mapit:
+        # not all projections work, catch few of these here
+        if ( (m.projection == 'hammer') | 
+             (m.projection == 'robin')  | 
+             (m.projection == 'moll')   | 
+             (m.projection == 'cea') ):
+            sys.exit("selected projection '"+m.projection
+                     +"' is not supported")
+
+        # these projections use simple code for the Arctic face; 
+        # all others require more complicted methods
+        stereographicProjection = (m.projection == 'npaeqd')  | \
+                                  (m.projection == 'spaeqd')  | \
+                                  (m.projection == 'nplaea')  | \
+                                  (m.projection == 'splaea')  | \
+                                  (m.projection == 'npstere') | \
+                                  (m.projection == 'spstere') | \
+                                  (m.projection == 'stere')
+    else:
+        stereographicProjection = False
+
+            
     xg = arguments[0]
     yg = arguments[1]
     data = arguments[2]
@@ -361,6 +454,12 @@ def pcol(*arguments, **kwargs):
             else:    tmp = np.atleast_2d(np.append(fe[k],f0[k][3+tp][:1,::-1]))
             f[k][t] = np.concatenate((f[k][t],tmp.transpose()),axis=1)
         
+    # we do not really have a sixth face so we overwrite the southernmost row
+    # of face 4 and 5 by a hack:
+    for t in [3,4]:
+        f[0][t][:,-1] = f[0][t][:,-2]
+        f[1][t][:,-1] = -90. # degree = south pole
+ 
     # make sure that only longitudes of one sign are on individual lateral faces
     i0 = f[0][3]<0.
     f[0][3][i0] = f[0][3][i0]+360.
@@ -369,47 +468,54 @@ def pcol(*arguments, **kwargs):
     for t in [0,1,3,4]:
         if mapit: x, y = m(_sqCoord(f[0][t]), _sqCoord(f[1][t]))
         else:     x, y =   _sqCoord(f[0][t]), _sqCoord(f[1][t])
-        ph.append(plt.pcolormesh(x,y,f[2][t], **kwargs))
+        ph.append(plt.pcolormesh(x,y,_sqData(f[2][t]), **kwargs))
     # plot more lateral faces to be able to select the longitude range later
-    f[0][3][i0] = f[0][3][i0]-360.
-    i0 = f[0][3]>0.
-    f[0][3][i0] = f[0][3][i0]-360.
-    f[0][4] = f[0][4]+360.
-    for t in [3,4]: 
+    for t in [1,3,4]: 
+        f[0][t] = f[0][t]+ (-1)**t*360.
         if mapit: x, y = m(_sqCoord(f[0][t]), _sqCoord(f[1][t]))
         else:     x, y =   _sqCoord(f[0][t]), _sqCoord(f[1][t])
-        ph.append(plt.pcolormesh(x,y,f[2][t], **kwargs))
+        ph.append(plt.pcolormesh(x,y,_sqData(f[2][t]), **kwargs))
 
-    # Arctic face is special
+    # Arctic face is special, because of the rotation of the grid by 
+    # rangle = 7deg (seems to be the default)
     t = 2
-    nn = nx/2
-    xx = np.copy(f[0][t][:nn,:])
-    yy = np.copy(f[1][t][:nn,:])
-    zz = np.copy(f[2][t][:nn,:])
-    i0 = xx<0.
-    xx[i0] = xx[i0]+360.
-    if mapit: x, y = m(_sqCoord(xx),_sqCoord(yy))
-    else:     x, y =   _sqCoord(xx),_sqCoord(yy)
-    ph.append(plt.pcolormesh(x,y,zz, **kwargs))
-    #
-    nn = nx/2-1
-    xx = np.copy(f[0][t][nn:,:])
-    yy = np.copy(f[1][t][nn:,:])
-    zz = np.copy(f[2][t][nn:,:])
-    # need to mask some zz-values so that there is no erroneous wrap-around
-    zz = np.ma.masked_where(xx>20.,zz)
-    #
-    if mapit: x, y = m(_sqCoord(xx),_sqCoord(yy))
-    else:     x, y =   _sqCoord(xx),_sqCoord(yy)
-    ph.append(plt.pcolormesh(x,y,zz, **kwargs))
-    # need to mask some zz-values so that there is no erroneous wrap-around
-    zz = np.copy(f[2][t][nn:,:])
-    zz = np.ma.masked_where(xx>=0.,zz)
-    i0 = xx<0.
-    xx[i0] = xx[i0]+360.
-    if mapit: x, y = m(_sqCoord(xx),_sqCoord(yy))
-    else:     x, y =   _sqCoord(xx),_sqCoord(yy)
-    ph.append(plt.pcolormesh(x,y,zz, **kwargs))
+
+    if mapit & stereographicProjection:
+        x, y = m(_sqCoord(f[0][t]),_sqCoord(f[1][t]))
+        ph.append(plt.pcolormesh(x,y,_sqData(f[2][t]), **kwargs))
+    else:
+        rangle = 7.
+        # first half of Arctic tile
+        nn = nx/2+1
+        xx = np.copy(f[0][t][:nn,:])
+        yy = np.copy(f[1][t][:nn,:])
+        zz = np.copy(f[2][t][:nn,:])
+        xx = np.where(xx<rangle,xx+360,xx)
+        if mapit: x, y = m(_sqCoord(xx),_sqCoord(yy))
+        else:     x, y =   _sqCoord(xx),_sqCoord(yy)
+        ph.append(plt.pcolormesh(x,y,_sqData(zz), **kwargs))
+        # repeat for xx-360
+        xx = xx-360.
+        if mapit: x, y = m(_sqCoord(xx),_sqCoord(yy))
+        else:     x, y =   _sqCoord(xx),_sqCoord(yy)
+        ph.append(plt.pcolormesh(x,y,_sqData(zz), **kwargs))
+        # second half of Arctic tile
+        nn = nx/2-1
+        xx = np.copy(f[0][t][nn:,:])
+        yy = np.copy(f[1][t][nn:,:])
+        zz = np.copy(f[2][t][nn:,:])
+        # need to mask some zz-values so that there is no erroneous wrap-around
+        zz = np.ma.masked_where(xx>rangle,zz)
+        xx = np.where(xx>rangle,np.nan,xx)
+        #
+        if mapit: x, y = m(_sqCoord(xx),_sqCoord(yy))
+        else:     x, y =   _sqCoord(xx),_sqCoord(yy)
+        ph.append(plt.pcolormesh(x,y,_sqData(zz), **kwargs))
+        # repeat for xx+360
+        xx = xx + 360.
+        if mapit: x, y = m(_sqCoord(xx),_sqCoord(yy))
+        else:     x, y =   _sqCoord(xx),_sqCoord(yy)
+        ph.append(plt.pcolormesh(x,y,_sqData(zz), **kwargs))
 
     if not mapit:
         plt.xlim([-170,190])

@@ -473,6 +473,8 @@ CADJ &  nsx*nsy*nthreads_chkpt*nchklev_1*MPSEUDOTIMESTEPS
 #    endif
 #    ifdef SEAICE_ALLOW_EVP
 CADJ INIT comlev1_evp = COMMON,nEVPstepMax*nchklev_1
+CADJ INIT comlev1_bibj_evp = COMMON,
+CADJ &  nsx*nsy*nthreads_chkpt*nEVPstepMax*nchklev_1
 #    endif
 CML#   ifdef SEAICE_MULTICATEGORY
 CMLCADJ INIT comlev1_multdim
@@ -564,7 +566,7 @@ c--     >>> Loop body start <<<
       nIter0 = NINT( (startTime-baseTime)/deltaTClock )
 C--   Reset the model iteration counter and the model time.
       myIter = nIter0 + (iloop-1)
-      myTime = startTime + float(iloop-1)*deltaTClock
+      myTime = startTime + deltaTClock*(iloop-1)
 # ifndef ALLOW_OPENAD
       ikey_dynamics = ilev_1
 # endif
@@ -591,7 +593,7 @@ c--     Accumulate in-situ time averages of theta, salt, and SSH.
 #ifdef ALLOW_AUTODIFF
 C--   Reset the model iteration counter and the model time.
         myIter = nIter0 + (iloop-1)
-        myTime = startTime + float(iloop-1)*deltaTClock
+        myTime = startTime + deltaTClock*(iloop-1)
 #endif
         CALL TIMER_START('PROFILES_INLOOP    [MAIN_DO_LOOP]', myThid)
         CALL PROFILES_INLOOP( myTime, myThid )
@@ -644,7 +646,7 @@ c--   Accumulate in-situ time averages of temperature, salinity, SSH.
         CALL PROFILES_INLOOP( endtime, myThid )
         CALL TIMER_STOP ('PROFILES_INLOOP    [THE_MAIN_LOOP]', myThid)
 c--   Compute all profiles cost function contributions.
-        CALL cost_profiles( myiter, mytime, mythid)
+        CALL COST_PROFILES( myIter, myTime, myThid )
       ENDIF
 #endif
 

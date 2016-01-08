@@ -78,6 +78,7 @@ c--   Read the namelist input.
      &                   using_cost_altim,
      &                   using_cost_bp, using_cost_scat, 
      &                   using_cost_sst, using_cost_seaice,
+     &                   using_cost_transp,
      &                   using_mdt, using_tpj, using_ers, using_gfo,
      &                   using_topex,
      &                   topexstartdate1, topexstartdate2,
@@ -224,6 +225,10 @@ c run time switches for main cost terms
 #else
       using_cost_seaice=.FALSE.
 #endif
+
+c- set default to false
+      using_cost_transp=.FALSE.
+
 #ifdef ALLOW_BP_COST_CONTRIBUTION
       using_cost_bp=.TRUE.
 #else
@@ -549,7 +554,13 @@ c     =========================
        no_posproc_c(k2) = ' '
        no_posproc_i(k2) = 0
        no_posproc_r(k2) = 0. _d 0
+       clim_preproc(k2)   = ' '
+       clim_preproc_i(k2) = 0
+       anom_preproc(k2)   = ' '
       enddo
+      clim_preproc(1)   = 'clim'
+      clim_preproc_i(1) = 12
+      anom_preproc(1)   = 'anom'
       _END_MASTER( myThid )
 
 #ifdef ALLOW_GENCOST_CONTRIBUTION
@@ -611,12 +622,35 @@ c pre-specified generic cost terms using otherwise created barfiles
      &        (gencost_name(k).EQ.'sshv4-gfo').OR.
      &        (gencost_name(k).EQ.'sshv4-lsc').OR.
      &        (gencost_name(k).EQ.'sshv4-gmsl').OR.
-     &        (gencost_name(k).EQ.'boxmean').OR.
      &        (gencost_name(k).EQ.'bpv4-grace').OR.
      &        (gencost_name(k).EQ.'sstv4-amsre').OR.
      &        (gencost_name(k).EQ.'sstv4-amsre-lsc') ) then
            gencost_flag(k)=-1
            using_gencost(k)=.TRUE.
+
+catn move boxmean outside -1 to have its own check
+catn preserve -2 for potential separate group above into cost
+catn with and without requirements of datafile or errfile
+         elseif (gencost_name(k)(1:7).EQ.'boxmean') then
+           WRITE(msgBuf,'(A)') 'kboxmean'
+           gencost_flag(k)=-3
+           using_gencost(k)=.TRUE.
+           il=ilnblnk(gencost_name(k))
+           WRITE(msgBuf,'(A,I3,2A,L5)') 'gencost k_boxmean=',
+     &     k,gencost_name(k)(1:il),': ',using_gencost(k)
+           CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &     SQUEEZE_RIGHT , 1)
+
+catn add cost global transport using gencost framework
+         elseif ( gencost_name(k)(1:6).EQ.'transp' ) then
+           gencost_flag(k)=-4
+           using_gencost(k)=.TRUE.
+           il=ilnblnk(gencost_name(k))
+           WRITE(msgBuf,'(A,i2,2A,L5)') 'gencost k_transp=',
+     &     k,gencost_name(k)(1:il),': ',using_gencost(k)
+           CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &     SQUEEZE_RIGHT , 1)
+
 c pre-specified generic cost terms that create their own barfile
          elseif ( 
      &        (gencost_name(k).EQ.'siv4-conc').OR.
@@ -635,7 +669,9 @@ c identified three dimensional variables
      &        (gencost_barfile(k)(1:6).EQ.'m_salt').OR.
      &        (gencost_barfile(k)(1:8).EQ.'m_diffkr').OR.
      &        (gencost_barfile(k)(1:7).EQ.'m_kapgm').OR.
-     &        (gencost_barfile(k)(1:9).EQ.'m_kapredi') )  
+     &        (gencost_barfile(k)(1:9).EQ.'m_kapredi')
+     &    .OR.(gencost_barfile(k)(1:4).EQ.'m_tr')
+     &       )
      &        gencost_is3d(k)=.TRUE.
 
 c assign a 3D storage array, then increment 3D variables counter
@@ -668,7 +704,9 @@ cgf ensure backward compatibility:
          endif
         endif
 
-        if ( (using_gencost(k)).AND.( gencost_flag(k).GE.1 ) ) then
+catn separate out blocks of gencost_flag so that each block is checked
+        if ( using_gencost(k)) then
+         if ( gencost_flag(k).GE.1 ) then
 
           if ( gencost_name(k) .EQ. 'gencost' )
      &        gencost_name(k) = gencost_datafile(k)
@@ -717,7 +755,32 @@ cgf ensure backward compatibility:
      &       'ECCO_READPARMS: gencost_spzero not set'
           endif
 
-        endif
+catn -- checking for -1 flag
+         elseif( gencost_flag(k) .eq. -1 ) then
+catn -- checking boxmean and transp
+         elseif( gencost_flag(k).lt.-1) then
+            if ( gencost_avgperiod(k) .NE. 'day  ' .AND.
+     &           gencost_avgperiod(k) .NE. 'DAY  ' .AND.
+     &           gencost_avgperiod(k) .NE. 'month' .AND.
+     &           gencost_avgperiod(k) .NE. 'MONTH' .AND.
+     &           gencost_avgperiod(k) .NE. 'step' .AND.
+     &           gencost_avgperiod(k) .NE. 'STEP' .AND.
+     &           gencost_avgperiod(k) .NE. 'const' .AND.
+     &           gencost_avgperiod(k) .NE. 'CONST' .AND.
+     &           gencost_avgperiod(k) .NE. 'year ' .AND.
+     &           gencost_avgperiod(k) .NE. 'YEAR ' ) then
+
+              il=ilnblnk(gencost_name(k))
+              WRITE(msgBuf,'(A,I2,2A)')
+     &          'ERROR in ECCO_READPARMS: for gencost',k,
+     &          '  ',gencost_name(k)(1:il)
+              CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
+     &          SQUEEZE_RIGHT , 1)
+            STOP
+     &           'ECCO_READPARMS: gencost_avgperiod not properly set'
+            endif
+         endif !gencost_flag
+        endif !using_gencost
 
       end do
 

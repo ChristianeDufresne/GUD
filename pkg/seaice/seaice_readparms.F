@@ -109,6 +109,7 @@ C--   SEAICE parameters
      & SEAICE_deltaTevp, SEAICE_elasticParm, SEAICE_evpTauRelax,
      & SEAICE_evpDampC, SEAICEnEVPstarSteps, 
      & SEAICE_evpAlpha, SEAICE_evpBeta,
+     & SEAICEaEVPcoeff, SEAICEaEVPcStar, SEAICEaEVPalphaMin,
      & SEAICE_zetaMin, SEAICE_zetaMaxFac,
      & SEAICEuseJFNK, SEAICEnewtonIterMax, SEAICEkrylovIterMax,
      & SEAICE_JFNK_lsIter, SEAICE_JFNK_tolIter, JFNKres_t,JFNKres_tFac,
@@ -320,6 +321,9 @@ C     Hunke, JCP, 2001 use 615 kg/m^2 for this, but does not recommend using it
       SEAICE_evpAlpha    = UNSET_RL
       SEAICE_evpBeta     = UNSET_RL
       SEAICEnEVPstarSteps = UNSET_I
+      SEAICEaEVPcoeff    = UNSET_RL
+      SEAICEaEVPcStar    = UNSET_RL
+      SEAICEaEVPalphaMin = UNSET_RL
       SEAICE_initialHEFF = ZERO
 #ifdef SEAICE_ITD
 C     Coefficients used to calculate sea ice thickness category limits
@@ -663,7 +667,19 @@ C     yet been tried nor thought through.
       ENDIF
       SEAICEuseEVP = .FALSE.
 #ifdef SEAICE_ALLOW_EVP
-      IF ( SEAICE_deltaTevp .NE. UNSET_RL ) SEAICEuseEVP = .TRUE.
+C     There are four ways to turn on EVP
+C     1. original EVP (Hunke, 2001)
+      IF ( SEAICE_deltaTevp .NE. UNSET_RL )      SEAICEuseEVP = .TRUE.
+C     2. modified EVP (Lemieux et al., 2012) or revised EVP (Bouillon 
+C     et al., 2014) by setting alpha and beta
+      IF ( SEAICE_evpAlpha  .NE. UNSET_RL
+     &  .OR. SEAICE_evpBeta .NE. UNSET_RL )  SEAICEuseEVPstar = .TRUE.
+C     3. adaptive EVP
+      IF ( SEAICEaEVPcoeff  .NE. UNSET_RL )  SEAICEuseEVPstar = .TRUE.
+C     4. modified EVP* (Lemieux et al., 2012) or revised EVP (Bouillon 
+C     et al., 2014) by explicitly setting up specific flags
+      IF ( SEAICEuseEVPstar.OR.SEAICEuseEVPrev ) SEAICEuseEVP = .TRUE. 
+C     if EVP is turned on, a couple of parameters need to be computed
       IF ( SEAICEuseEVP ) THEN
        IF (    (SEAICE_deltaTdyn/SEAICE_deltaTevp) .NE.
      &      INT(SEAICE_deltaTdyn/SEAICE_deltaTevp) .AND.
@@ -681,6 +697,12 @@ C     yet been tried nor thought through.
        ENDIF
        IF ( SEAICE_evpTauRelax .LE. 0. _d 0 )
      &      SEAICE_evpTauRelax = SEAICE_deltaTdyn*SEAICE_elasticParm
+C     default: evpAlpha = evpBeta
+       IF ( SEAICE_evpAlpha .NE. UNSET_RL .AND. 
+     &  SEAICE_evpBeta .EQ. UNSET_RL ) SEAICE_evpBeta = SEAICE_evpAlpha
+       IF ( SEAICE_evpBeta .NE. UNSET_RL .AND. 
+     & SEAICE_evpAlpha .EQ. UNSET_RL ) SEAICE_evpAlpha = SEAICE_evpBeta
+C     derive other parameters
        IF ( SEAICE_evpBeta .EQ. UNSET_RL ) THEN
         SEAICE_evpBeta   = SEAICE_deltaTdyn/SEAICE_deltaTevp
        ELSE
@@ -690,6 +712,15 @@ C     yet been tried nor thought through.
         SEAICE_evpAlpha = 2. _d 0 * SEAICE_evpTauRelax/SEAICE_deltaTevp
        ELSE
         SEAICE_evpTauRelax = 0.5 _d 0 *SEAICE_evpAlpha*SEAICE_deltaTevp
+       ENDIF
+C     this turns on adaptive EVP
+       IF ( SEAICEaEVPcoeff .NE. UNSET_RL ) THEN
+        IF ( SEAICEaEVPcStar  .EQ.UNSET_RL) SEAICEaEVPcStar   =4. _d 0
+        IF (SEAICEaEVPalphaMin.EQ.UNSET_RL) SEAICEaEVPalphaMin=5. _d 0
+C     requires EVP* to work well, so make sure we set it here (commented out
+C     for now
+CML        SEAICEuseEVPstar   = .TRUE.
+CML        SEAICEuseEVPrev    = .TRUE.
        ENDIF
 C     Check if all parameters are set.
       ENDIF

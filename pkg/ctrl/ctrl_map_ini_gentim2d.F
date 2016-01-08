@@ -64,6 +64,7 @@ C     == local variables ==
       logical ladinit
       logical dowc01
       logical dosmooth
+      logical doscaling
       _RL     xx_gen(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
 #ifdef ALLOW_ECCO
       _RL     xx_gen_tmp(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
@@ -104,7 +105,7 @@ C--   generic 2D control variables
 
         dosmooth=.false.
         dowc01  = .false.
-        if (ctrlSmoothCorrel2D) dowc01=.TRUE.
+        doscaling=.true.
 
         numsmo=1
         do k2 = 1, maxCtrlProc
@@ -118,6 +119,9 @@ C--   generic 2D control variables
              dosmooth=.TRUE.
              if (xx_gentim2d_preproc_i(k2,iarr).NE.0)
      &           numsmo=xx_gentim2d_preproc_i(k2,iarr)
+          endif
+          if (xx_gentim2d_preproc(k2,iarr).EQ.'noscaling') then
+             doscaling=.FALSE.
           endif
         enddo
 
@@ -190,7 +194,7 @@ c-- rmcycle
          endif
         enddo
 
-        print*,'endrec',endrec,replicated_ntimes,replicated_nrec
+c       print*,'endrec',endrec,replicated_ntimes,replicated_nrec
 
         IF (replicated_ntimes.GT.0) THEN
 
@@ -199,7 +203,7 @@ c create cyclic average
         nyearsINT=1+int((endrec-replicated_nrec)/replicated_nrec)
         nyearsRL=float(nyearsINT)
 
-        print*,'nyearsINT',nyearsINT,nyearsRL
+c       print*,'nyearsINT',nyearsINT,nyearsRL
 
         DO irec = 1, replicated_nrec
 
@@ -302,6 +306,7 @@ CADJ STORE xx_gentim2d_dummy = ctrltape, key = 1 , kind = isbyte
          ENDIF
 #endif /* ALLOW_SMOOTH */
 
+         IF (doscaling) then
          DO bj=myByLo(myThid), myByHi(myThid)
           DO bi=myBxLo(myThid), myBxHi(myThid)
            DO j = 1,sNy
@@ -317,6 +322,7 @@ CADJ STORE xx_gentim2d_dummy = ctrltape, key = 1 , kind = isbyte
            ENDDO
           ENDDO
          ENDDO
+         ENDIF ! IF (doscaling) then
 #endif /* ALLOW_OPENAD */
 
          CALL CTRL_BOUND_2D(xx_gen,maskC,

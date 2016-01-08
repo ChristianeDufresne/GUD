@@ -4,6 +4,161 @@ $Name$
     Notes on tags used in MITgcmUV
     ==============================
 
+checkpoint65r (2015/12/21)
+o pkg/seaice:
+    fix bug in tridiagonal solvers for SEAICE_OLx/y>0, this affects the JFNK
+    solver (offline.dyn_jfnk) and global_ocean.cs32x15.seaice -> updated
+o pkg/seaice:
+  - fix a bug in computing areaS in (J-J -> J-1) that affects runs
+    when SEAICEscaleSurfStress=.TRUE.,
+  - apply areaW and areaS in S/R seaice_calc_lhs
+o pkg/atm_phys:
+  - add diagnostics for 3-D, Nr+1 levels diagnostics of radiative fluxes
+    (shortwave & longwave, net & downward) and diagnostics of temp. tendency
+    for individual contribution (convection, LSC cond, radiation)
+  - add Ruth Geen etal, GRL 2016, radiation optionis (see paper supp.
+    information); activated with: solar_exponent=0. and wv_exponent=-1.
+o pkg/ggl90:
+  - within IDEMIX add upper limit for horizontal group velocity to
+    avoid instability problems in the explicit horizontal diffusion term for
+    long time steps or high resolution
+o pkg/diagnostics:
+  - simplify setting of local-array size in diagstats_output.F: uses "numLevels"
+    (from DIAGNOSTICS_SIZE.h) to allow to write out more than Nr levels.
+o testreport:
+  - remove "-v" (verbose option) in default mpirun command.
+o pkg/seaice/seaice_growth:
+  - catch potential division by zero in ITD code, does not change
+    verification results
+o pkg/ecco:
+  - retire old codes to the Attic. The calls to retired functions are
+    left in a commented form in case they ever need to be re-activated.
+  - ecco_check.F: issue warning if any old CPP option is
+    defined that corresponds to retired codes -- then stop.
+o pkg/atm_compon_interf:
+  - change seaice fraction (use for OCN dic surf.flux) stored and sent to
+    coupler: use last time-step value instead of average over cplSendFrq_iter
+    time-step, similar to what is done for seaIceMass.
+    This will affect results (pkg/dic) of coupled ATM-OCN+dic set-up.
+o eesupp & genmake2:
+  - from Jinxuan Zhu: change etime fct call to S/R call (fix gfortran ETIME);
+    <= remove until a fix is found for some ifort version on ia32 machine.
+o pkg/seaice/seaice_evp:
+  - refine residual computation
+
+checkpoint65q (2015/11/18)
+o pkg/seaice/seaice_evp:
+  - fix residual computations so that they no longer affect the actual
+    simulation code
+  - fix seaice_readparams to be able to actually set new parameters
+    SEAICEaEVPcStar and SEAICEaEVPalphaMin, also fix logic a little
+o model/src:
+  - fix wrong truncation (single prec) from "FLOAT" function in expressions
+    like: deltaT*FLOAT(myIter) when myIter is large:
+     a) replaced by DFLOAT (if not seen by TAF);
+     b) remove "FLOAT" and use implicit type conversion (if seen by TAF).
+o pkg/aim_v23:
+  - write/read the expected CO2 pickups (from S/R AIM_DO_CO2): fix reading
+    when pickupSuff is set ; do write rolling pickups + at the end of the run.
+o pkg/atm_ocn_coupler + ocn_compon_interf:
+  - in prep for using pkg/seaice Dyn in coupled set-up, implement sequential
+    coupling option-1: ATM -(cpl)-> OCN and then OCN -(cpl)-> ATM ;
+    add corresponding call in DO_OCEANIC_PHYS.
+o coupler pkgs:
+  Start a new way to set-up optionally-exchanged variables (previously, only
+   there for exchange_DIC): switch on/off from 1 place, at run-time, in coupler
+   data.cpl (new) instead of at compile time in ATMIDS.h & OCNIDS.h ;
+   send switch to ATM & OCN compon before reading their own "data.cpl" (so that
+   compononent param default can be set accordingly).
+  Note: this new switch (cpl_exchange_[xxx]) is not a per variable switch
+   but rather applies to a group a fields (going both ways like for DIC)
+   and corresponds to an option of coupling config.
+  coupler (pkg/atm_ocn_coupler):
+  - change parameter file from "data" to "data.cpl" (in cpl_read_params.F),
+    and read namelist directly (without eessup S/R calls) instead of
+    in the very un-flexible old way, 1 param per line, in fixed order;
+  - add error-counter to track errors (e.g., missing "data.cpl") and to stop
+    cleanly in CPL_CHECK_CPLCONFIG
+  - add new coupling-exchange selectors (some not yet active) including
+    cpl_exchange_DIC (to set to 3 to replace atmCpl_exchange_DIC=T in ATMIDS.h
+                                         and ocnCpl_exchange_DIC=T in OCNIDS.h);
+  - add 2 new S/R (CPL_SEND_ATM/OCN_CPLPARMS) to send coupler-params to each
+    component ; called directly from coupler.F, after comp. registrations;
+  - rename few variable-ID names (in ATMIDS.h & OCNIDS.h):
+     atm/ocnSeaIceName --> atm/ocnSIceMassName ; atm/ocnFCO2Name ->
+      -> atm/ocnCO2FluxName ; atm/ocnWSpdName --> atm/ocnWindSpdName
+  components (pkg/atm_ & ocn_compon_interf):
+  - add ATM/OCN_CPL_OPTIONS.h in component pkgs and include the corresponding
+    CPP header file in all pkg source files.
+  - move checking of comp. configs out of cpl_exch_configs.F into new S/R
+    ATM/OCN_CHECK_CPLCONFIG;
+  - add error-counter to track errors (e.g., in "data.cpl") and to stop
+    cleanly in ATM/OCN_CHECK_CPLCONFIG;
+  - add new S/R CPL_IMPORT_CPLPARMS to import coupling-exchange selectors
+    from coupler ; called from initialise_fixed.F, after PACKAGES_BOOT and
+    before PACKAGES_READPARMS;
+  verification/cpl_aim+ocn/:
+  - update ATMIDS.h & OCNIDS.h (in shared_code) and use new parameter file
+    "data.cpl" for coupler (in input_cpl).
+o eesupp/inc:
+  - change the MPI-global-sum default (in CPP_EEOPTIONS.h) to:
+    #define GLOBAL_SUM_ORDER_TILES (only affects MPI built of global_sum_tile.F)
+    to always cumulate tile local-sum in the same order (still uses
+    MPI_Allreduce like standard code).
+  - in verification experiment code, remove local CPP_EEOPTIONS.h_mpi files
+    that are now identical to standard version (in eesupp/inc).
+o pkg/shelfice:
+  - add SHELFICETransCoeffTFile for initializing spatially varying
+    heat and salt transfer coefficients
+o pkg/atm_compon_interf & ocn_compon_interf:
+  - combine into 1 (new) S/R CPL_EXPORT_IMPORT_DATA the two previous
+    S/R CPL_EXPORT_MY_DATA & CPL_IMPORT_EXTERNAL_DATA
+  - move bi,bj loops inside S/R OCN_STORE_MY_DATA
+o pkg/atm_ocn_coupler:
+  - initialise to zero ATMVARS.h & OCNVARS.h arrays.
+o pkg/rbcs:
+  - select RBCS-mask for Temp & Salt the same way as for pTracer ; this allows
+    to compile with maskLEN=1 when all tracers use the same RBCS-mask.
+  - add a short report (to STDOUT) about RBCS-mask settings.
+
+checkpoint65p (2015/10/23)
+o pkg/seaice/seaice_evp.F: fix store directives and key computations, since
+    there is no adjoint test for EVP, we don't know what it does to the adjoint
+    solution, but at least there are no more recomputation warnings left
+o pkg/seaice/seaice_evp.F: slight modification of averaging so that EVP stands
+    a chance of giving the same results as a fully converged VP (JFNK) solver
+o tools/adjoint_options/adjoint_diva:
+  - fix bug (typo) in Tang-Linear FLAGS setting for MPI + DIVA
+o pkg/streamice:
+  - spotted bug in streamice_driving_stress using dyG where should have been dxG
+o pkg/exf:
+  - remove STOP statement that prevented to use wind or (wind-)stress
+    interpolation for constant-in-time forcing fields (wind/stress period = 0).
+o pkg/seaice:
+  - replace SEAICE_EVP_USE_ADAPTATION by run time parameters, requires
+    5 additionals 2D fields and 6 new store directives
+  - change logic in seaice_readparms.F: EVP code can now be turned on in
+    various ways, setting SEAICE_deltaTev is no longer required,
+    alternatively set SEAICE_evpAlpha/Beta, SEAICEuseEVPstar, SEAICEuseEVPrev,
+    or SEAICEaEVPcoeff
+o pkg/shelfice/shelfice_thermodynamics.F
+  - redefining uLoc/vLoc to u/v, instead of 2u/v
+o pkg/seaice/seaice_evp.F: introduce "adaptive EVP" by Madlen Kimmritz
+  - this is an intermediate state of a truely converging EVP that has
+    the potential of outperforming implicit VP methods, I do not recommend
+    using it yet.
+  - for now, "adaptive EVP" is turned on by setting SEAICE_EVP_USE_ADAPTATION
+    and all parameters are hardwired
+  - for convergence it still requires very smooth regularisations, that means,
+    if SEAICE_DELTA_SMOOTHREG is defined, deltaCreg=deltaC+deltaMin, which is
+    different from the VP case with deltaCreg=sqrt(deltaC**2+deltaMin**2); also
+    specific averaging appears to be required, still subject to tuning
+  - still needs cleaning and I need to turn parameter into runtime parameters
+  - add code to compute and print residuals of iteration, compile with
+    defining ALLOW_SEAICE_EVP_RESIDUAL to enable it
+o pkg/seaice/seaice_evp.F: fix a bug (factor of four in front of e12Csq)
+  that entered with r1.54 on Sep04, 2015, -> update results
+
 checkpoint65o (2015/09/14)
 o pkg/mom_vecinv & mom_common:
   - add deep-atmosphere geometry factor in mom_calc_visc.F + in routines

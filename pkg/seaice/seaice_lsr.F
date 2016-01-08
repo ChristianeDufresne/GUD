@@ -198,7 +198,7 @@ C     initialise fractional areas at velocity points
            areaW(I,J,bi,bj) =
      &          0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I-1,J,bi,bj))
            areaS(I,J,bi,bj) =
-     &          0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I,J-J,bi,bj))
+     &          0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I,J-1,bi,bj))
           ENDDO
          ENDDO
         ENDIF
@@ -1229,7 +1229,7 @@ C     backward difference extrapolation factor
          DO J=jMin,jMax
           DO I=iMin,iMax
            areaW(I,J) = 0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I-1,J,bi,bj))
-           areaS(I,J) = 0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I,J-J,bi,bj))
+           areaS(I,J) = 0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I,J-1,bi,bj))
           ENDDO
          ENDDO
         ELSE
@@ -1811,12 +1811,12 @@ CADJ loop = sequential
       ENDDO
 CADJ loop = sequential
       DO I=iMin,iMax-1
-       IM=iMax-I
+       IM=sNx-I
        DO J=jMinLoc,jMax,jStep
 #else
 CADJ loop = sequential
        DO I=iMin,iMax-1
-        IM=iMax-I
+        IM=sNx-I
 #endif /* SEAICE_VECTORIZE_LSR */
         URT(IM,J)=URT(IM,J)-CUU(IM,J)*URT(IM+1,J)
        ENDDO
@@ -1965,12 +1965,12 @@ CADJ loop = sequential
 C     go back to original order
 CADJ loop = sequential
       DO J=jMin,jMax-1
-       JM=jMax-J
+       JM=sNy-J
        DO I=iMinLoc,iMax,iStep
 #else
 CADJ loop = sequential
        DO J=jMin,jMax-1
-        JM=jMax-J
+        JM=sNy-J
 #endif /* SEAICE_VECTORIZE_LSR */
         VRT(I,JM)=VRT(I,JM)-CVV(I,JM)*VRT(I,JM+1)
        ENDDO

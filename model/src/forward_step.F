@@ -131,8 +131,7 @@ C       |
 C       |-- CTRL_MAP_FORCING
 C       |-- DUMMY_IN_STEPPING
 C       |
-C       |-- CPL_EXPORT_MY_DATA
-C       |-- CPL_IMPORT_EXTERNAL_DATA
+C       |-- CPL_EXPORT_IMPORT_DATA
 C       |
 C       |-- OASIS_PUT
 C       |-- OASIS_GET
@@ -238,9 +237,6 @@ C     == Global variables ==
 #endif
 #ifdef ALLOW_ZONAL_FILT
 # include "ZONAL_FILT.h"
-#endif
-#ifdef COMPONENT_MODULE
-# include "CPL_PARAMS.h"
 #endif
 
 #ifdef ALLOW_LONGSTEP
@@ -395,7 +391,7 @@ CEOP
 #ifdef ALLOW_AUTODIFF
 C--   Reset the model iteration counter and the model time.
       myIter = nIter0 + (iloop-1)
-      myTime = startTime + float(iloop-1)*deltaTClock
+      myTime = startTime + deltaTClock*(iLoop-1)
 #endif
 
 #ifdef ALLOW_LONGSTEP
@@ -536,8 +532,7 @@ C--   Add control vector for forcing and parameter fields
 C      Post coupling data that I export.
 C      Read in coupling data that I import.
          CALL TIMER_START('CPL_EXPORT-IMPORT  [FORWARD_STEP]',myThid)
-         CALL CPL_EXPORT_MY_DATA(       myTime, myIter, myThid )
-         CALL CPL_IMPORT_EXTERNAL_DATA( myTime, myIter, myThid )
+         CALL CPL_EXPORT_IMPORT_DATA( myTime, myIter, myThid )
          CALL TIMER_STOP ('CPL_EXPORT-IMPORT  [FORWARD_STEP]',myThid)
       ENDIF
 #endif /* COMPONENT_MODULE */
@@ -819,7 +814,7 @@ CADJ &     kind = isbyte
 
 C--   Update time-counter
       myIter = nIter0 + iLoop
-      myTime = startTime + deltaTClock * float(iLoop)
+      myTime = startTime + deltaTClock*iLoop
 
 #ifdef ALLOW_MNC
 C     Update MNC time information

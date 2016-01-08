@@ -38,24 +38,27 @@ c     == routine arguments ==
 c     == local variables ==
 
       integer kgen
-      _RL mybar(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
-      _RL mymsk(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
-      _RL tmpmsk(1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+      _RL mybar(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
 
       _RL mySumTile(nSx,nSy),myVolTile(nSx,nSy)
-      _RL mySumGlo,myVolGlo,myMeanGlo
+      _RL mySumGlo,myVolGlo
 
-      _RL tmpSumTile(nSx,nSy),tmpVolTile(nSx,nSy)
-      _RL tmpSumGlo,tmpVolGlo,tmpMeanGlo
+      _RL tmpSumTile(nSx,nSy)
+      _RL tmpSumGlo
 
       integer bi,bj
       integer i,j,k
-      integer irec,il
+      integer nrecloc,irec,il,ioUnit
       character*(80) myfname
       _RL mydummy
       logical doglobalread
       logical ladinit
       character*(MAX_LEN_MBUF) msgbuf
+
+      LOGICAL exst
+      CHARACTER*(128) tempfile
+      _RS     dummyRS(1)
+      _RL     gencost_mskTemporal
 
 c     == external functions ==
 
@@ -68,13 +71,9 @@ c     == external functions ==
 c     == end of interface ==
 
 c-- detect the relevant gencost indices
-      kgen=0
-      do k=1,NGENCOST
-        if ( (gencost_name(k).EQ.'boxmean').AND.
-     &     (using_gencost(k)) ) kgen=k
-      enddo
-
-      if (kgen.NE.0) then
+      do kgen=1,NGENCOST
+        if ( (gencost_name(kgen)(1:7).EQ.'boxmean').AND.
+     &     (using_gencost(kgen)) ) then
 
 c ========
 
@@ -93,98 +92,71 @@ c initialize various things to 0
           myVolTile(bi,bj)=0. _d 0
           mySumGlo=0. _d 0
           myVolGlo=0. _d 0
-          do k = 1,nr
-          do j = 1,sNy
-          do i =  1,sNx
-          tmpmsk(i,j,k,bi,bj)=0. _d 0
-          enddo
-          enddo
-          enddo
        ENDDO
       ENDDO
 
-c initialize maximum mask for time series display
-      do irec = 1,nmonsrec
-        call mdsreadfield( gencost_errfile(kgen),
-     &                     cost_iprec, cost_yftype,
-     &                     nr, mymsk, irec, mythid)
-      DO bj=myByLo(myThid),myByHi(myThid)
-       DO bi=myBxLo(myThid),myBxHi(myThid)
-        do k = 1,nr
-         do j = 1,sNy
-          do i =  1,sNx
-      tmpmsk(i,j,k,bi,bj)=mymsk(i,j,k,bi,bj)+mymsk(i,j,k,bi,bj)
-          enddo
-         enddo
-        enddo
-       enddo
-      enddo
-      enddo
+      nrecloc=gencost_nrec(kgen)
 
 c ========
 
 c main loop where cost is computed and time series is displayed
-      do irec = 1,nmonsrec
+      do irec = 1,nrecloc
 
 c read bar field
 #ifdef ALLOW_AUTODIFF
-        call active_read_xyz( myfname, mybar, irec,
+        call active_read_xy( myfname, mybar, irec,
      &                        doglobalread, ladinit,
      &                        eccoiter, mythid,
      &                        mydummy )
 #else
-        CALL READ_REC_XYZ_RL( myfname, mybar,
+        CALL READ_REC_XY_RL( myfname, mybar,
      &                        iRec, 1, myThid )
 #endif
-
-c read mask for averaging (3d, time series)
-        call mdsreadfield( gencost_errfile(kgen),
-     &                     cost_iprec, cost_yftype,
-     &                     nr, mymsk, irec, mythid)
 
       DO bj=myByLo(myThid),myByHi(myThid)
        DO bi=myBxLo(myThid),myBxHi(myThid)
           tmpSumTile(bi,bj)=0. _d 0
-          tmpVolTile(bi,bj)=0. _d 0
           tmpSumGlo=0. _d 0
-          tmpVolGlo=0. _d 0
         enddo
       enddo
 
+      il = ilnblnk(gencost_errfile(kgen))
+      write(tempfile(1:128),'(2A)') gencost_errfile(kgen)(1:il),'T'
+      inquire( file=tempfile(1:il+1), exist=exst )
+      if ( (.NOT.exst).OR.(gencost_errfile(kgen).EQ.' ') ) then
+       gencost_mskTemporal=nrecloc
+       gencost_mskTemporal=1. _d 0 / gencost_mskTemporal
+      else
+       ioUnit = 0
+       call MDS_READVEC_LOC(tempfile,cost_iprec,ioUnit,'RL',
+     &      1, gencost_mskTemporal, dummyRS, 0, 0, iRec, myThid )
+      endif
+
 c compute cost
+      IF ( myProcId .EQ. 0 ) num_gencost(1,1,kgen)=
+     &   num_gencost(1,1,kgen)+gencost_mskTemporal
+
       DO bj=myByLo(myThid),myByHi(myThid)
        DO bi=myBxLo(myThid),myBxHi(myThid)
-          do k = 1,nr
             do j = 1,sNy
               do i =  1,sNx
 c sum that is actually be used in cost function
-      objf_gencost(bi,bj,kgen)=
-     &   objf_gencost(bi,bj,kgen)
-     &  +mybar(i,j,k,bi,bj)*mymsk(i,j,k,bi,bj)
-      num_gencost(1,1,kgen)=
-     &   num_gencost(1,1,kgen)
-     &  +mymsk(i,j,k,bi,bj)
+      objf_gencost(bi,bj,kgen)=objf_gencost(bi,bj,kgen)
+     &   +gencost_mskTemporal*mybar(i,j,bi,bj)
 
 c sum for display of time series
       tmpSumTile(bi,bj)=tmpSumTile(bi,bj)
-     &  +mybar(i,j,k,bi,bj)*tmpmsk(i,j,k,bi,bj)
-      tmpVolTile(bi,bj)=tmpVolTile(bi,bj)
-     &  +tmpmsk(i,j,k,bi,bj)
+     &   +gencost_mskTemporal*mybar(i,j,bi,bj)
               enddo
             enddo
-          enddo
         enddo
       enddo
 
 c global sums for display of time series
       CALL GLOBAL_SUM_TILE_RL( tmpSumTile, tmpSumGlo, myThid )
-      CALL GLOBAL_SUM_TILE_RL( tmpVolTile, tmpVolGlo, myThid )
-      tmpMeanGlo=0. _d 0
-      if ( tmpVolGlo.GT.0. _d 0) 
-     &   tmpMeanGlo=tmpSumGlo/tmpVolGlo
 
-      WRITE(msgBuf,'(A,I3,1PE21.14,1PE21.14)')
-     &    'boxmean :',irec,tmpMeanGlo,tmpVolGlo
+      WRITE(msgBuf,'(A,I3,A,1PE21.14)')
+     &    'boxmean :',irec,' ',tmpSumGlo
       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &    SQUEEZE_RIGHT, myThid )
 
@@ -196,20 +168,15 @@ c ========
 c global sums for cost function
       CALL GLOBAL_SUM_TILE_RL( objf_gencost(1,1,kgen),
      &   mySumGlo, myThid )
-      CALL GLOBAL_SUM_TILE_RL( num_gencost(1,1,kgen),
-     &   myVolGlo, myThid )
-      myMeanGlo=0. _d 0
-      if ( myVolGlo.GT.0. _d 0)
-     &   myMeanGlo=mySumGlo/myVolGlo
 
-      WRITE(msgBuf,'(A,I3,1PE21.14,1PE21.14)') 
-     &    'boxmean fc :',irec,myMeanGlo,myVolGlo
+      WRITE(msgBuf,'(A,1PE21.14)') 'boxmean fc :',mySumGlo
       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &    SQUEEZE_RIGHT, myThid )
 
 c ========
 
-      endif !if (kgen].NE.0)
+      endif !if ( (gencost_name(kgen)(1:7).EQ.'boxmean').AND.
+      enddo !do kgen=1,NGENCOST
 
 #endif /* ALLOW_GENCOST_CONTRIBUTION */
 

@@ -32,10 +32,10 @@ SKIPDIRS=
 SCRIPT='../tools/tst_2+2'
 LOGFILE='tst_2+2_out.log'
 scrArg='All'
+bldDir='build'
 COMMAND=
 mpi=0
 MPI_MFILE=
-#OUTDIR=`hostname | sed 's/\..*$//'`
 OUTDIR=`hostname -s | tr '[:upper:]' '[:lower:]'`
 SAVELOG=0
 ADDRESS=
@@ -179,7 +179,7 @@ do
     rCommand=$COMMAND
   else
     LOC_NPROC=2
-    mpi_size=$xx/build/SIZE.h.mpi
+    mpi_size=$xx/$bldDir/SIZE.h.mpi
     if test -f $mpi_size ; then
       px=`grep '^     & *nPx *=' $mpi_size | sed 's/^     & *nPx *= *//' | sed 's/, *$//'`
       py=`grep '^     & *nPy *=' $mpi_size | sed 's/^     & *nPy *= *//' | sed 's/, *$//'`
@@ -204,13 +204,13 @@ do
   for yy in $listD
   do
     if test -f $xx/$yy/$RUNOUTP ; then
-      if test "x$OPTFILE" = x -a -f $xx/build/Makefile ; then
-        comm=`grep '^# OPTFILE=' $xx/build/Makefile 2>/dev/null | head -1 | sed 's/^# //'`
-        echo "from '$xx/build/Makefile', extract:" > $DRESULTS/genmake_state
-        sed -n '/^# executed by:/,+1 p' $xx/build/Makefile >> $DRESULTS/genmake_state
+      if test "x$OPTFILE" = x -a -f $xx/$bldDir/Makefile ; then
+        comm=`grep '^# OPTFILE=' $xx/$bldDir/Makefile 2>/dev/null | head -1 | sed 's/^# //'`
+        echo "from '$xx/$bldDir/Makefile', extract:" > $DRESULTS/genmake_state
+        sed -n '/^# executed by:/,+1 p' $xx/$bldDir/Makefile >> $DRESULTS/genmake_state
         echo " $comm" >> $DRESULTS/genmake_state
         eval $comm
-        gmkLog=$xx/build/genmake.log
+        gmkLog=$xx/$bldDir/genmake.log
         grep '^Get compiler version using:' $gmkLog > /dev/null 2>&1
         out=$?
         if test "x$out" = x0 ; then
@@ -269,8 +269,8 @@ if test "x$ADDRESS" != xNONE -a "x$ADDRESS" != x ; then
       # if Send-Command is empty and mpack exist, then send email using mpack.
       if test -x $MPACK ; then SENDCMD=$MPACK
       else
-        echo "Warning: $MPACK is not executable => no email was sent"
         echo
+        echo "Warning: $MPACK is not executable => no email was sent"
       fi
     fi
     if test "x$SENDCMD" != x ; then
@@ -284,17 +284,17 @@ if test "x$ADDRESS" != xNONE -a "x$ADDRESS" != x ; then
             echo "Warning: The tar, gzip, & mpack step failed.  Please send email"
             echo "  to <MITgcm-support@mitgcm.org> for help.  You may copy the "
             echo "  summary of results from the directory \"$DRESULTS\"."
-            echo
         else
             echo
             echo "An email containing results was sent to the following address:"
             echo "  \"$ADDRESS\""
-            echo
         fi
         test -f ${SAVDIR}/${DRESULTS}".tar" &&  rm -f ${SAVDIR}/${DRESULTS}".tar"
         test -f ${SAVDIR}/${DRESULTS}".tar.gz" &&  rm -f ${SAVDIR}/${DRESULTS}".tar.gz"
     fi
 fi
+echo '' ; echo '=====  Summary (tst_2+2_out.txt):  ======'
+cat $SUMMARY
 
 # save output and remove output Dir (if no address was provided)
 # note: to keep the output Dir without sending email, use option "-a NONE"

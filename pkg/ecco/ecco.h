@@ -100,6 +100,7 @@ c     using_ers - flag that indicates the use of ERS data
      &                         using_cost_sst,
      &                         using_cost_scat,
      &                         using_cost_seaice
+     &                        ,using_cost_transp
       logical using_mdt
       logical using_tpj
       logical using_topex
@@ -110,6 +111,7 @@ c     using_ers - flag that indicates the use of ERS data
       logical using_cost_sst
       logical using_cost_scat
       logical using_cost_seaice
+      logical using_cost_transp
 
 c     Record counters relevant for the cost function evaluation.
 c     ==========================================================
@@ -131,15 +133,23 @@ c                 the current model integration.
 
       common /ecco_r/
      &                    m_eta,m_UE,m_VN,
+     &                    msktrVolW,msktrVolS,
+     &                    trVol, trHeat, trSalt,
      &                    VOLsumGlob_0, VOLsumGlob,
      &                    RHOsumGlob_0, RHOsumGlob,
-     &                    frame, cosphi
+     &                    frame, cosphi, eccoVol_0
       _RL VOLsumGlob_0, VOLsumGlob, RHOsumGlob_0, RHOsumGlob
       _RL frame   (1-olx:snx+olx,1-oly:sny+oly           )
       _RL cosphi  (1-olx:snx+olx,1-oly:sny+oly,   nsx,nsy)
       _RL m_eta(1-olx:snx+olx,1-oly:sny+oly,   nsx,nsy)
       _RL m_UE (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
       _RL m_VN (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+      _RL msktrVolW (1-OLx:sNx+OLx,1-OLy:sNy+OLy,   nSx,nSy)
+      _RL msktrVolS (1-OLx:sNx+OLx,1-OLy:sNy+OLy,   nSx,nSy)
+      _RL trVol(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
+      _RL trHeat(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
+      _RL trSalt(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
+      _RL eccoVol_0(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
 
 c     file precision and field type
       common /prec_type_cost/
@@ -176,11 +186,15 @@ c     =========================
      &       no_preproc,
      &       no_preproc_c,
      &       no_posproc,
-     &       no_posproc_c
+     &       no_posproc_c,
+     &       clim_preproc,
+     &       anom_preproc
       character*(MAX_LEN_FNAM) no_preproc(NGENPPROC)
       character*(MAX_LEN_FNAM) no_preproc_c(NGENPPROC)
       character*(MAX_LEN_FNAM) no_posproc(NGENPPROC)
       character*(MAX_LEN_FNAM) no_posproc_c(NGENPPROC)
+      character*(MAX_LEN_FNAM) clim_preproc(NGENPPROC)
+      character*(MAX_LEN_FNAM) anom_preproc(NGENPPROC)
 
       common /ecco_nogencost_r/
      &       no_preproc_r, no_posproc_r
@@ -188,9 +202,10 @@ c     =========================
       _RL no_posproc_r(NGENPPROC)
 
       common /ecco_nogencost_i/
-     &       no_preproc_i, no_posproc_i
+     &       no_preproc_i, no_posproc_i, clim_preproc_i
       integer no_preproc_i(NGENPPROC)
       integer no_posproc_i(NGENPPROC)
+      integer clim_preproc_i(NGENPPROC)
 
 c     gencost common blocs:
 c     =====================
@@ -202,8 +217,10 @@ c     objf_gencost - gencost user defined contribution
       _RL  gencost_dummy(NGENCOST)
 
       common /ecco_gencost_r_1/
-     &       objf_gencost, num_gencost, mult_gencost,
+     &       objf_gencost, num_gencost, mult_gencost, gencost_storefld,
      &       gencost_barfld, gencost_modfld, gencost_weight,
+     &       gencost_mskCsurf, gencost_mskWsurf, gencost_mskSsurf,
+     &       gencost_mskVertical,
 #ifdef ALLOW_GENCOST3D
      &       gencost_bar3d, gencost_mod3d, gencost_wei3d,
 #endif
@@ -217,12 +234,21 @@ c     objf_gencost - gencost user defined contribution
       _RL  gencost_spmax(NGENCOST)
       _RL  gencost_spzero(NGENCOST)
       _RL  gencost_period(NGENCOST)
+      _RL  gencost_storefld(1-olx:snx+olx,1-oly:sny+oly,
+     &       nsx,nsy,NGENCOST)
       _RL  gencost_barfld(1-olx:snx+olx,1-oly:sny+oly,
      &       nsx,nsy,NGENCOST)
       _RL  gencost_modfld(1-olx:snx+olx,1-oly:sny+oly,
      &       nsx,nsy,NGENCOST)
       _RL  gencost_weight(1-olx:snx+olx,1-oly:sny+oly,
      &       nsx,nsy,NGENCOST)
+      _RL  gencost_mskCsurf(1-olx:snx+olx,1-oly:sny+oly,
+     &       nsx,nsy,NGENCOST)
+      _RL  gencost_mskWsurf(1-olx:snx+olx,1-oly:sny+oly,
+     &       nsx,nsy,NGENCOST)
+      _RL  gencost_mskSsurf(1-olx:snx+olx,1-oly:sny+oly,
+     &       nsx,nsy,NGENCOST)
+      _RL  gencost_mskVertical(nr,NGENCOST)
 #ifdef ALLOW_GENCOST3D
       _RL  gencost_bar3d(1-olx:snx+olx,1-oly:sny+oly,
      &       nr,nsx,nsy,NGENCOST3D)
