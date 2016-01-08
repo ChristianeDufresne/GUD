@@ -105,10 +105,10 @@ C     auxilliary variables
       _RL pressC        (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL zetaC         (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL deltaZ        (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
-      _RL zetaZ         (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+C     _RL zetaZ         (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL deltaCreg, deltaZreg, pressZ
 #ifdef SEAICE_ALLOW_TEM
-      _RL etaDenC, zetaMaxC, etaDenZ, zetaMaxZ
+      _RL etaDenC, zetaMaxC, etaDenZ, zetaMaxZ, deltaMinSq
 #endif /* SEAICE_ALLOW_TEM */
 #ifdef SEAICE_ALLOW_CLIPZETA
       _RL zMaxZ, zMinZ, fac
@@ -126,6 +126,9 @@ C     abbreviation eccentricity squared
       ecc2=SEAICE_eccen**2
       recip_ecc2 = 0. _d 0
       IF ( ecc2 .NE. 0. _d 0 ) recip_ecc2=ONE/ecc2
+#ifdef SEAICE_ALLOW_TEM
+      deltaMinSq = SEAICE_deltaMin**2
+#endif /* SEAICE_ALLOW_TEM */
 C     determine number of internal time steps
       nEVPstep = INT(SEAICE_deltaTdyn/SEAICE_deltaTevp)
       IF ( SEAICEnEVPstarSteps.NE.UNSET_I ) nEVPstep=SEAICEnEVPstarSteps
@@ -233,7 +236,7 @@ CADJ STORE e22  = comlev1_evp,key = ikeyloc, byte = isbyte
             pressC        (I,J) = 0. _d 0
             zetaC         (I,J) = 0. _d 0
             deltaZ        (I,J) = 0. _d 0
-            zetaZ         (I,J) = 0. _d 0
+            zetaZ   (I,J,bi,bj) = 0. _d 0
             deltaC  (I,J,bi,bj) = 0. _d 0
            ENDDO
           ENDDO
@@ -276,20 +279,20 @@ C     avoid sqrt of 0
             deltaC(I,J,bi,bj) = SQRT(deltaC(I,J,bi,bj))
             deltaZ(I,J)       = SQRT(deltaZ(I,J))
 #endif /* ALLOW_AUTODIFF_TAMC */
-            deltaCreg   = MAX(deltaC(I,J,bi,bj),SEAICE_EPS)
-            deltaZreg   = MAX(deltaZ(I,J),SEAICE_EPS)
+            deltaCreg   = MAX(deltaC(I,J,bi,bj),SEAICE_deltaMin)
+            deltaZreg   = MAX(deltaZ(I,J),SEAICE_deltaMin)
 C     modify pressure (copied from seaice_calc_viscosities)
             zetaC(I,J)  = HALF*press0(I,J,bi,bj)/deltaCreg
             pressZ      = (deltaZ(I,J)/deltaZreg) * facZ
      &         * ( PRESS0(I,J  ,bi,bj) + PRESS0(I-1,J  ,bi,bj)
      &           + PRESS0(I,J-1,bi,bj) + PRESS0(I-1,J-1,bi,bj) )
-            zetaZ(I,J)  = HALF/deltaZreg * pressZ
+            zetaZ(I,J,bi,bj) = HALF/deltaZreg * pressZ
            ENDDO
           ENDDO
 #ifdef SEAICE_ALLOW_CLIPZETA
 #ifdef ALLOW_AUTODIFF_TAMC
-CADJ STORE zetac  = comlev1_evp,key = ikeyloc, byte = isbyte
-CADJ STORE zetaz  = comlev1_evp,key = ikeyloc, byte = isbyte
+CADJ STORE zetac            = comlev1_evp, key = ikeyloc, byte = isbyte
+CADJ STORE zetaz(:,:,bi,bj) = comlev1_evp, key = ikeyloc, byte = isbyte
 #endif /* ALLOW_AUTODIFF_TAMC */
 C     regularize zeta if necessary
           DO j=0,sNy+1
@@ -306,7 +309,7 @@ C     masked by boundaries/land points
             zMinZ       = MAX(
      &           MAX(zMin(I,  J,bi,bj),zMin(I,  J-1,bi,bj)),
      &           MAX(zMin(I-1,J,bi,bj),zMin(I-1,J-1,bi,bj)) )
-            zetaZ(I,J)  = MAX(zMinZ,MIN(zMaxZ,zetaZ(I,J)))
+            zetaZ(I,J,bi,bj) = MAX(zMinZ,MIN(zMaxZ,zetaZ(I,J,bi,bj)))
            ENDDO
           ENDDO
 #endif /* SEAICE_ALLOW_CLIPZETA */
@@ -348,15 +351,15 @@ C     than squaring the averages
              etaDenC   = em(I,J)**2 +
      &            ( e12(I,  J,bi,bj)**2 + e12(I+1,J+1,bi,bj)**2
      &            + e12(I+1,J,bi,bj)**2 + e12(I,  J+1,bi,bj)**2 )
-             etaDenC  = SQRT(MAX(SEAICE_EPS_SQ,etaDenC))
+             etaDenC  = SQRT(MAX(deltaMinSq,etaDenC))
              zetaMaxC = ecc2*zetaC(I,J)
      &            *(deltaC(I,J,bi,bj)-ep(I,J))/etaDenC
              etaDenZ  =
      &            facZ * ( em(I,  J  )**2 + em(I-1,J-1)**2
      &                   + em(I-1,J  )**2 + em(I,  J-1)**2 )
      &            + 4. _d 0*e12(I,J,bi,bj)**2
-             etaDenZ  = SQRT(MAX(SEAICE_EPS_SQ,etaDenZ))
-             zetaMaxZ = ecc2*zetaZ(I,J) * ( deltaZ(I,J)
+             etaDenZ  = SQRT(MAX(deltaMinSq,etaDenZ))
+             zetaMaxZ = ecc2*zetaZ(I,J,bi,bj) * ( deltaZ(I,J)
      &            - facZ * ( ep(I,J  ) + ep(I-1,J  )
      &                     + ep(I,J-1) + ep(I-1,J-1) )
      &            )/etaDenZ
@@ -369,7 +372,8 @@ C     save new eta for diagnostics
      &            ) * hEffM(I,J,bi,bj)
              seaice_tension(I,J) = 2. _d 0*MIN(zetaC(I,J),zetaMaxC)
      &            * em(I,J) * hEffM(I,J,bi,bj)
-             seaice_shear  (I,J) = 2. _d 0*MIN(zetaZ(I,J),zetaMaxZ)
+             seaice_shear  (I,J) = 
+     &            2. _d 0*MIN(zetaZ(I,J,bi,bj),zetaMaxZ)
      &            * 2. _d 0*e12(I,J,bi,bj)
             ENDDO
            ENDDO
@@ -385,7 +389,7 @@ C     save new eta for diagnostics
              seaice_tension(I,J) = 2. _d 0*zetaC(I,J)
      &            * em(I,J) * hEffM(I,J,bi,bj)
              seaice_shear  (I,J) =
-     &            2. _d 0*zetaZ(I,J)*e12(I,J,bi,bj)
+     &            2. _d 0*zetaZ(I,J,bi,bj)*e12(I,J,bi,bj)
             ENDDO
            ENDDO
           ENDIF

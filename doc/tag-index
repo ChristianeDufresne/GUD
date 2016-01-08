@@ -4,6 +4,431 @@ $Name$
     Notes on tags used in MITgcmUV
     ==============================
 
+checkpoint65n (2015/07/29)
+o pkg/thsice:
+  - add a warning when used with pkg/aim but without updating SST
+    (stepFwd_oceMxL=F & useCoupler=F & tauRelax_MxL<>-1 ).
+o pkg/offline:
+  - change where Offline-Fields are loaded, from load_fields_driver.F to
+    directly within FORWARD_STEP, just after updating iter number and time;
+  - move setting of GM and KPP diffusivity out of OFFLINE_FIELDS_LOAD into new
+    S/R OFFLINE_GET_DIFFUS that is called towards the end of DO_OCEANIC_PHYS;
+   These changes allow:
+    a) to recover exactly on-line results using deltaToffline=deltaTClock,
+    tested (using offlineIter0= nIter0 -1 and offlineTimeOffset= -deltaT/2)
+    both with Lin & Non-Lin Free-Surf, both with staggerTimeStep & synchronous
+    time-step, both with GM & KPP files and with recomputing these fields;
+    b) no needs to switch on staggerTimeStep anymore;
+    c) simplify rescaling of offline horiz. velocity with Non-Lin Free-Surf.
+  - update output of experiment tutorial_dic_adjoffline (only 3 digits left).
+o pkg/offline:
+  - change (rarely used) offset-iteration parameter to an offset time (in s):
+    can easily recover previous offset-iter effect by setting offset-time
+    (offlineTimeOffset) to offset-iter x deltaToffline;
+  - do not turn-off Temp & Salinity surface relaxation when using KPP (used
+    in KPP as part of surface buoyancy forcing) in offline run.
+  - fix ptracers KPP non-local term in the case where KPP is re-computed.
+o OpenAD
+  - Adding preliminary ggl90 test to OpenAD verification.
+    Config. with ggl90 currently diverges after 64 time steps
+    so will need more work to become more stable
+  - Adding preliminary kpp test to OpenAD verification.
+    required small tweakes in kpp_routines.F
+  - Merge and update from Krishna Narayanan's contrib area:
+    * Add one variable for preliminary OpenAD DIVA
+    * Add replacement time-stepping for OpenAD DIVA
+    * genmake2 flag -diva (but only for OpenAD; preliminary)
+    * required modifs for OAD_support
+    successful preliminary test for tutorial_global_oce_biogeo/
+o pkg/seaice:
+  - initialise deltaC in seaice_lsr, cosmetic changes in seaice_lsr
+  - add cpp-flag SEAICE_DELTA_SMOOTHREG for option of regularising
+    delta with a smooth function in s/r seaice_calc_viscosity
+    (no effect on EVP)
+  - rename local suffix "sqr" into "sq" for more consistent variable names
+o pkg/seaice:
+    add new parameter SEAICE_deltaMin that is used ***only***
+    for regularizing Delta (and nothing else, like the parameter
+    which is also used for all sorts of things SEAICE_EPS).
+    Defaults to SEAICE_EPS for backward compatibility only.
+o pkg/seaice: replace erroneously storing e12Csqr on the wrong tape with
+    the wrong key by inialising it before use -> fixes a recomputation
+    problem but does not fix the gradient
+o pkg/layers:
+  - move resetting of flux arrays to outside the iLa loop
+    (this caused layers_diapycnal to not work with more than one layer coord.)
+  - fix bug in calculation of layers_recip_delta in layers_init_fixed.F
+o pkg/layers:
+  - remove from common block 3D layers fields (used to diagnose transport
+    in tracer coords) and declare them as local arrays in layers_calc.F
+o pkg/seaice:
+  - Rename SEAICE_VECTORIZE_LSR_ZEBRA to SEAICE_LSR_ZEBRA and define it
+    in lab_sea forward experiment (changes results -> updated)
+  - update adjoint experiment lab_sea after cleaning up seaice_lsr_tridiagu/v
+o pkg/seaice: modify seaice_lsr.F in order to improve the gradient
+   computations; for SEAICE_VECTORIZE_LSR
+  - move the loops over which the tridiagonal solvers (seaice_lsr_tridiagu/v)
+    sweep to the outside,
+  - remove store directives and add "CADJ loop sequential" directives
+    in analogy to model/src/solve_tridiagonal.F
+  - replace many "#ifdef SEAICE_VECTORIZE_LSR_ZEBRA" by variable loop
+    boundaries to yield more readable code. This has also the charming side
+    effect that your can use SEAICE_VECTORIZE_LSR_ZEBRA without
+    SEAICE_VECTORIZE_LSR (i.e. adjoint without recomputations in
+    seaice_lsr_tridiagu/v now requires either of these flags, vectorization
+    still requires SEAICE_VECTORIZE_LSR with SEAICE_VECTORIZE_LSR_ZEBRA as
+    an additional option)
+   The tridiagonal solvers are now completely analoguous to solve_tridiagonal.F
+   but the adjoint gradients (which are affected by this change) still explode.
+o coupler (atm & ocn _compon_interf):
+  - avoid using Exch2 IO mapping if not suitable.
+
+checkpoint65m (2015/06/15)
+o pkg/layers:
+  - clean-up old parameters setting (from Sep 2012):
+    + remove old parameters setting from common block (declared locally);
+    + stop if any old parameter is mixed with new parameters;
+    + check for valid or consistent parameter setting (e.g., layers_name)
+  - check that layers_bounds for Pot.Density are in the right range;
+    this is supposed to catch un-updated setting after recently shifting
+    potential density field "prho" by -1000 (now in "sigma" scale).
+o pkg/layers:
+  - Added missing call to layers_fill for keeping track of tottend in
+    pkg/diagnostics/diagnostics_fill_state.F
+o pkg/layers:
+  - added CPP flux LAYERS_FINEGRID_DIAPYCNAL to disable fine-grid binning
+    of diapycnal fluxes
+o pkg/layers:
+  - reverted changes to interpolation to previous treatment; there
+    was never actually a problem
+o pkg/layers:
+  - fix interpolation of layers tracers in the presence of partial cells
+  - add lots of new functionality to compute water mass transformation
+    (enabled by CPP flag LAYERS_THERMODYNAMICS)
+  - add new calls from main code (diags_oceanic_surf_flux.F,
+    thermodynamics.F, impldiff.F) and gad to save the necessary fields
+    for layers_thermodynamics calculations
+o pkg/ptracers:
+  - add capability of stepping a passive tracer forward without advection
+    by setting PTRACERS_advScheme to 0.
+o pkg/diagnostics:
+  - add few (threads) _BARRIER around any update of "diag_pkgStatus".
+o pkg/layers:
+  - shift potential density field "prho" by -1000 for density layer averaging so
+    that it corresponds to usual "sigma" definition (i.e., rho(p=const)-1000);
+    Note that density bin boundaries (layers_bounds in data.layers) have
+    to be set accordingly (i.e., shifted, in sigma scale).
+o pkg/layers:
+  - fix snap-shot output of layer thickness @ V.pt and output of pot.density
+  - fix calculation of layer non-weighted velocity and layer probability
+  - add diagnostics for pot.density used for layer averaging
+o pkg/seaice:
+  - seaice_calc_viscosity.F: change computation of deltaC**2 to ensure
+    positiveness, modify a few comments and improve variable names,
+  - the changed computation of deltaC affects most seaice-related
+    experiments at the truncation level.
+    seaice_itd.thermo is affected by far the most, with
+    only 7 digits of agreement remaining; update experiments.
+
+checkpoint65l (2015/05/04)
+o pkg/shelfice:
+  - in shelfice_thermodynamics.F, if SHELFICEBoundaryLayer=.true., then set
+    factor drKp1 to zero where it is negative (ie. do not use
+    SHELFICEBoundaryLayer if hFacC>1)
+  - the same for factor drLoc in shelfice_forcing.F
+o tools/genmake2: move FEXTRAFLAGS from FFLAGS to FOPTIM to avoid a problem
+    with modules in ptracers, when using testreport option "-small_f"
+o pkg/seaice/seaice_growth.F (in case of SEAICE_ITD)
+  - replace tmpscal1**1.36 by faster exp(1.36*log(tmpscal1))
+o verification/testreport
+  - add new option -small_f
+    with this option testreport first makes the target small_f (*.f files)
+    before running make (all). This is useful for explicit inlining when
+    all sources need to be full available.
+o pkg/exf/exf_interp.F:
+    remove previous changes related to reverse (decreasing) input grids latitude
+
+checkpoint65k (2015/04/01)
+o pkg/ecco:
+    fix missing cosphi initialization; use eccoiter in place of optimcycle;
+    if autodiff is not compiled then use READ_REC_XY_RL/READ_REC_XYZ_RL
+    instead of active read/write
+o pkg/ctrl:
+    if autodiff is not compiled then use READ_REC_XY_RL/READ_REC_XYZ_RL
+    instead of active read/write.
+o pkg/autodiff: make autodiff_readparms.F and autodiff_whtapeio_sync.F
+    return if .NOT.useAUTODIFF
+o pkg/seaice: add CPP brackets (cost function related).
+o model/src:
+    add useAUTODIFF run time switch.
+o pkg/exf/exf_interp.F:
+    add code to allow input grids with latitude starting in the north (i.e. when
+    j=1 corresponds to northern edge of field); modify global_with_exf to test
+    this feature.
+o verification/testreport:
+  - replace "grep -A3" with POSIX conformal sed command, because there are
+    implementations of grep that cannot do contextual searches
+  - replace "cat -n" by "nl" (two occurrences), because not all implementations
+    of "cat" have the option "-n"
+o model/src:
+    add new file gsw_teos10.F that contains 3 functions, more or less a copy
+    of the gsw_toolbox.f90 of the TEOS-10 fortran interface, that are used to
+    convert from conservative to potential temperature. For now they are not
+    called anywhere.
+o pkg/ggl90: make "useIDEMIX" useful
+  - re-organize code in s/r ggl90_calc a little to move computations that
+    are different for idemix into separate loops (changes verification
+    experiment idemix at truncation level, 12 digits remain -> updated)
+  - requires 2 new 2D fields KappaM, verticalShear
+  - make hFacI and recip_hFacI local 3D variables that are passed to
+    s/r ggl90_idemix
+  - fix and improve some comments
+
+checkpoint65j (2015/02/25)
+o pkg/openad
+  - synchronize seawater.F with version in model/src: replace routine
+    body of sw_temp by calling sw_ptmp and fix/add a few comments.
+o pkg/mnc:
+  - change default value of pickup_read/write_mnc params to FALSE
+    (since few features are missing in reading MNC pickup files).
+o model/src:
+  - change default (background) vertical diffusivity for salt to be the
+    temperature (background) vertical diffusivity.
+  - change background vertical diffusivity in vertical mixing pkgs ggl90,
+    kl10, my82 and pp81 from temperature diffusivity to salinity diffusivity.
+    This makes ptracers default diffusivity (that uses salt diffKr) more
+    consistent with vertical mixing schemes.
+o verification/testreport:
+  - fix typo in "-pcls" option ;
+  - put temp files in /tmp (instead of in local dir)
+  - add option "-ncad" to use genmake2 new option "-nocat4ad"
+  - allow to use "-j" option (for multi-procs make) for AD, OAD and TLM.
+o pkg/ggl90 (idemix code):
+  - apply few fixes ; add some missing "_d 0" ; update output of exp.
+    global_ocean.90x40x15.idemix
+o OpenAD
+  - enable active file I/O and begin removal of work-around code
+    for OpenAD for handling control variables (memory vs. active files)
+  - new CPP options file OPENAD_OPTIONS.h
+  - revert to genarr2d gradient check for hs94.1x64x5
+  - (genarr3d tested by tutorial_global_oce_biogeo, tutorial_tracer_adjsens)
+  - gentim2d works for halfpipe_streamice but not yet hs94.1x64x5
+o tools/genmake2:
+  - add option for an alternative Makefile (from Martin) where multiple
+    source files are sent to TAF (instead of all in one file).
+o pkg/ggl90: add IDEMIX (Olbers and Eden, 2013)
+  - code provided by Carsten Eden as an extension of ggl90
+  - so far the code is turned on within ggl90 by setting a CPP-flag at
+    compile time; a runtime flag implementation is not yet complete
+  - tested in new verification experiment global_ocean.90x40x15.idemix
+o verification:
+  - reduce length of the AD test run by half for experiments
+    global_ocean.cs32x15 (std + thsice) and isomip
+  - enable active file I/O for OpenAD, adjust verifications accordingly
+  - halfpipe_streamice: change gradient check from genarr2d to gentim2d
+o verification/testreport:
+  - fix two non-POSIX sed statements so that there are no error messages
+    on Mac OS X
+  - replace hostname -s with hostname | sed 's/\..*$//'
+o model/src/seawater.F:
+  - simplify SW_TEMP to just calling SW_PTMP with P and PR exchanged
+    (following the matlab code), which would have avoided the bug caught
+    by Matt (see below) in the first place
+o pkg/shelfice:
+  - implement alternative discretisation of quadratic drag (selectBotDragQuadr)
+    and true distance in no-slip BC (bottomVisc_pCell) similar to bottom-drag.
+  - fix sign of friction tendency (no-slip BC) and fix u,v drag for thin
+    ice-shelf case (i.e., within surface level).
+  - add config summary in shelfice_check.F
+  - remove global variable recip_SHELFICElatentHeat and replace by a local
+    variable recip_latentHeat
+  - introduce diagnostics for friction velocity uStar (in case of
+    SHELFICEuseGammaFrict)
+  - change verification experiment isomip.htd:
+    + start from pickup (as input_ad at nIter0=8640)
+    + start from SHELFICEmassFile instead of SHELFICEloadAnomaly file
+    + test SHELFICEuseGammaFrict = .TRUE.
+    + test SHELFICEadvDiffHeatFlux = .TRUE.
+o model/src:
+  - fix bug (Thanks to Matt) in function SW_TEMP (to convert Pot.Temp to
+    in-situ Temp) and in routine SW_TEMP (in pkg/openad);
+    update output of experiments global_with_exf.yearly and isomip (all 6).
+o pkg/shelfice:
+  - change setting of kTopC to also be zero where there is no ice-shelf.
+  - zero out surface forcing arrays (for now, for T & S + EmPmR) where
+    ice-shelf is.
+  - first attempt to get RealFreshWaterFlux effects: for now, only without
+    SHELFICEboundaryLayer ; not consistent if using synchronous time-stepping.
+o pkg/seaice: add the option to prescribe a fixed thickness PDF
+  for thermodynamic calculations
+  - because of divisions of the type 7/7 not exactly equal to 1, this change
+    affects results of some verification experiments by up to 4 digits:
+    global_ocean.cs32x15.seaice, lab_sea, lab_sea.fd, lab_sea.salt_plume,
+    seaice_obcs, seaice_obcs.seaiceSponge, seaice_obcs.tides
+    adjoint: lab_sea, lab_sea.noseaicedyn
+    -> updated
+
+checkpoint65i (2015/01/23)
+o model/src:
+  - change units of frictionHeating field from W to W/m^2
+  - fix bug in frictional heating from stratospheric drag in
+    S/R ATM_PHYS_TENDENCY_APPLY_V
+  - with synchronous time-stepping: move resetting to zero of frictionHeating
+    field from load_fields_driver.F to thermodynamics.F ;
+  - add diagnostics for frictional heating.
+o model/src & gmredi K3D:
+  - add frictionHeating field to pickup-files (for synchronous time-stepping)
+  - move ALLOW_EDDYPSI block out of DYNVARS.h and merge it into FFIELDS.h
+  - rename uMean,vMean --> uEulerMean,vEulerMean (+ change diagnostics name
+    and name in pickup file).
+  - fix arguments of few DIAGNOSTICS_FILL calls in gmredi_k3d.F
+o model/src:
+  - move (from ini_forcing.F) initialisation of all arrays in header file
+    FFIELDS.h into new S/R ini_ffields.F ; this fix broken restart
+    (since Nov 2012) with option selectAddFluid=1.
+o pkg/shelfice:
+  - change units (+ document) of newly added field "shelfIceMassDynTendency"
+  - upgrade from _RS to _RL shelficeMass & shelficeLoadAnomaly arrays.
+o pkg/obcs: re-organize obcs_calc_stevens.F to prepare for passive tracers
+o pkg/seaice: two new runtime parameters:
+  - SEAICE_cStar replaces the hard wired "20" in the strength formulation,
+    long overdue
+  - SEAICE_tensilFac: preparation for Koenig-Beatty+Holland (2012)
+    parameterization of tensil stress for fast ice (does not do anything yet)
+o pkg/seaice/seaice_check.F: left over from restricted addtive Schwarz method
+    for LSR: move checking overlaps out of JFNK-if-block
+o pkg/atm_phys:
+  - move copy of grid and dynamical fields out of atm_phys_driver.F into
+    new S/R ATM_PHYS_DYN2PHYS.
+  - fix level height for Linear Free-Surf case (to be consistent with
+    fixed-in-time pressure levels).
+o pkg/mom_common (bottomdrag):
+  - average bottomDragFld (ALLOW_BOTTOMDRAG_CONTROL) from grid-cell center
+    to correct location (U & V point) in S/R MOM_U/V_BOTTOMDRAG;
+    update output (adm & tlm) of experiment global_ocean.90x40x15.bottomdrag.
+o pkg/shelfice (u/v_drag):
+  - add one argument (the other velocity component) to S/R SHELFICE_U/V_DRAG;
+  - use SHELFICEDragLinear & SHELFICEDragQuadratic in shelfice_v_drag.F
+    (now similar to shelfice_u_drag.F)
+  - remove condition on bottomDragTerms when calling SHELFICE_U/V_DRAG
+    from mom_vecinv.F (similar to mom_fluxform calls).
+o pkg/mom_common (bottomdrag):
+  - add one argument (the other velocity component) to S/R MOM_U/V_BOTTOMDRAG;
+  - add options for alternative discretisation of velocity norm in quadratic
+    bottom drag: averaging of grid-cell-center KE to U.point and V.point
+    (selectBotDragQuadr=0, original code) can produce noisy patterns; this
+    improves when averaging only the other component (e.g. vVel for U bottom
+    drag) using wet-point method (selectBotDragQuadr=2) or not (=1).
+  - add options (bottomVisc_pCell) to account for partial-cell in bottom
+    friction (no-slip BC) thus getting the true distance from the bottom;
+    off by default since this also reduces model stability (explicit bottom
+    friction). Changes produce different machine truncation with linear-drag
+    + no-slip BC: update output of experiments exp4.stevens (10 digits) and
+    front_relax (bvp & mxl, 10 & 11 digits).
+o model/src & mom pkgs:
+  - add one more level to vertical viscosity local arrays (Nr+1, previously Nr)
+    since no-slip bottom BC uses viscosity @ k+1 to update velocity @ level k
+  - for now and until vertical mixing scheme are updated to fill up level Nr+1,
+    just copy level Nr value to level Nr+1.
+o doc:
+  - add notes form Abhisek Chakraborty on how to close Heat & Salt budgets.
+o pkg/streamice:
+  - shelfice_init_varia.F, shelfice_init_fixed.F, shelfice_readparms.F,
+    SHELFICE.h: move array shelficemass to init_varia, initialise
+    from array shelficemassinit, which is set in init_fixed and
+    has option to be set from file; introduce array
+    shelficeMassDynTend array, set thru file in init_fixed
+  - NEW FILE: shelfice_step_icemass.F: update shelficemass from either
+    shelfIceFreshWaterFlux and shelficeMassDynTend or H_streamice in
+    pkg/streamice
+  - shelfice_thermodynamics.F: call shelfice_step_icemass if
+    SHELFICEMassStepping = .true.
+  - shelfice_ad_diff.list: add new subroutine shelfice_step_icemass.f
+
+checkpoint65h (2014/12/17)
+o verification/global_ocean.90x40x15, global_ocean_ebm:
+  - update to generic controls.
+o pkg/ctrl:
+  - ctrl_map_ini_genarr.F: test for igen>0
+  - ctrl_init_variables.F: add call to CTRL_MAP_INI_GENTIM2D.
+  - move gentim2d part of ctrl_map_ini_genarr.F to
+    new separate routine : ctrl_map_ini_gentim2d.F
+  - ctrl_cost_driver.F,ctrl_init.F ctrl_map_ini_genarr.F:
+    add time variable weights and cyclic controls (time mean,
+    seasonal cycle, etc) capabilities to gentim2d
+o pkg/ecco:
+  - move reading of error, conversion to weights from
+    ecco_cost_init_fixed.F to ecco_toolbox.F (ecco_readwei)
+o global_oce_llc90, cs32:
+  - activte sbo.
+  - CTRL_SIZE.h : add maxCtrlProc.
+  - activate the new genctrl capabilities.
+  - update following reorganization of global_oce_input_fields.tar.gz	
+o pkg/ctrl/ctrl_ad_diff.list:
+  - add missing ctrl_init_rec.f
+o tools/OAD_support/keepOriginal:
+  - add ctrl_init_rec.F
+o model/src/the_main_loop.F, pkg/ctrl/ctrl_map_ini_genarr.F:
+  - avoid recomputations of xx_gentim2d_dummy.
+o momentum diagnostics:
+  - move filling of diagnostics Um_Diss & Vm_Diss from mom_fluxform.F and
+    mom_vecinv.F to timestep.F (to include Smag-3D contribution).
+o pkg/seaice/seaice_lsr.F:
+  - fix computation of BU/BV, make sure they are non-zero, only necessary
+    for cubed sphere exchanges and SEAICE_OLx/y>0.
+    This makes calling s/r fill_cs_corner_rl obsolete (removed).
+o verification/global_ocean.cs32x15/input.seaice
+  - add test for strong implicit coupling and restricted addtive Schwarz
+    methods for LSR
+  - update results/output.seaice.txt
+o verification/tutorial_global_oce_biogeo:
+  - AD & OAD set-up: switch off ALLOW_OLD_VIRTUALFLUX (like in fwd set-up)
+    and set PTRACERS_EvPrRn(1,2) to zero (for DIC & ALK);
+    update output_adm,_oadm,_tlm.txt
+o pkg/dic:
+  - change default to "#undef ALLOW_OLD_VIRTUALFLUX" in DIC_OPTIONS.h
+  - add a stop when ALLOW_OLD_VIRTUALFLUX is defined and PTRACERS_EvPrRn
+    for tracer 1 & 2 is set (to avoid double counting of dilution effect).
+o verification/tutorial_global_oce_biogeo:
+  - AD & OAD set-up: do not set PTRACERS_EvPrRn for tracer 1 & 2 since
+    dilution is already added by pkg/dic ALLOW_OLD_VIRTUALFLUX ;
+    update output_adm,_oadm,_tlm.txt
+o eesupp/src:
+  - add fill_cs_corner_rl.F (_RL-copy of fill_cs_corner_rs.F)
+    and call it in seaice_lsr when using nonzero SEAICE_OLx/y
+o pkg/seaice: introduce strongly implicit coupling, intended for stabilizing
+  LSR (following Hutchings et al. 2004)
+  - introduce zetaZ as a global variable (requires adjustments in
+    seaice_evp.F and seaice_jfnk.F) and compute analoguously to etaZ
+    in seaice_calc_viscosities.F
+  - new flag SEAICEuseStrImpCpl (default off)
+  - add new terms zetaZ*du/dy and zetaZ*dv/dx on both sides of the
+    momentum equations
+  - JFNK-solver (preconditioner) adjusted to allow using this method
+    (where it does not have any positive effect)
+o pkg/seaice
+  - add overlap for restrictive additive Schwartz method also to LSR, but
+    turn it off by default (because it only seems to work for non-cubed
+    sphere/llc topologies)
+o pkg/autodiff
+  - add extra exchanges in addummy_in_steppging also for mnc output
+o pkg/seaice:
+  - add extra exchanges before dumping adjoint fields in seaice_ad_dump.F
+    to avoid stripes in the adjoint output (similar to addummy_in_stepping.F)
+o pkg/obcs:
+  - add option to specify domain-connected piece Id along OB though files
+    (for now, only used to diagnose PhiVel; default =1 -> global correction)
+  - modify obcs_diag_balance.F to process each connected-part separately;
+    exclude OB where Id = 0 but keep the full divergence there (-> constant
+    Psi along this portion of OB and all inflow derived from grad(Phi))
+  - add example of OB-conect files in verification/so_box_biogeo/input.
+o pkg/diagnostics:
+  - improve treatment of Open-Boundaries in Velocity-Potential calculation:
+  a) use non zero matrix element across OB and solve for Phi 1 grid point
+     outside OB (i.e, where tracer OBCS are applied).
+  b) global imbalance of inFlow/outFlow across OB: instead of modifying
+     velocity across OB, spread it uniformly along the OB in the RHS.
+
 checkpoint65g (2014/11/19)
 o pkg/diagnostcis:
   - add preconditioner off-diagonal factor (diagCG_pcOffDFac) as run-time param

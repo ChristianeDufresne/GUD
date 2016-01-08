@@ -5,43 +5,47 @@ C$Name$
 
 C--  File seawater.F: routines that compute quantities related to seawater.
 C--   Contents
-C--   o SW_PTMP: function to compute potential temperature
-C--   o SW_TEMP: function to compute in-situ temperature from pot. temp.
-C--   o SW_ADTG: function to compute adiabatic temperature gradient
-C--              (used by both SW_PTMP & SW_TEMP)
+C--   o SW_PTMP: routine to compute potential temperature (used by SW_TEMP)
+C--   o SW_TEMP: routine to compute in-situ temperature from pot. temp.
+C--   o SW_ADTG: routine to compute adiabatic temperature gradient
+C--              (used by SW_PTMP)
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 CBOP
 C     !ROUTINE: SW_PTMP
 C     !INTERFACE:
-      subroutine SW_PTMP  (S,T,P,PR, rv)
+      SUBROUTINE SW_PTMP  (S,T,P,PR, rv)
 
 C     !DESCRIPTION: \bv
 C     *=============================================================*
 C     | S/R  SW_PTMP
 C     | o compute potential temperature as per UNESCO 1983 report.
 C     *=============================================================*
-C
+C     \ev
 C     started:
 C              Armin Koehl akoehl@ucsd.edu
 C
 C     ==================================================================
 C     SUBROUTINE SW_PTMP
 C     ==================================================================
+
+C     !USES:
+      IMPLICIT NONE
+C     === Global variables ===
+
+C     !INPUT/OUTPUT PARAMETERS:
+C     === Routine arguments ===
 C     S  :: salinity    [psu      (PSS-78) ]
 C     T  :: temperature [degree C (IPTS-68)]
 C     P  :: pressure    [db]
 C     PR :: Reference pressure  [db]
-
-C     !USES:
-      IMPLICIT NONE
-
-C     !INPUT/OUTPUT PARAMETERS:
+C     rv :: return value (potential temeparture in degree C)
       _RL S,T,P,PR
       _RL rv
 
 C     !LOCAL VARIABLES
+C     === local variables ===
       _RL del_P ,del_th, th, q
       _RL onehalf, two, three
       PARAMETER ( onehalf = 0.5 _d 0, two = 2. _d 0, three = 3. _d 0 )
@@ -79,7 +83,7 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 CBOP
 C     !ROUTINE: SW_TEMP
 C     !INTERFACE:
-      SUBROUTINE SW_TEMP( s, t, p, pr, rv)
+      SUBROUTINE SW_TEMP( S, T, P, PR, rv)
 C     !DESCRIPTION: \bv
 C     *=============================================================*
 C     | S/R  SW_TEMP
@@ -96,6 +100,7 @@ C     Bryden, H. 1973.
 C     New Polynomials for thermal expansion, adiabatic temperature gradient
 C     and potential temperature of sea water.
 C     DEEP-SEA RES., 1973, Vol20,401-408.
+C     \ev
 
 C     !USES:
       IMPLICIT NONE
@@ -107,42 +112,15 @@ C     S      :: salinity
 C     T      :: potential temperature
 C     P      :: pressure
 C     PR     :: reference pressure
+C     rv :: return value (in-situ temeparture in degree C)
       _RL  S, T, P, PR
       _RL rv
-CEOP
-
 
 C     !LOCAL VARIABLES:
-      _RL del_P ,del_th, th, q
-      _RL onehalf, two, three
-      PARAMETER ( onehalf = 0.5 _d 0, two = 2. _d 0, three = 3. _d 0 )
-      _RL adtg_val
+C     === local variables ===
+CEOP
 
-C theta1
-C--   here we swap P and PR in order to get in-situ temperature
-C     del_P  = PR - P ! to get potential from in-situ temperature
-      del_P  = P - PR ! to get in-situ from potential temperature
-      call sw_adtg(S,T,P, adtg_val)
-      del_th = del_P*adtg_val
-      th     = T + onehalf*del_th
-      q      = del_th
-C theta2
-      call sw_adtg(S,th,P+onehalf*del_P, adtg_val)
-      del_th = del_P*adtg_val
-
-      th     = th + (1 - 1/sqrt(two))*(del_th - q)
-      q      = (two-sqrt(two))*del_th + (-two+three/sqrt(two))*q
-
-C theta3
-      call sw_adtg(S,th,P+onehalf*del_P, adtg_val)
-      del_th = del_P*adtg_val
-      th     = th + (1 + 1/sqrt(two))*(del_th - q)
-      q      = (two + sqrt(two))*del_th + (-two-three/sqrt(two))*q
-
-C theta4
-      call sw_adtg(S,th,P+del_P, adtg_val)
-      del_th = del_P*adtg_val
-      rv = th + (del_th - two*q)/(two*three)
+      CALL SW_PTMP  (S,T,PR,P,rv)
 
       RETURN
       END
@@ -159,20 +137,24 @@ C     *=============================================================*
 C     | S/R  SW_ADTG
 C     | o compute adiabatic temperature gradient as per UNESCO 1983 routines.
 C     *=============================================================*
+C     \ev
 C
 C     started:
 C              Armin Koehl akoehl@ucsd.edu
 
 C     !USES:
       IMPLICIT NONE
+C     === Global variables ===
 
 C     !INPUT/OUTPUT PARAMETERS:
+C     === Routine arguments ===
       _RL S,T,P
+      _RL rv
 
 C     !LOCAL VARIABLES:
+C     === local variables ===
       _RL a0,a1,a2,a3,b0,b1,c0,c1,c2,c3,d0,d1,e0,e1,e2
       _RL sref
-      _RL rv
 CEOP
 
       sref = 35. _d 0

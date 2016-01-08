@@ -14,6 +14,9 @@ C     & A_glen_isothermal, n_glen, eps_glen_min, eps_u_min,
      & C_basal_fric_const, n_basal_friction, streamice_input_flux_unif,
      & streamice_vel_update, streamice_cg_tol, streamice_nonlin_tol,
      & streamice_nonlin_tol_fp,
+#if (defined (ALLOW_OPENAD) && defined (ALLOW_STREAMICE_OAD_FP))
+     & streamice_nonlin_tol_adjoint,
+#endif
      & streamice_CFL_factor, streamice_adjDump,
      & streamice_bg_surf_slope_x, streamice_bg_surf_slope_y,
      & streamice_kx_b_init, streamice_ky_b_init,
@@ -23,6 +26,7 @@ C     & A_glen_isothermal, n_glen, eps_glen_min, eps_u_min,
      & streamice_addl_backstress,
      & streamice_smooth_gl_width,
      & streamice_adot_uniform,
+     & streamice_firn_correction, streamice_density_firn,
      & streamice_forcing_period
 
       _RL streamice_density, streamice_density_ocean_avg
@@ -34,6 +38,9 @@ C      _RL A_glen_isothermal, n_glen, eps_glen_min, eps_u_min
       _RL streamice_vel_update
       _RL streamice_cg_tol, streamice_nonlin_tol
       _RL streamice_nonlin_tol_fp
+#if (defined (ALLOW_OPENAD) && defined (ALLOW_STREAMICE_OAD_FP))
+      _RL streamice_nonlin_tol_adjoint
+#endif
       _RL streamice_CFL_factor
       _RL streamice_adjDump
       _RL streamice_bg_surf_slope_x, streamice_bg_surf_slope_y
@@ -45,6 +52,8 @@ C      _RL A_glen_isothermal, n_glen, eps_glen_min, eps_u_min
       _RL streamice_smooth_gl_width
       _RL streamice_adot_uniform
       _RL streamice_forcing_period
+      _RL streamice_firn_correction
+      _RL streamice_density_firn
 
 C     parms for parameterized initial thickness
 C     SHELF_MAX_DRAFT: max thickness of ice in m
@@ -84,6 +93,14 @@ C     -------------------------- INT PARAMS ------------------------------------
       INTEGER streamice_vel_upd_counter, streamice_nstep_velocity
       INTEGER streamice_maxcgiter_cpl, streamice_maxnliter_cpl
 !      INTEGER streamice_n_sub_regularize
+
+#if (defined (ALLOW_STREAMICE_OAD_FP))
+      COMMON /STREAMICE_PARMS_I_OPENAD/
+     &     isinloop0, isinloop1, isinloop2
+     
+      INTEGER isinloop0, isinloop1, isinloop2
+
+#endif
 
 C     -------------------------- CHAR PARAMS ---------------------------------------------------
 
@@ -127,10 +144,18 @@ C     -------------------------- CHAR PARAMS -----------------------------------
       CHARACTER*(MAX_LEN_FNAM) STREAMICEuShearTimeDepFile
       CHARACTER*(MAX_LEN_FNAM) STREAMICEvShearTimeDepFile
 
+      CHARACTER*(MAX_LEN_FNAM) STREAMICEuFluxTimeDepFile
+      CHARACTER*(MAX_LEN_FNAM) STREAMICEvFluxTimeDepFile
+
+
 #ifdef ALLOW_PETSC
 !     CHARACTER PARAMS FOR PETSC
       CHARACTER*(MAX_LEN_FNAM) PETSC_SOLVER_TYPE
       CHARACTER*(MAX_LEN_FNAM) PETSC_PRECOND_TYPE
+#if (defined (ALLOW_OPENAD) && defined (ALLOW_STREAMICE_OAD_FP))
+      CHARACTER*(MAX_LEN_FNAM) PETSC_PRECOND_TMP
+      CHARACTER*(MAX_LEN_FNAM) PETSC_PRECOND_OAD
+#endif
 #endif
 
 #ifdef ALLOW_STREAMICE_2DTRACER
@@ -180,6 +205,9 @@ C     -------------------------- CHAR PARAMS -----------------------------------
       COMMON /PETSC_PARM_C/
      &     PETSC_SOLVER_TYPE,
      &     PETSC_PRECOND_TYPE
+#if (defined (ALLOW_OPENAD) && defined (ALLOW_STREAMICE_OAD_FP))
+     &     ,PETSC_PRECOND_TMP, PETSC_PRECOND_OAD
+#endif
 #endif
 
 #ifdef ALLOW_STREAMICE_2DTRACER
@@ -206,6 +234,15 @@ C     -------------------------- LOGICAL PARAMS --------------------------------
       LOGICAL STREAMICE_chkfixedptconvergence
       LOGICAL STREAMICE_chkresidconvergence
       LOGICAL STREAMICE_allow_cpl
+      LOGICAL STREAMICE_use_petsc
+      LOGICAL STREAMICE_apply_firn_correction
+#if (defined (ALLOW_OPENAD) && defined (ALLOW_STREAMICE_OAD_FP) )
+#ifdef ALLOW_PETSC
+      LOGICAL STREAMICE_need2createmat
+      LOGICAL STREAMICE_need2destroymat
+      LOGICAL STREAMICE_OAD_petsc_reuse
+#endif
+#endif
       
 
 C     The following parameters specify periodic boundary conditions.
@@ -231,7 +268,16 @@ C      LOGICAL STREAMICE_hybrid_stress
      & STREAMICE_h_ctrl_const_surf,
      & STREAMICE_chkfixedptconvergence,
      & STREAMICE_chkresidconvergence,
-     & STREAMICE_allow_cpl
+     & STREAMICE_allow_cpl, streamice_use_petsc,
+     & STREAMICE_apply_firn_correction
+
+#if (defined (ALLOW_OPENAD) && defined (ALLOW_STREAMICE_OAD_FP) )
+#ifdef ALLOW_PETSC
+      COMMON /STREAMICE_PERSIST_PETSC_L
+     & STREAMICE_need2createmat, STREAMICE_need2destroymat,
+     & STREAMICE_OAD_petsc_reuse
+#endif
+#endif
 
 C     -------------------------- AND NOW ARRAYS ---------------------------------------------------
 
@@ -332,7 +378,15 @@ C     &     A_glen,
      &     B_glen,
      &     BDOT_streamice, ADOT_streamice,  BDOT_pert,! mass balances in meters per year
      &     streamice_sigma_coord, streamice_delsigma,
-     &     H_streamice_prev
+     &     H_streamice_prev,
+     &     u_new_si, v_new_si
+
+#ifdef ALLOW_STREAMICE_FLUX_CONTROL
+      COMMON /STREAMICE_FLUX_CONTROL/
+     &      u_flux_bdry_pert,
+     &      v_flux_bdry_pert
+#endif
+
 
 #ifdef STREAMICE_STRESS_BOUNDARY_CONTROL
       COMMON /STREAMICE_STRESS_BOUNDARY/
@@ -368,6 +422,12 @@ C     &     A_glen,
      &      streamice_u_shear_stress1,
      &      streamice_v_shear_stress0,
      &      streamice_v_shear_stress1
+#endif
+#ifdef ALLOW_STREAMICE_FLUX_CONTROL
+     &      ,u_flux_bdry_SI_0,
+     &      u_flux_bdry_SI_1,
+     &      v_flux_bdry_SI_0,
+     &      v_flux_bdry_SI_1
 #endif
 #endif
 
@@ -464,12 +524,21 @@ C     The following arrays are used for the hybrid stress balance
      &   (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 #endif
 
+#ifdef ALLOW_STREAMICE_FLUX_CONTROL
+      _RL u_flux_bdry_pert
+     &   (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL v_flux_bdry_pert
+     &   (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+#endif
+
       _RL ADOT_streamice (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 !! IMPORTANT: MELT RATE IN METERS PER YEAR
 !! POSITIVE WHERE MELTING
       _RL BDOT_streamice (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL BDOT_pert (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL H_streamice_prev (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL v_new_si (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL u_new_si (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL STREAMICE_dummy_array (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 
 #ifdef ALLOW_STREAMICE_TIMEDEP_FORCING
@@ -489,6 +558,16 @@ C     The following arrays are used for the hybrid stress balance
       _RL streamice_v_shear_stress0
      &   (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL streamice_v_shear_stress1
+     &   (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+#endif
+#ifdef ALLOW_STREAMICE_FLUX_CONTROL
+      _RL u_flux_bdry_SI_0
+     &   (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL v_flux_bdry_SI_0
+     &   (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL u_flux_bdry_SI_1
+     &   (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL v_flux_bdry_SI_1
      &   (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 #endif
       _RL bdot_streamice0
@@ -530,6 +609,34 @@ C        velocity initial guess, so they are kept
      & (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       INTEGER n_dofs_process (0:nPx*nPy-1)
 #endif
+
+#if (defined (ALLOW_STREAMICE_OAD_FP))
+      COMMON /STREAMICE_OPENAD_PARMS/
+     &      streamice_oad_nonlin_tol_fp
+      _RL streamice_oad_nonlin_tol_fp
+
+      COMMON /STREAMICE_PHISTAGE_ARRS/
+     &      U_streamice_dvals,
+     &      V_streamice_dvals     
+      _RL U_streamice_dvals
+     & (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL V_streamice_dvals
+     & (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+     
+#ifdef STREAMICE_HYBRID_STRESS
+      COMMON /STREAMICE_PHISTAGE_ARRS_HYBRID/
+     & taubx_dvals, tauby_dvals,
+     & visc_full_dvals,
+     & taubx_new_si, tauby_new_si,
+     & visc_full_new_si
+      _RL taubx_new_si (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL taubx_dvals (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL tauby_new_si (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL tauby_dvals (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL visc_full_new_si (1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
+      _RL visc_full_dvals (1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
+#endif
+#endif    
 
 #endif /* ALLOW_STREAMICE */
 

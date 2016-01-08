@@ -1,4 +1,12 @@
 
+c ECCO_CPPOPTIONS used to affect maxcvars
+c and def ALLOW_OBCSN_CONTROL etc (OBCS masks etc)
+c#include ECCO_CPPOPTIONS.h
+
+c CTRL_OPTIONS affects maxcvars and may def
+c ALLOW_OBCSN_CONTROL etc (OBCS masks etc)
+#include "CTRL_OPTIONS.h"
+
       subroutine optim_writedata(
      I                       nn,
      I                       dfile,
@@ -30,10 +38,6 @@ c     == global variables ==
 
 #include "EEPARAMS.h"
 #include "SIZE.h"
-cgg   Include ECCO_CPPOPTIONS because the ecco_ctrl,cost files have headers with
-cgg   options for OBCS masks. 
-#include "ECCO_CPPOPTIONS.h"
-
 #include "ctrl.h"
 #include "optim.h"
 #include "minimization.h"

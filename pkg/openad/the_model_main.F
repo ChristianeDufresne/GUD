@@ -194,6 +194,9 @@ CEOI
 #include "PACKAGES_CONFIG.h"
 #include "CPP_OPTIONS.h"
 #include "AD_CONFIG.h"
+#ifdef ALLOW_OPENAD
+# include "OPENAD_OPTIONS.h"
+#endif
 #ifdef ALLOW_AUTODIFF
 # include "AUTODIFF_OPTIONS.h"
 #endif
@@ -484,6 +487,7 @@ C     Temporarily change setting of writeBinaryPrec
       tmpprec = writeBinaryPrec
       writeBinaryPrec = ctrlprec
       WRITE(suff,'(I10.10)') optimcycle
+#   ifndef ALLOW_OPENAD_ACTIVE_READ_XYZ
 #   ifdef ALLOW_THETA0_CONTROL
       foo=xx_theta%d
       il=ilnblnk( xx_theta_file )
@@ -505,6 +509,8 @@ C     Temporarily change setting of writeBinaryPrec
      &     'ad',xx_diffkr_file(1:il),'.'
       call write_fld_xyz_rl(fname,suff,foo,myIter,1)
 #   endif
+#   endif /* ALLOW_OPENAD_ACTIVE_READ_XYZ */
+
 #   ifdef ALLOW_TAUU0_CONTROL
       foo2D=fu%d
       il=ilnblnk( xx_tauu_file )
@@ -547,28 +553,27 @@ C     Temporarily change setting of writeBinaryPrec
      &     'ad',xx_etan_file(1:il),'.'
       call write_fld_xy_rl(fname,suff,foo2D,myIter,1)
 #   endif
-#   ifdef ALLOW_GENARR2D_CONTROL
-      do ik = 1, maxCtrlArr2D
-        foo2d=xx_genarr2d(:,:,:,:,ik)%d
-        write(fname,'(A,I2.2,A)') 'adxx_genarr2d_',ik,'.'
-        call write_fld_xy_rl(fname,suff,foo2D,myIter,1)
-      enddo
-
-#   endif
-#   ifdef ALLOW_GENARR3D_CONTROL
-      do ik = 1, maxCtrlArr3D
-        foo=xx_genarr3d(:,:,:,:,:,ik)%d
-        write(fname,'(A,I2.2,A)') 'adxx_genarr3d_',ik,'.'
-        call write_fld_xyz_rl(fname,suff,foo,myIter,1)
-      enddo
-#   endif
-#   ifdef ALLOW_GENTIM2D_CONTROL
-      do ik = 1, maxCtrlTim2D
-        foo2d=xx_gentim2d(:,:,:,:,ik)%d
-        write(fname,'(A,I2.2,A)') 'adxx_gentim2d_',ik,'.'
-        call write_fld_xy_rl(fname,suff,foo2D,myIter,1)
-      enddo
-#   endif
+cc#   ifdef ALLOW_GENARR2D_CONTROL
+cc      do ik = 1, maxCtrlArr2D
+cc        foo2d=xx_genarr2d(:,:,:,:,ik)%d
+cc        write(fname,'(A,I2.2,A)') 'adxx_genarr2d_',ik,'.'
+cc        call write_fld_xy_rl(fname,suff,foo2D,myIter,1)
+cc      enddo
+cc#   endif
+cc#   ifdef ALLOW_GENTIM2D_CONTROL
+cc      do ik = 1, maxCtrlTim2D
+cc        foo2d=xx_gentim2d(:,:,:,:,ik)%d
+cc        write(fname,'(A,I2.2,A)') 'adxx_gentim2d_',ik,'.'
+cc        call write_fld_xy_rl(fname,suff,foo2D,myIter,1)
+cc      enddo
+cc#   endif
+cc#   ifdef ALLOW_GENARR3D_CONTROL
+cc      do ik = 1, maxCtrlArr3D
+cc        foo=xx_genarr3d(:,:,:,:,:,ik)%d
+cc        write(fname,'(A,I2.2,A)') 'adxx_genarr3d_',ik,'.'
+cc        call write_fld_xyz_rl(fname,suff,foo,myIter,1)
+cc      enddo
+cc#   endif
 C     Change back to original writeBinaryPrec
       writeBinaryPrec = tmpprec
       our_rev_mode%plain=.TRUE.

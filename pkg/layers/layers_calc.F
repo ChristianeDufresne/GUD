@@ -11,7 +11,7 @@ C !ROUTINE: LAYERS_CALC
 
 C !INTERFACE:
       SUBROUTINE LAYERS_CALC(
-     I                  myTime, myIter, myThid )
+     I                        myTime, myIter, myThid )
 
 C !DESCRIPTION:
 C ===================================================================
@@ -48,15 +48,45 @@ C !FUNCTIONS:
       EXTERNAL DIFFERENT_MULTIPLE
 
 C !LOCAL VARIABLES:
+C --  3D Layers fields. The vertical dimension in these fields is Nlayers,
+C     i.e. the isopycnal coordinate.
+C      layers_UH  :: U integrated over layer (m^2/s)
+C      layers_VH  :: V integrated over layer (m^2/s)
+C      layers_Hw  :: Layer thickness at the U point (m)
+C      layers_Hs  :: Layer thickness at the V point (m)
+C      layers_PIw :: 1 if layer exists, 0 otherwise
+C      layers_PIs :: 1 if layer exists, 0 otherwise
+C      layers_U   :: mean zonal velocity in layer (only if layer exists) (m/s)
+C      layers_V   :: mean meridional velocity in layer (only if layer exists) (m/s)
+#ifdef LAYERS_UFLUX
+      _RL layers_UH (1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nlayers,nSx,nSy)
+# ifdef LAYERS_THICKNESS
+      _RL layers_Hw (1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nlayers,nSx,nSy)
+      _RL layers_PIw(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nlayers,nSx,nSy)
+      _RL layers_U  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nlayers,nSx,nSy)
+# endif /* LAYERS_THICKNESS */
+#endif /* LAYERS_UFLUX */
+#ifdef LAYERS_VFLUX
+      _RL layers_VH (1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nlayers,nSx,nSy)
+# ifdef LAYERS_THICKNESS
+      _RL layers_Hs (1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nlayers,nSx,nSy)
+      _RL layers_PIs(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nlayers,nSx,nSy)
+      _RL layers_V  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nlayers,nSx,nSy)
+# endif /* LAYERS_THICKNESS */
+#endif /* LAYERS_VFLUX */
+#ifdef LAYERS_PRHO_REF
+      _RL prho(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
+      _RL rhoShift
+      INTEGER i, j, k
+#endif
+C --  other local variables:
 C     bi, bj   :: tile indices
 C     i,j      :: horizontal indices
-C     iLa      :: layer coordinate index
+C     iLa      :: layer-type index
 C     k        :: vertical index for model grid
       INTEGER bi, bj, iLa
       CHARACTER*(MAX_LEN_MBUF) suff
-#ifdef LAYERS_PRHO_REF
-      INTEGER i, j, k
-#endif
+
 #ifdef LAYERS_THERMODYNAMICS
       INTEGER iTracer
 #endif
@@ -99,9 +129,14 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
      &              myThid )
 #ifdef LAYERS_THERMODYNAMICS
         CALL LAYERS_DIAPYCNAL( theta,iLa,
-     &              layers_TtendSurf, layers_TtendDiffh,
-     &              layers_TtendDiffr, layers_StendSurf,
+     &              layers_TtendSurf,
+     &              layers_TtendDiffh, layers_TtendDiffr,
+     &              layers_TtendAdvh, layers_TtendAdvr,
+     &              layers_Ttendtot,
+     &              layers_StendSurf,
      &              layers_StendDiffh, layers_StendDiffr,
+     &              layers_StendAdvh, layers_StendAdvr,
+     &              layers_Stendtot,
      &              layers_Hc, layers_PIc,
      &              myThid)
 #endif
@@ -114,18 +149,32 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
      &              myThid )
 #ifdef LAYERS_THERMODYNAMICS
         CALL LAYERS_DIAPYCNAL( salt,iLa,
-     &              layers_TtendSurf, layers_TtendDiffh,
-     &              layers_TtendDiffr, layers_StendSurf,
+     &              layers_TtendSurf,
+     &              layers_TtendDiffh, layers_TtendDiffr,
+     &              layers_TtendAdvh, layers_TtendAdvr,
+     &              layers_Ttendtot,
+     &              layers_StendSurf,
      &              layers_StendDiffh, layers_StendDiffr,
+     &              layers_StendAdvh, layers_StendAdvr,
+     &              layers_Stendtot,
      &              layers_Hc, layers_PIc,
      &              myThid)
 #endif
        ELSEIF ( layers_num(iLa) .EQ. 3 ) THEN
 #ifdef LAYERS_PRHO_REF
-C     For layers_num(iLa) = 3, calculate the potential density referenced to
-C     the model level given by layers_krho.
+C     For layers_num(iLa) = 3, calculate the potential density (minus 1000)
+C     referenced to the model level given by layers_krho.
+        rhoShift = rhoConst - 1000. _d 0
         DO bj=myByLo(myThid),myByHi(myThid)
          DO bi=myBxLo(myThid),myBxHi(myThid)
+C     Initialise layers variable prho:
+          DO k=1,Nr
+           DO j=1-OLy,sNy+OLy
+            DO i=1-OLx,sNx+OLx
+             prho(i,j,k,bi,bj) = 0. _d 0
+            ENDDO
+           ENDDO
+          ENDDO
           DO k = 1,Nr
            CALL FIND_RHO_2D( 1-OLx, sNx+OLx, 1-OLy, sNy+OLy,
      &                       layers_krho(iLa),
@@ -133,9 +182,19 @@ C     the model level given by layers_krho.
      &                       salt(1-OLx,1-OLy,k,bi,bj),
      &                       prho(1-OLx,1-OLy,k,bi,bj),
      &                       k, bi, bj, myThid )
+#ifdef LAYERS_THERMODYNAMICS
+C -- it might be more memory efficient not to store alpha and beta
+C    but to multiply the fluxes in place here
+           CALL FIND_ALPHA( bi, bj, 1-OLx, sNx+OLx, 1-OLy, sNy+OLy,
+     &                      k, layers_krho(iLa),
+     &                      layers_alpha(1-OLx,1-OLy,k,bi,bj), myThid )
+           CALL FIND_BETA(  bi, bj, 1-OLx, sNx+OLx, 1-OLy, sNy+OLy,
+     &                      k, layers_krho(iLa),
+     &                      layers_beta(1-OLx,1-OLy,k,bi,bj), myThid )
+#endif /* LAYERS_THERMODYNAMICS */
            DO j = 1-OLy,sNy+OLy
             DO i = 1-OLx,sNx+OLx
-             prho(i,j,k,bi,bj) = rhoConst + prho(i,j,k,bi,bj)
+             prho(i,j,k,bi,bj) = prho(i,j,k,bi,bj) + rhoShift
             ENDDO
            ENDDO
           ENDDO
@@ -149,9 +208,14 @@ C     the model level given by layers_krho.
      &              myThid )
 #ifdef LAYERS_THERMODYNAMICS
         CALL LAYERS_DIAPYCNAL( prho,iLa,
-     &              layers_TtendSurf, layers_TtendDiffh,
-     &              layers_TtendDiffr, layers_StendSurf,
+     &              layers_TtendSurf,
+     &              layers_TtendDiffh, layers_TtendDiffr,
+     &              layers_TtendAdvh, layers_TtendAdvr,
+     &              layers_Ttendtot,
+     &              layers_StendSurf,
      &              layers_StendDiffh, layers_StendDiffr,
+     &              layers_StendAdvh, layers_StendAdvr,
+     &              layers_Stendtot,
      &              layers_Hc, layers_PIc,
      &              myThid)
 #endif
@@ -178,27 +242,38 @@ C--   Direct Snap-shot output
      &                           layers_VH, myIter, myThid )
 #ifdef LAYERS_THICKNESS
           CALL WRITE_FLD_3D_RL( 'layers_Hs.', suff, Nlayers,
-     &                           layers_Hw, myIter, myThid )
+     &                           layers_Hs, myIter, myThid )
 #endif /* LAYERS_THICKNESS */
 #endif /* LAYERS_VFLUX */
 #ifdef LAYERS_PRHO_REF
-          IF ( layers_num(1).EQ.3 ) THEN
+          IF ( layers_num(iLa).EQ.3 ) THEN
            CALL WRITE_FLD_3D_RL( 'layers_prho.', suff, Nr,
      &                           prho, myIter, myThid )
-          CALL WRITE_FLD_3D_RL( 'layers_.', suff, Nlayers,
-     &                           layers_Hs, myIter, myThid )
           ENDIF
 #endif /* LAYERS_PRHO_REF */
-#ifdef LAYERS_THERMODYNAMCS
-          CALL WRITE_FLD_3D_RL( 'layers_surfflux.', suff, Nr,
+
+#ifdef LAYERS_THERMODYNAMICS
+          CALL WRITE_FLD_3D_RL( 'layers_Ttottend.', suff, 2*Nr,
+     &       layers_tottend, myIter, myThid )
+#ifdef SHORTWAVE_HEATING
+          CALL WRITE_FLD_3D_RL( 'layers_sw.', suff, Nr,
+     &       layers_sw, myIter, myThid )
+#endif /* LAYERS_SHORTWAVE */
+          CALL WRITE_FLD_3D_RL( 'layers_surfflux.', suff, 2,
      &                           layers_surfflux, myIter, myThid )
-          CALL WRITE_FLD_3D_RL( 'layers_dfx.', suff, Nr,
+          CALL WRITE_FLD_3D_RL( 'layers_dfx.', suff, 2*Nr,
      &                           layers_dfx, myIter, myThid )
-          CALL WRITE_FLD_3D_RL( 'layers_dfy.', suff, Nr,
+          CALL WRITE_FLD_3D_RL( 'layers_dfy.', suff, 2*Nr,
      &                           layers_dfy, myIter, myThid )
-          CALL WRITE_FLD_3D_RL( 'layers_dfr.', suff, Nr,
+          CALL WRITE_FLD_3D_RL( 'layers_dfr.', suff, 2*Nr,
      &                           layers_dfr, myIter, myThid )
-#endif /* LAYERS_THERMODYNAMCS */
+          CALL WRITE_FLD_3D_RL( 'layers_afx.', suff, 2*Nr,
+     &                           layers_afx, myIter, myThid )
+          CALL WRITE_FLD_3D_RL( 'layers_afy.', suff, 2*Nr,
+     &                           layers_afy, myIter, myThid )
+          CALL WRITE_FLD_3D_RL( 'layers_afr.', suff, 2*Nr,
+     &                           layers_afr, myIter, myThid )
+#endif /* LAYERS_THERMODYNAMICS */
         ENDIF
 
 c#ifdef ALLOW_MNC
@@ -216,30 +291,18 @@ c#endif /* ALLOW_MNC */
 
        ENDIF
 
-#ifdef LAYERS_THERMODYNAMICS
-C--   Reset temporary flux arrays to zero
-        DO bj = myByLo(myThid), myByHi(myThid)
-         DO bi = myBxLo(myThid), myBxHi(myThid)
-          DO iTracer = 1,2
-           DO k=1,Nr
-            DO j=1-OLy,sNy+OLy
-             DO i=1-OLx,sNx+OLx
-              layers_surfflux(i,j,k,iTracer,bi,bj) = 0. _d 0
-              layers_dfx     (i,j,k,iTracer,bi,bj) = 0. _d 0
-              layers_dfy     (i,j,k,iTracer,bi,bj) = 0. _d 0
-              layers_dfr     (i,j,k,iTracer,bi,bj) = 0. _d 0
-             ENDDO
-            ENDDO
-           ENDDO
-          ENDDO
-         ENDDO
-        ENDDO
-#endif /* LAYERS_THERMODYNAMICS */
-
 #ifdef ALLOW_DIAGNOSTICS
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C--   Fill-in diagnostics
        IF ( useDiagnostics .AND. layers_num(iLa).NE.0 ) THEN
+
+#ifdef LAYERS_PRHO_REF
+         IF ( layers_num(iLa).EQ.3 ) THEN
+          WRITE(diagName,'(A4,I1,A3)') 'LaTr',iLa,layers_name(iLa)
+          CALL DIAGNOSTICS_FILL( prho,
+     &                           diagName, 0, Nr, 0, 1, 1, myThid )
+         ENDIF
+#endif /* LAYERS_PRHO_REF */
 
 #ifdef LAYERS_UFLUX
          WRITE(diagName,'(A4,I1,A3)') 'LaUH',iLa,layers_name(iLa)
@@ -276,39 +339,48 @@ C--   Fill-in diagnostics
 #endif /* LAYERS_VFLUX */
 
 #ifdef LAYERS_THERMODYNAMICS
-
          WRITE(diagName,'(A4,I1,A3)') 'LaHc',iLa,layers_name(iLa)
          CALL DIAGNOSTICS_FILL( layers_Hc,
      &                          diagName,0,Nlayers, 0, 1, 1, myThid )
-
          WRITE(diagName,'(A4,I1,A3)') 'LaPc',iLa,layers_name(iLa)
          CALL DIAGNOSTICS_FILL( layers_PIc,
      &                          diagName,0,Nlayers, 0, 1, 1, myThid )
-
          WRITE(diagName,'(A4,I1,A3)') 'LaTs',iLa,layers_name(iLa)
          CALL DIAGNOSTICS_FILL( layers_TtendSurf,
-     &                          diagName,0,Nlayers, 0, 1, 1, myThid )
-
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
          WRITE(diagName,'(A4,I1,A3)') 'LaTh',iLa,layers_name(iLa)
          CALL DIAGNOSTICS_FILL( layers_TtendDiffh,
-     &                          diagName,0,Nlayers, 0, 1, 1, myThid )
-
-         WRITE(diagName,'(A4,I1,A3)') 'LaTr',iLa,layers_name(iLa)
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
+         WRITE(diagName,'(A4,I1,A3)') 'LaTz',iLa,layers_name(iLa)
          CALL DIAGNOSTICS_FILL( layers_TtendDiffr,
-     &                          diagName,0,Nlayers, 0, 1, 1, myThid )
-
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
+         WRITE(diagName,'(A4,I1,A3)') 'LTha',iLa,layers_name(iLa)
+         CALL DIAGNOSTICS_FILL( layers_TtendAdvh,
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
+         WRITE(diagName,'(A4,I1,A3)') 'LTza',iLa,layers_name(iLa)
+         CALL DIAGNOSTICS_FILL( layers_TtendAdvr,
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
+         WRITE(diagName,'(A4,I1,A3)') 'LTto',iLa,layers_name(iLa)
+         CALL DIAGNOSTICS_FILL( layers_Ttendtot,
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
          WRITE(diagName,'(A4,I1,A3)') 'LaSs',iLa,layers_name(iLa)
          CALL DIAGNOSTICS_FILL( layers_StendSurf,
-     &                          diagName,0,Nlayers, 0, 1, 1, myThid )
-
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
          WRITE(diagName,'(A4,I1,A3)') 'LaSh',iLa,layers_name(iLa)
          CALL DIAGNOSTICS_FILL( layers_StendDiffh,
-     &                          diagName,0,Nlayers, 0, 1, 1, myThid )
-
-         WRITE(diagName,'(A4,I1,A3)') 'LaSr',iLa,layers_name(iLa)
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
+         WRITE(diagName,'(A4,I1,A3)') 'LaSz',iLa,layers_name(iLa)
          CALL DIAGNOSTICS_FILL( layers_StendDiffr,
-     &                          diagName,0,Nlayers, 0, 1, 1, myThid )
-
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
+         WRITE(diagName,'(A4,I1,A3)') 'LSha',iLa,layers_name(iLa)
+         CALL DIAGNOSTICS_FILL( layers_StendAdvh,
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
+         WRITE(diagName,'(A4,I1,A3)') 'LSza',iLa,layers_name(iLa)
+         CALL DIAGNOSTICS_FILL( layers_StendAdvr,
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
+         WRITE(diagName,'(A4,I1,A3)') 'LSto',iLa,layers_name(iLa)
+         CALL DIAGNOSTICS_FILL( layers_Stendtot,
+     &                          diagName,0,Nlayers-1, 0, 1, 1, myThid )
 #endif /* LAYERS_THERMODYNAMICS */
 
        ENDIF
@@ -356,6 +428,39 @@ C --- End bi,bj loop
 #endif /* ALLOW_TIMEAVE */
 
       ENDDO !DO iLa=1,layers_maxNum
+
+
+#ifdef LAYERS_THERMODYNAMICS
+C--   Reset temporary flux arrays to zero
+      DO bj = myByLo(myThid), myByHi(myThid)
+       DO bi = myBxLo(myThid), myBxHi(myThid)
+        DO iTracer = 1,2
+         DO j=1-OLy,sNy+OLy
+          DO i=1-OLx,sNx+OLx
+           layers_surfflux(i,j,1,iTracer,bi,bj) = 0. _d 0
+          ENDDO
+         ENDDO
+         DO k=1,Nr
+          DO j=1-OLy,sNy+OLy
+           DO i=1-OLx,sNx+OLx
+            layers_dfx     (i,j,k,iTracer,bi,bj) = 0. _d 0
+            layers_dfy     (i,j,k,iTracer,bi,bj) = 0. _d 0
+            layers_dfr     (i,j,k,iTracer,bi,bj) = 0. _d 0
+            layers_afx     (i,j,k,iTracer,bi,bj) = 0. _d 0
+            layers_afy     (i,j,k,iTracer,bi,bj) = 0. _d 0
+            layers_afr     (i,j,k,iTracer,bi,bj) = 0. _d 0
+            layers_tottend (i,j,k,iTracer,bi,bj) = 0. _d 0
+#ifdef SHORTWAVE_HEATING
+            layers_sw       (i,j,k,1      ,bi,bj) = 0. _d 0
+#endif /* SHORTWAVE_HEATING */
+           ENDDO
+          ENDDO
+         ENDDO
+        ENDDO
+       ENDDO
+      ENDDO
+#endif /* LAYERS_THERMODYNAMICS */
+
 
 #endif /* ALLOW_LAYERS */
 

@@ -129,9 +129,11 @@ C-    viscosity and diffusivity default value:
       viscFacAdj          = 1. _d 0
       no_slip_sides       = .TRUE.
       no_slip_bottom      = .TRUE.
+      bottomVisc_pCell    = .FALSE.
       sideDragFactor      = 2. _d 0
       bottomDragLinear    = 0.
       bottomDragQuadratic = 0.
+      selectBotDragQuadr  = -1
       viscA4              = 0. _d 11
       viscA4Grid          = 0. _d 0
       viscA4GridMax       = 1. _d 21
@@ -197,6 +199,7 @@ C-    viscosity and diffusivity default value:
       useStrainTensionVisc= .FALSE.
       implicitDiffusion   = .FALSE.
       implicitViscosity   = .FALSE.
+      implBottomFriction  = .FALSE.
       momImplVertAdv      = .FALSE.
       tempImplVertAdv     = .FALSE.
       saltImplVertAdv     = .FALSE.
@@ -295,6 +298,7 @@ C--   Time stepping parameters
       pickupSuff        = ' '
       pickupStrictlyMatch = .TRUE.
       nTimeSteps        = 0
+      nTimeSteps_l2     = 0
       nEndIter          = 0
       endTime           = 0. _d 0
       momForcingOutAB   = UNSET_I

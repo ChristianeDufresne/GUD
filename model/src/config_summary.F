@@ -193,12 +193,17 @@ C-    Vertical viscosity parameters:
      &  //rUnits//'^2/s )*/')
       CALL WRITE_0D_L( no_slip_bottom, INDEX_NONE,
      & 'no_slip_bottom =', '  /* Viscous BCs: No-slip bottom */')
+      CALL WRITE_0D_L( bottomVisc_pCell, INDEX_NONE,
+     & 'bottomVisc_pCell =', ' /* Partial-cell in bottom Visc. BC */')
       CALL WRITE_0D_RL( bottomDragLinear, INDEX_NONE,
      & 'bottomDragLinear =',
      & ' /* linear bottom-drag coefficient ( m/s ) */')
       CALL WRITE_0D_RL( bottomDragQuadratic, INDEX_NONE,
      & 'bottomDragQuadratic =',
      & ' /* quadratic bottom-drag coefficient (-) */')
+      CALL WRITE_0D_I( selectBotDragQuadr, INDEX_NONE,
+     & 'selectBotDragQuadr =',
+     & ' /* select quadratic bottom drag options */')
 #endif /* ALLOW_MOM_COMMON */
       CALL WRITE_0D_RL( diffKhT, INDEX_NONE,'diffKhT =',
      &'   /* Laplacian diffusion of heat laterally ( m^2/s ) */')
@@ -249,14 +254,17 @@ C-    Vertical viscosity parameters:
         CALL WRITE_0D_RL( rhoNil,  INDEX_NONE, 'rhoNil    =',
      &  ' /* Reference density for Linear EOS ( kg/m^3 ) */')
       ENDIF
-      IF ( eosType .EQ. 'POLY3' ) THEN
+      IF ( eosType .EQ. 'POLY3 ' ) THEN
         WRITE(msgBuf,'(A)')
-     &   '// Polynomial EQS parameters ( from POLY3.COEFFS ) '
+     &   'Polynomial EQS parameters ( from POLY3.COEFFS ):'
+        CALL PRINT_MESSAGE( msgBuf, ioUnit, SQUEEZE_RIGHT, myThid )
         DO k = 1, Nr
          WRITE(msgBuf,'(I3,13F8.3)')
      &   k,eosRefT(k),eosRefS(k),eosSig0(k), (eosC(i,k),i=1,9)
          CALL PRINT_MESSAGE( msgBuf, ioUnit, SQUEEZE_RIGHT, myThid )
         ENDDO
+        WRITE(msgBuf,'(A)') '    ;'
+        CALL PRINT_MESSAGE( msgBuf, ioUnit, SQUEEZE_RIGHT, myThid )
       ENDIF
       IF ( fluidIsWater ) THEN
        CALL WRITE_0D_RL( HeatCapacity_Cp, INDEX_NONE,
@@ -406,6 +414,9 @@ C-    Vertical viscosity parameters:
      &                ' /* Momentum implicit vert. advection on/off*/')
       CALL WRITE_0D_L( implicitViscosity, INDEX_NONE,
      & 'implicitViscosity =', ' /* Implicit viscosity on/off flag */')
+      CALL WRITE_0D_L( implBottomFriction, INDEX_NONE,
+     & 'implBottomFriction=',
+     & ' /* Implicit bottom friction on/off flag */')
       CALL WRITE_0D_L( metricTerms,  INDEX_NONE, 'metricTerms =',
      &                '  /* metric-Terms on/off flag */')
       CALL WRITE_0D_L( useNHMTerms,  INDEX_NONE, 'useNHMTerms =',

@@ -22,7 +22,7 @@ C     IO routines such as MDSIO will be used) and will not issue any
 C     errors.
 
 C     !USES:
-      implicit none
+      IMPLICIT NONE
 #include "SIZE.h"
 #include "MNC_COMMON.h"
 #include "EEPARAMS.h"
@@ -69,11 +69,11 @@ C     For now, switch it off (otherwise, it is hanging up somewhere)
       IF ( nThreads.GT.1 ) THEN
         _BARRIER
         _BEGIN_MASTER( myThid )
-        WRITE(msgBuf,'(2A)') '**WARNING** MNC_READPARMS: ',
+        WRITE(msgBuf,'(2A)') '** WARNING ** MNC_READPARMS: ',
      &                       'useMNC unsafe with multi-threads'
         CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
      &                      SQUEEZE_RIGHT , myThid )
-        WRITE(msgBuf,'(2A)') '**WARNING** MNC_READPARMS: ',
+        WRITE(msgBuf,'(2A)') '** WARNING ** MNC_READPARMS: ',
      &                       'for now, switch useMNC to FALSE'
         CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
      &                      SQUEEZE_RIGHT , myThid )
@@ -95,8 +95,8 @@ C     Set default values for MNC run-time parameters
         mnc_outdir_date     =  .FALSE.
         mnc_outdir_num      =  .TRUE.
       mnc_use_name_ni0      =  .FALSE.
-      pickup_write_mnc      =  .TRUE.
-      pickup_read_mnc       =  .TRUE.
+      pickup_write_mnc      =  .FALSE.
+      pickup_read_mnc       =  .FALSE.
       mnc_use_indir         =  .FALSE.
         mnc_indir_str(1:4)  =  '    '
       monitor_mnc           =  .TRUE.
@@ -172,6 +172,28 @@ C     Create and/or set the MNC output directory
           write(mnc_out_path,'(2A)')
      &         mnc_outdir_str(1:ILNBLNK(mnc_outdir_str)), '/'
         ENDIF
+      ENDIF
+
+C--   print out some kee parameters :
+
+C--   Check the parameters :
+      IF ( pickup_write_mnc .OR. pickup_read_mnc ) THEN
+        WRITE(msgBuf,'(2A)') '** WARNING ** MNC_READPARMS: ',
+     &   'incomplete MNC pickup files implementation'
+        CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
+     &                      SQUEEZE_RIGHT, myThid )
+      ENDIF
+      IF ( pickup_write_mnc ) THEN
+        WRITE(msgBuf,'(2A)') '** WARNING ** MNC_READPARMS: ',
+     &   '=> pickup_write_mnc=T not recommanded'
+        CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
+     &                      SQUEEZE_RIGHT, myThid )
+      ENDIF
+      IF ( pickup_read_mnc ) THEN
+        WRITE(msgBuf,'(2A)') '** WARNING ** MNC_READPARMS: ',
+     &   '=> pickup_read_mnc=T not working for some set-up'
+        CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
+     &                      SQUEEZE_RIGHT, myThid )
       ENDIF
 
       RETURN

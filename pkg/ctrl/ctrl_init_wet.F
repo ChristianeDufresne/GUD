@@ -49,8 +49,8 @@ c     == local variables ==
 #ifdef ALLOW_OBCS_CONTROL
       integer ntmpob(nobcs)
 #endif
-      _RL     dummy
-      _RS     dummyRS
+      _RL dummy
+      _RS dummyRS
 
       character*(80) ymaskobcs
       character*(max_len_mbuf) msgbuf
@@ -591,23 +591,7 @@ c
 
       _END_MASTER( mythid )
 
-c     Set unit weight to 1
-c
-      do bj=1,nSy
-         do bi=1,nSx
-            do k=1, nr
-               wunit(k,bi,bj) = 1. _d 0
-            enddo
-            do k=1,Nr
-             do j=1-oly,sNy+oly
-              do i=1-olx,sNx+olx
-               tmpfld3d(i,j,k,bi,bj) = 1. _d 0
-              enddo
-             enddo
-            enddo
-         enddo
-      enddo
-
+#ifdef ALLOW_AUTODIFF
 c     write masks and weights to files to be read by a master process
 c
 c#ifdef REAL4_IS_SLOW
@@ -626,7 +610,6 @@ c#endif
 #if (defined (ALLOW_EFLUXP0_CONTROL))
       call active_write_xyz( 'maskhFacV', hFacV, 1, 0, mythid, dummy)
 #endif
-      call active_write_xyz( 'wunit', tmpfld3d, 1, 0, mythid, dummy)
 #ifdef ALLOW_SHIFWFLX_CONTROL
 c#ifdef REAL4_IS_SLOW
 c     call active_write_xyz( 'maskCtrlI', maskSHI, 1, 0, mythid, dummy)
@@ -635,6 +618,7 @@ c#else
      I                          1, .FALSE., 0, mythid, dummyRS )
 c#endif
 #endif
+#endif /* ALLOW_AUTODIFF */
 
       RETURN
       END

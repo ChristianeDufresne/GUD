@@ -65,18 +65,6 @@ C     msgBuf      - Informational/error meesage buffer
       ENDIF
 #endif
 
-#ifdef ALLOW_PROFILES_CONTRIBUTION
-      IF ( .NOT.usePROFILES ) THEN
-       WRITE(msgBuf,'(2A)')
-     &        'ECCO_CHECK: for ALLOW_PROFILES_CONTRIBUTION ',
-     &        'requires usePROFILES to be .true.'
-       CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
-     &                     SQUEEZE_RIGHT , myThid )
-       CALL PRINT_ERROR( msgBuf , myThid )
-       STOP 'ABNORMAL END: S/R ECCO_CHECK'
-      ENDIF
-#endif
-
 cgf next line is only for backward compatibility
       IF ( (using_topex).AND.(.NOT.using_tpj) ) using_tpj=.TRUE.
 
@@ -164,7 +152,7 @@ c check that one of the used gencost term defines etaday (needed in sshv4)
 
       igen_etaday=0
       do k=1,NGENCOST
-        if ( (gencost_barfile(k).EQ.'etaday').AND.
+        if ( (gencost_barfile(k)(1:5).EQ.'m_eta').AND.
      &       (using_gencost(k)) )  igen_etaday=k
       enddo
 

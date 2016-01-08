@@ -28,10 +28,17 @@ C ==================== Global Variables ===========================
 # include "profiles.h"
 # include "netcdf.inc"
 #endif
+
+C ==================== Routine Arguments ==========================
+
+      integer myThid
+
 C ==================== Routine Variables ==========================
 
-      integer k,l,m,bi,bj,iG,jG, myThid,num_file,length_for_tile
-      _RL stopProfiles
+#ifdef ALLOW_PROFILES
+
+      integer i,j,k,l,m,bi,bj,iG,jG,num_file,length_for_tile
+      integer stopProfiles
       integer fid, dimid, varid1, varid1a, varid1b
       integer varid2,varid3
       _RL tmpyymmdd(1000),tmphhmmss(1000),diffsecs
@@ -39,16 +46,17 @@ C ==================== Routine Variables ==========================
       _RL hhmmssMin,hhmmssMax
 
       integer tmpdate(4),tmpdiff(4),profIsInRunTime
-      _RL  tmp_lon, tmp_lon2(1000), tmp_lat2(1000)
+      _RL  tmp_lon, tmp_lon2(1000), tmp_lat2(1000), lon_cur, lat_cur
+      _RL lon_1, lon_2, lat_1, lat_2
+      _RL lon_tmp1, lon_tmp2, lat_tmp1, lat_tmp2
+      _RL lat_fac, lon_fac
+      integer prof_i, prof_j
       integer vec_start(2), vec_count(2), profno_div1000, kk
       character*(80) profilesfile, fnamedatanc
       character*(80) fnameequinc, adfnameequinc
       integer IL, JL, err
       logical  exst
 
-#ifdef ALLOW_PROFILES
-
-#ifdef ALLOW_PROFILES_GENERICGRID
       integer varid_intp1, varid_intp2, varid_intp11 , varid_intp22
       integer varid_intp3, varid_intp4, varid_intp5, q
       _RL tmp_i(1000,NUM_INTERP_POINTS)
@@ -56,10 +64,9 @@ C ==================== Routine Variables ==========================
       _RL tmp_weights(1000,NUM_INTERP_POINTS),tmp_sum_weights
       _RL tmp_xC11(1000),tmp_yC11(1000)
       _RL tmp_xCNINJ(1000),tmp_yCNINJ(1000)
-      _RL stopGenericGrid
+      integer stopGenericGrid
       Real*8 xy_buffer_r8(0:sNx+1,0:sNy+1)
       integer vec_start2(2), vec_count2(2)
-#endif
 
 c     == external functions ==
       integer ILNBLNK
@@ -91,22 +98,8 @@ c--   == end of interface ==
      &                    SQUEEZE_RIGHT , mythid)
 
 
-      stopProfiles=0. _d 0
-#ifdef ALLOW_PROFILES_GENERICGRID
-      stopGenericGrid=0. _d 0
-#endif
-
-#ifndef ALLOW_PROFILES_GENERICGRID
-      IF ( profilesDoGenGrid ) THEN
-        WRITE(msgBuf,'(2A)') 'PROFILES_INIT_FIXED: ',
-     &  'profilesDoGenGrid=.true. requires'
-        CALL PRINT_ERROR( msgBuf , myThid )
-        WRITE(msgBuf,'(2A)') 'PROFILES_INIT_FIXED: ',
-     &  'that ALLOW_PROFILES_GENERICGRID is defined'
-        CALL PRINT_ERROR( msgBuf , myThid )
-        STOP 'ABNORMAL END: S/R PROFILES_INIT_FIXED'
-      ENDIF
-#endif
+      stopProfiles=0
+      stopGenericGrid=0
 
       IF ( (.NOT.profilesDoGenGrid).AND.
      &     (.NOT.usingSphericalPolarGrid .OR. rotateGrid) ) THEN
@@ -164,8 +157,8 @@ c--   == end of interface ==
         do m=1,NLEVELMAX
          do l=1,1000
           do k=1,NVARMAX
-           profiles_data_buff(m,l,k,bi,bj)=0
-           profiles_weight_buff(m,l,k,bi,bj)=0
+           profiles_data_buff(m,l,k,bi,bj)=0. _d 0
+           profiles_weight_buff(m,l,k,bi,bj)=0. _d 0
           enddo
          enddo
         enddo
@@ -241,7 +234,7 @@ c       if neither is found, then stop
      & 'PROFILES_INIT_FIXED: file ', profilesfile(1:IL),
      & '.nc is not in the pkg/profiles format (no prof_depth etc.)'
         CALL PRINT_ERROR( msgBuf, myThid)
-        stopProfiles=1. _d 0
+        stopProfiles=1
       endif
 
       do k=1,ProfDepthNo(num_file,bi,bj)
@@ -260,10 +253,9 @@ c       if neither is found, then stop
      & 'PROFILES_INIT_FIXED: file ', profilesfile(1:IL),
      & '.nc is not in the pkg/profiles format (no prof_YYYYMMDD etc.)'
         CALL PRINT_ERROR( msgBuf, myThid)
-      stopProfiles=1. _d 0
+      stopProfiles=1
       endif
 
-#ifdef ALLOW_PROFILES_GENERICGRID
       if (profilesDoGenGrid) then
 c3) read interpolattion information (grid points, coeffs, etc.)
            err = NF_INQ_VARID(fid,'prof_interp_XC11',varid_intp1)
@@ -279,29 +271,26 @@ c3) read interpolattion information (grid points, coeffs, etc.)
      & 'PROFILES_INIT_FIXED: file ', profilesfile(1:IL),
      & '.nc is missing interpolation information (profilesDoGenGrid)'
         CALL PRINT_ERROR( msgBuf, myThid)
-      stopGenericGrid=2. _d 0
+      stopGenericGrid=2
       endif
       endif
-#endif
 
 
 c4) default values
       do k=1,NOBSGLOB
-      prof_time(num_file,k,bi,bj)=-999
-      prof_lon(num_file,k,bi,bj)=-999
-      prof_lat(num_file,k,bi,bj)=-999
-      prof_ind_glob(num_file,k,bi,bj)=-999
-#ifdef ALLOW_PROFILES_GENERICGRID
+      prof_time(num_file,k,bi,bj)=-999. _d 0
+      prof_lon(num_file,k,bi,bj)=-999. _d 0
+      prof_lat(num_file,k,bi,bj)=-999. _d 0
+      prof_ind_glob(num_file,k,bi,bj)=0
       do q = 1,NUM_INTERP_POINTS
-         prof_interp_i(num_file,k,q,bi,bj) = -999
-         prof_interp_j(num_file,k,q,bi,bj) = -999
-         prof_interp_weights(num_file,k,q,bi,bj) = -999
+         prof_interp_i(num_file,k,q,bi,bj) = 0
+         prof_interp_j(num_file,k,q,bi,bj) = 0
+         prof_interp_weights(num_file,k,q,bi,bj) = -999. _d 0
       enddo
-      prof_interp_xC11(num_file,k,bi,bj)=-999
-      prof_interp_yC11(num_file,k,bi,bj)=-999
-      prof_interp_xCNINJ(num_file,k,bi,bj)=-999
-      prof_interp_yCNINJ(num_file,k,bi,bj)=-999
-#endif
+      prof_interp_xC11(num_file,k,bi,bj)=-999. _d 0
+      prof_interp_yC11(num_file,k,bi,bj)=-999. _d 0
+      prof_interp_xCNINJ(num_file,k,bi,bj)=-999. _d 0
+      prof_interp_yCNINJ(num_file,k,bi,bj)=-999. _d 0
       enddo
 
 
@@ -329,7 +318,7 @@ c5.1) read a chunk
      & 'PROFILES_INIT_FIXED: file ', profilesfile(1:IL),
      & '.nc was not read properly (case 1).'
         CALL PRINT_ERROR( msgBuf, myThid)
-      stopProfiles=1. _d 0
+      stopProfiles=1
       endif
 
       err = NF_GET_VARA_DOUBLE(fid,varid1a,vec_start(2),
@@ -346,10 +335,10 @@ c5.1) read a chunk
      & 'PROFILES_INIT_FIXED: file ', profilesfile(1:IL),
      & '.nc was not read properly (case 2).'
         CALL PRINT_ERROR( msgBuf, myThid)
-      stopProfiles=1. _d 0
+      stopProfiles=1
       endif
 
-#ifdef ALLOW_PROFILES_GENERICGRID
+c if profilesDoGenGrid then also read in the interpolation coeffs and indices
       if (profilesDoGenGrid) then
       err = NF_GET_VARA_DOUBLE(fid,varid_intp1,vec_start(2),
      & vec_count(2), tmp_xC11)
@@ -372,12 +361,11 @@ c5.1) read a chunk
      &  vec_count2, tmp_j(1,q))
       enddo
       endif
-#endif
 
 c5.2) loop through this chunk
       do k=1,min(1000,ProfNo(num_file,bi,bj)-1000*(kk-1))
 
-      if ( stopProfiles .EQ. 0.) then
+      if ( stopProfiles .EQ. 0) then
 
       profIsInRunTime=1
 
@@ -396,65 +384,127 @@ c5.2) loop through this chunk
         diffsecs=-deltaTclock
       endif
 
-#ifdef ALLOW_PROFILES_GENERICGRID
-       if (.NOT.profilesDoGenGrid) then
-#endif
+c ==============================================================================
+
+c 5.2a) determine whether profiles is in current tile domain (lat-lon grid case)
+       if ((.NOT.profilesDoGenGrid).AND.(profIsInRunTime.EQ.1)) then
+
        if (xC(sNx+1,1,bi,bj).LT.xC(1,1,bi,bj)) then
-        tmp_lon=xC(sNx+1,1,bi,bj)+360
+        tmp_lon=xC(sNx+1,1,bi,bj)+360. _d 0
        else
         tmp_lon=xC(sNx+1,1,bi,bj)
        endif
+
        if ((xC(1,1,bi,bj).LE.tmp_lon2(k)).AND.
      & (tmp_lon.GT.tmp_lon2(k)).AND.
      & (yC(1,1,bi,bj).LE.tmp_lat2(k)).AND.
-     & (yC(1,sNy+1,bi,bj).GT.tmp_lat2(k))
-     & .AND.(profIsInRunTime.EQ.1)) then
-        length_for_tile=length_for_tile+1
-        prof_time(num_file,length_for_tile,bi,bj)=diffsecs
-        prof_lon(num_file,length_for_tile,bi,bj)=tmp_lon2(k)
-        prof_lat(num_file,length_for_tile,bi,bj)=tmp_lat2(k)
-        prof_ind_glob(num_file,length_for_tile,bi,bj)=k+1000*(kk-1)
-        if (length_for_tile.EQ.NOBSGLOB) then
-          WRITE(msgBuf,'(3A)')
-     &    'PROFILES_INIT_FIXED: file ', profilesfile(1:IL),
-     &    '.nc was not read properly (increase NOBSGLOB).'
-          CALL PRINT_ERROR( msgBuf, myThid)
-          stopProfiles=1. _d 0
-        endif
-       elseif (xC(sNx+1,1,bi,bj).LT.xC(1,1,bi,bj)) then
-        if ((xC(1,1,bi,bj).LE.tmp_lon2(k)+360).AND.
-     &  (tmp_lon.GT.tmp_lon2(k)+360).AND.
+     & (yC(1,sNy+1,bi,bj).GT.tmp_lat2(k)) ) then
+         lon_cur=tmp_lon2(k)
+         lat_cur=tmp_lat2(k)
+       elseif ((xC(sNx+1,1,bi,bj).LT.xC(1,1,bi,bj)).AND.
+     &  (xC(1,1,bi,bj).LE.tmp_lon2(k)+360. _d 0).AND.
+     &  (tmp_lon.GT.tmp_lon2(k)+360. _d 0).AND.
      &  (yC(1,1,bi,bj).LE.tmp_lat2(k)).AND.
      &  (yC(1,sNy+1,bi,bj).GT.tmp_lat2(k))
      &  ) then
-         length_for_tile=length_for_tile+1
-         prof_time(num_file,length_for_tile,bi,bj)=diffsecs
-         prof_lon(num_file,length_for_tile,bi,bj)=tmp_lon2(k)+360
-         prof_lat(num_file,length_for_tile,bi,bj)=tmp_lat2(k)
-         prof_ind_glob(num_file,length_for_tile,bi,bj)=k+1000*(kk-1)
-         if (length_for_tile.EQ.NOBSGLOB) then
-           WRITE(msgBuf,'(3A)')
-     &      'PROFILES_INIT_FIXED: file ', profilesfile(1:IL),
-     &      '.nc was not read properly (increase NOBSGLOB).'
-           CALL PRINT_ERROR( msgBuf, myThid)
-           stopProfiles=1. _d 0
-         endif
-        endif
-       endif
-#ifdef ALLOW_PROFILES_GENERICGRID
+         lon_cur=tmp_lon2(k)+360. _d 0
+         lat_cur=tmp_lat2(k)
        else
-       if (stopGenericGrid.EQ.0.) then
+         profIsInRunTime=0
+       endif
 
-       if ( ( abs( tmp_xC11(k) - xC(1,1,bi,bj) ).LT.0.0001 ) .AND.
-     & ( abs( tmp_yC11(k) - yC(1,1,bi,bj) ).LT.0.0001 ) .AND.
-     & ( abs( tmp_xCNINJ(k) - xC(sNx,sNy,bi,bj) ).LT.0.0001 ) .AND.
-     & ( abs( tmp_yCNINJ(k) - yC(sNx,sNy,bi,bj) ).LT.0.0001 )
+c now determine value of i,j to the south-ouest of data point
+       prof_i=-10
+       prof_j=-10
+       lon_1=-10
+       lon_2=-10
+       lat_1=-10
+       lat_2=-10
+
+       if (profIsInRunTime.EQ.1) then
+        DO j=1,sNy+1
+         DO i=1,sNx+1
+
+c value of j, south of the data point:
+        if ((yC(i,j,bi,bj).LE.lat_cur).AND.
+     &      (yC(i,j+1,bi,bj).GT.lat_cur)) then
+          prof_j=j
+          lat_1=yC(i,j,bi,bj)
+          lat_2=yC(i,j+1,bi,bj)
+        endif
+
+c value of i, west of the data point:
+         if (xC(i+1,j,bi,bj).LT.xC(1,j,bi,bj)) then
+           lon_tmp2=xC(i+1,j,bi,bj)+360
+         else
+           lon_tmp2=xC(i+1,j,bi,bj)
+         endif
+         if (xC(i,j,bi,bj).LT.xC(1,j,bi,bj)) then
+           lon_tmp1=xC(i,j,bi,bj)+360
+         else
+           lon_tmp1=xC(i,j,bi,bj)
+         endif
+
+         if ((lon_tmp1.LE.lon_cur).AND.(lon_tmp2.GT.lon_cur)) then
+           prof_i=i
+           lon_1=lon_tmp1
+           lon_2=lon_tmp2
+         endif
+
+        ENDDO
+       ENDDO
+      endif
+
+      if ((prof_i.EQ.-10).OR.(prof_j.EQ.-10)) profIsInRunTime=0
+
+      if (profIsInRunTime.EQ.1) then
+c if yes then store prof_time and longitude and latitude:
+        length_for_tile=length_for_tile+1
+        prof_time(num_file,length_for_tile,bi,bj)=diffsecs
+        prof_lon(num_file,length_for_tile,bi,bj)=lon_cur
+        prof_lat(num_file,length_for_tile,bi,bj)=lat_cur
+        prof_ind_glob(num_file,length_for_tile,bi,bj)=k+1000*(kk-1)
+c then store interpolation coeffs and indices
+        lon_fac=(lon_cur-lon_1)/(lon_2-lon_1)
+        lat_fac=(lat_cur-lat_1)/(lat_2-lat_1)
+        prof_interp_weights(num_file,length_for_tile,1,bi,bj)=
+     &     (1-lon_fac)*(1-lat_fac)
+        prof_interp_i(num_file,length_for_tile,1,bi,bj)=prof_i
+        prof_interp_j(num_file,length_for_tile,1,bi,bj)=prof_j
+        prof_interp_weights(num_file,length_for_tile,2,bi,bj)=
+     &     lon_fac*(1-lat_fac)
+        prof_interp_i(num_file,length_for_tile,2,bi,bj)=prof_i+1
+        prof_interp_j(num_file,length_for_tile,2,bi,bj)=prof_j
+        prof_interp_weights(num_file,length_for_tile,3,bi,bj)=
+     &     (1-lon_fac)*lat_fac
+        prof_interp_i(num_file,length_for_tile,3,bi,bj)=prof_i
+        prof_interp_j(num_file,length_for_tile,3,bi,bj)=prof_j+1
+        prof_interp_weights(num_file,length_for_tile,4,bi,bj)=
+     &     lon_fac*lat_fac
+        prof_interp_i(num_file,length_for_tile,4,bi,bj)=prof_i+1
+        prof_interp_j(num_file,length_for_tile,4,bi,bj)=prof_j+1
+
+      endif
+
+c ==============================================================================
+
+c 5.2a) determine whether profiles is in current tile domain (generic grid case)
+
+       elseif (profIsInRunTime.EQ.1) then
+
+       if (stopGenericGrid.EQ.0) then
+
+       if ( ( abs( tmp_xC11(k) - xC(1,1,bi,bj) ).LT.0.0001 _d 0 ) .AND.
+     & ( abs( tmp_yC11(k) - yC(1,1,bi,bj) ).LT.0.0001 _d 0) .AND.
+     & ( abs( tmp_xCNINJ(k) - xC(sNx,sNy,bi,bj) ).LT.0.0001 _d 0 ) .AND.
+     & ( abs( tmp_yCNINJ(k) - yC(sNx,sNy,bi,bj) ).LT.0.0001 _d 0 )
      & .AND.(profIsInRunTime.EQ.1)) then
 
-         length_for_tile=length_for_tile+1
-         prof_time(num_file,length_for_tile,bi,bj)=diffsecs
-         prof_interp_xC11(num_file,length_for_tile,bi,bj)=tmp_xC11(k)
-         prof_interp_yC11(num_file,length_for_tile,bi,bj)=tmp_yC11(k)
+c if yes then store prof_time and interpolation coeffs and indices:
+       length_for_tile=length_for_tile+1
+       prof_time(num_file,length_for_tile,bi,bj)=diffsecs
+       prof_interp_xC11(num_file,length_for_tile,bi,bj)=tmp_xC11(k)
+       prof_interp_yC11(num_file,length_for_tile,bi,bj)=tmp_yC11(k)
        prof_interp_xCNINJ(num_file,length_for_tile,bi,bj)=tmp_xCNINJ(k)
        prof_interp_yCNINJ(num_file,length_for_tile,bi,bj)=tmp_yCNINJ(k)
        tmp_sum_weights=0. _d 0
@@ -475,9 +525,9 @@ c interpolation information consistent (self and with grid)
      &     '.nc includes inconsistent interpolation ',
      &     'points (profilesDoGenGrid; out of tile)'
           CALL PRINT_ERROR( msgBuf, myThid)
-          stopGenericGrid=1. _d 0
+          stopGenericGrid=1
        endif
-       if ( tmp_weights(k,q) .NE. 0. ) then
+       if ( tmp_weights(k,q) .NE. 0. _d 0) then
        if ( ((tmp_i(k,q).EQ.0).AND.(tmp_j(k,q).EQ.0))
      & .OR.((tmp_i(k,q).EQ.sNx+1).AND.(tmp_j(k,q).EQ.sNy+1))
      & .OR.((tmp_i(k,q).EQ.0).AND.(tmp_j(k,q).EQ.sNy+1))
@@ -487,43 +537,48 @@ c interpolation information consistent (self and with grid)
      &     '.nc includes inconsistent interpolation ',
      &     'points (profilesDoGenGrid; using overlap corners)'
           CALL PRINT_ERROR( msgBuf, myThid)
-          stopGenericGrid=1. _d 0
+          stopGenericGrid=1
        endif
        endif
-       if ( (tmp_weights(k,q).LT.0).OR.(tmp_weights(k,q).GT.1) ) then
+       if ( (tmp_weights(k,q).LT.0. _d 0).OR.
+     &    (tmp_weights(k,q).GT.1. _d 0) ) then
           WRITE(msgBuf,'(4A)')
      &     'PROFILES_INIT_FIXED: file ', profilesfile(1:IL),
      &     '.nc includes inconsistent interpolation ',
      &     'weights (profilesDoGenGrid; sum oustide 0-1)'
           CALL PRINT_ERROR( msgBuf, myThid)
-          stopGenericGrid=1. _d 0
+          stopGenericGrid=1
        endif
 
        enddo
 
-       if ( abs(tmp_sum_weights -1. ) .GT. 0.0001 ) then
+       if ( abs(tmp_sum_weights -1. _d 0 ) .GT. 0.0001 _d 0) then
           WRITE(msgBuf,'(4A)')
      &     'PROFILES_INIT_FIXED: file ', profilesfile(1:IL),
      &     '.nc includes inconsistent interpolation ',
      &     'weights (profilesDoGenGrid; dont add up to 1)'
           CALL PRINT_ERROR( msgBuf, myThid)
-          stopGenericGrid=1. _d 0
+          stopGenericGrid=1
        endif
 
          prof_ind_glob(num_file,length_for_tile,bi,bj)=k+1000*(kk-1)
-         if (length_for_tile.EQ.NOBSGLOB) then
-          WRITE(msgBuf,'(3A)')
-     &    'PROFILES_INIT_FIXED: file ', profilesfile(1:IL),
-     &    '.nc was not read properly (increase NOBSGLOB).'
-          CALL PRINT_ERROR( msgBuf, myThid)
-          stopProfiles=1. _d 0
-         endif
 
        endif
        endif
        endif   !if (.NOT.profilesDoGenGrid) then
-#endif /* ALLOW_PROFILES_GENERICGRID */
-      endif    !if ( stopProfiles .EQ. 0.) then
+
+c ==============================================================================
+
+c check that maximum size was not reached:
+       if (length_for_tile.GE.NOBSGLOB) then
+         WRITE(msgBuf,'(3A)')
+     &    'PROFILES_INIT_FIXED: file ', profilesfile(1:IL),
+     &    '.nc was not read properly (increase NOBSGLOB).'
+         CALL PRINT_ERROR( msgBuf, myThid)
+         stopProfiles=1
+       endif
+
+      endif    !if ( stopProfiles .EQ. 0) then
       enddo    !do k=1,min(1000,ProfNo(num_file,bi,bj)-1000*(kk-1))
       endif    !if (min(ProfNo(num_file,bi,bj), 1000...
       enddo    !do kk=1,profno_div1000+1
@@ -538,74 +593,23 @@ c interpolation information consistent (self and with grid)
 c6) available variablesin the data set
 
       do k=1,NVARMAX
-      prof_num_var_cur(num_file,k,bi,bj)=0
+        prof_num_var_cur(num_file,k,bi,bj)=0
       enddo
       prof_num_var_tot(num_file,bi,bj)=0
 
-      err = NF_INQ_VARID(fid,'prof_T', varid1 )
-      if (err.EQ.NF_NOERR) then
-      vec_quantities(num_file,1,bi,bj)=.TRUE.
-      prof_num_var_tot(num_file,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)+1
-      prof_num_var_cur(num_file,1,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)
-      else
-      vec_quantities(num_file,1,bi,bj)=.FALSE.
-      endif
-      err = NF_INQ_VARID(fid,'prof_S', varid1 )
-      if (err.EQ.NF_NOERR) then
-      vec_quantities(num_file,2,bi,bj)=.TRUE.
-      prof_num_var_tot(num_file,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)+1
-      prof_num_var_cur(num_file,2,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)
-      else
-      vec_quantities(num_file,2,bi,bj)=.FALSE.
-      endif
-#ifndef ALLOW_PROFILES_GENERICGRID
-cgf This bloc wont work when model u/v are not
-cgf zonal/meridional components, while prof_U/V are.
-      err = NF_INQ_VARID(fid,'prof_U', varid1 )
-      if (err.EQ.NF_NOERR) then
-      vec_quantities(num_file,3,bi,bj)=.TRUE.
-      prof_num_var_tot(num_file,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)+1
-      prof_num_var_cur(num_file,3,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)
-      else
-      vec_quantities(num_file,3,bi,bj)=.FALSE.
-      endif
-      err = NF_INQ_VARID(fid,'prof_V', varid1 )
-      if (err.EQ.NF_NOERR) then
-      vec_quantities(num_file,4,bi,bj)=.TRUE.
-      prof_num_var_tot(num_file,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)+1
-      prof_num_var_cur(num_file,4,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)
-      else
-      vec_quantities(num_file,4,bi,bj)=.FALSE.
-      endif
-#endif
-      err = NF_INQ_VARID(fid,'prof_ptr', varid1 )
-      if (err.EQ.NF_NOERR) then
-      vec_quantities(num_file,5,bi,bj)=.TRUE.
-      prof_num_var_tot(num_file,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)+1
-      prof_num_var_cur(num_file,5,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)
-      else
-      vec_quantities(num_file,5,bi,bj)=.FALSE.
-      endif
-      err = NF_INQ_VARID(fid,'prof_ssh', varid1 )
-      if (err.EQ.NF_NOERR) then
-      vec_quantities(num_file,6,bi,bj)=.TRUE.
-      prof_num_var_tot(num_file,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)+1
-      prof_num_var_cur(num_file,6,bi,bj)=
-     & prof_num_var_tot(num_file,bi,bj)
-      else
-      vec_quantities(num_file,6,bi,bj)=.FALSE.
-      endif
+      do k=1,NVARMAX
+        JL  = ILNBLNK( prof_names(num_file,k) )
+        err = NF_INQ_VARID(fid,prof_names(num_file,k)(1:JL), varid1 )
+        if (err.EQ.NF_NOERR) then
+          vec_quantities(num_file,k,bi,bj)=.TRUE.
+          prof_num_var_tot(num_file,bi,bj)=
+     &     prof_num_var_tot(num_file,bi,bj)+1
+          prof_num_var_cur(num_file,k,bi,bj)=
+     &     prof_num_var_tot(num_file,bi,bj)
+        else
+          vec_quantities(num_file,k,bi,bj)=.FALSE.
+        endif
+      enddo
 
       write(msgbuf,'(a,6L5)') '  incl. variables (T/F flags)'
      &,vec_quantities(num_file,1,bi,bj),vec_quantities(num_file,2,bi,bj)
@@ -662,30 +666,34 @@ C===========================================================
      & profilesfile(1:IL),'.',iG,'.',jG,'.equi.data'
 
       inquire( file=fnameequinc, exist=exst )
-         fidforward(num_file,bi,bj)=
-     &     2000+(num_file-1)*nSx*nSx+(bi-1)*nSy+bj
+#ifdef PROFILES_USE_MDSFINDUNITS
+      call MDSFINDUNIT( fidforward(num_file,bi,bj) , mythid )
+#else
+      call PROFILES_FINDUNIT( fidforward(num_file,bi,bj) , mythid )
+#endif
       if (.NOT.exst) then
         call profiles_init_ncfile(num_file,fiddata(num_file,bi,bj),
      &   fnameequinc,fidforward(num_file,bi,bj),
      &   ProfNo(num_file,bi,bj),ProfDepthNo(num_file,bi,bj),
      &   bi,bj,myThid)
       else
-c        call MDSFINDUNIT( fidforward(num_file,bi,bj) , mythid )
          open( fidforward(num_file,bi,bj),file=fnameequinc,
      &   form ='unformatted',status='unknown', access='direct',
      &   recl=  (ProfDepthNo(num_file,bi,bj)+1)*WORDLENGTH*2 )
       endif
 #ifdef ALLOW_ADJOINT_RUN
       inquire( file=adfnameequinc, exist=exst )
-         fidadjoint(num_file,bi,bj)=
-     &     4000+(num_file-1)*nSx*nSx+(bi-1)*nSy+bj
+#ifdef PROFILES_USE_MDSFINDUNITS
+      call MDSFINDUNIT( fidadjoint(num_file,bi,bj) , mythid )
+#else
+      call PROFILES_FINDUNIT( fidadjoint(num_file,bi,bj) , mythid )
+#endif
       if (.NOT.exst) then
         call profiles_init_ncfile(num_file,fiddata(num_file,bi,bj),
      &   adfnameequinc, fidadjoint(num_file,bi,bj),
      &   ProfNo(num_file,bi,bj),ProfDepthNo(num_file,bi,bj),
      &   bi,bj, myThid)
       else
-c        call MDSFINDUNIT( fidadjoint(num_file,bi,bj) , mythid )
          open( fidadjoint(num_file,bi,bj),file=adfnameequinc,
      &   form ='unformatted',status='unknown', access='direct',
      &   recl=  (ProfDepthNo(num_file,bi,bj)+1)*WORDLENGTH*2 )
@@ -706,21 +714,19 @@ C===========================================================
       enddo
       prof_num_var_tot(num_file,bi,bj)=0
       do k=1,NOBSGLOB
-      prof_time(num_file,k,bi,bj)=-999
-      prof_lon(num_file,k,bi,bj)=-999
-      prof_lat(num_file,k,bi,bj)=-999
-      prof_ind_glob(num_file,k,bi,bj)=-999
-#ifdef ALLOW_PROFILES_GENERICGRID
+      prof_time(num_file,k,bi,bj)=-999. _d 0
+      prof_lon(num_file,k,bi,bj)=-999. _d 0
+      prof_lat(num_file,k,bi,bj)=-999. _d 0
+      prof_ind_glob(num_file,k,bi,bj)=0
       do q = 1,NUM_INTERP_POINTS
-         prof_interp_i(num_file,k,q,bi,bj) = -999
-         prof_interp_j(num_file,k,q,bi,bj) = -999
-         prof_interp_weights(num_file,k,q,bi,bj) = -999
+         prof_interp_i(num_file,k,q,bi,bj) = 0
+         prof_interp_j(num_file,k,q,bi,bj) = 0
+         prof_interp_weights(num_file,k,q,bi,bj) = -999. _d 0
       enddo
-      prof_interp_xC11(num_file,k,bi,bj)=-999
-      prof_interp_yC11(num_file,k,bi,bj)=-999
-      prof_interp_xCNINJ(num_file,k,bi,bj)=-999
-      prof_interp_yCNINJ(num_file,k,bi,bj)=-999
-#endif
+      prof_interp_xC11(num_file,k,bi,bj)=-999. _d 0
+      prof_interp_yC11(num_file,k,bi,bj)=-999. _d 0
+      prof_interp_xCNINJ(num_file,k,bi,bj)=-999. _d 0
+      prof_interp_yCNINJ(num_file,k,bi,bj)=-999. _d 0
       enddo
 
       endif !if (IL.NE.0) then
@@ -730,11 +736,9 @@ C===========================================================
 C error cases:
 C===========================================================
 
-#ifdef ALLOW_PROFILES_GENERICGRID
-
 c1) you want to provide interpolation information
 
-       if ( stopGenericGrid.EQ.2.) then
+       if ( stopGenericGrid.EQ.2) then
          iG=bi+(myXGlobalLo-1)/sNx ! Kludge until unstructered tiles
          jG=bj+(myYGlobalLo-1)/sNy ! Kludge until unstructered tiles
 cgf XC grid
@@ -780,7 +784,7 @@ cgf YC grid
 
        WRITE(msgBuf,'(3A)')
      & 'PROFILES_INIT_FIXED : ',
-     & 'when using ALLOW_PROFILES_GENERICGRID ',
+     & 'when using profilesDoGenGrid ',
      & 'you have to provide interpolation coeffs etc. '
        CALL PRINT_ERROR( msgBuf, myThid)
        WRITE(msgBuf,'(2A)')
@@ -790,11 +794,9 @@ cgf YC grid
        WRITE(msgBuf,'(A)')
      & 'use the grid info in profiles*incl1PointOverlap*data'
        CALL PRINT_ERROR( msgBuf, myThid)
-       stopProfiles=1. _d 0
+       stopProfiles=1
 
       endif
-
-#endif
 
       ENDDO
       ENDDO
@@ -803,16 +805,15 @@ cgf YC grid
       _BARRIER
 
 c2) stop after other kind of errors
-      _GLOBAL_SUM_RL( stopProfiles , myThid )
-      if ( stopProfiles.GE.1.) then
+      CALL GLOBAL_SUM_INT( stopProfiles , myThid )
+      if ( stopProfiles.GE.1) then
              STOP 'ABNORMAL END: S/R PROFILES_INIT_FIXED'
       endif
-#ifdef ALLOW_PROFILES_GENERICGRID
-      _GLOBAL_SUM_RL( stopGenericGrid , myThid )
-      if ( stopGenericGrid.GE.1.) then
+
+      CALL GLOBAL_SUM_INT( stopGenericGrid , myThid )
+      if ( stopGenericGrid.GE.1) then
              STOP 'ABNORMAL END: S/R PROFILES_INIT_FIXED'
       endif
-#endif
 
 
       write(msgbuf,'(a)') ' '

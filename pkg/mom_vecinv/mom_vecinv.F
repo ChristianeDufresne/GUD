@@ -11,7 +11,7 @@ C $Name$
 
       SUBROUTINE MOM_VECINV(
      I        bi,bj,k,iMin,iMax,jMin,jMax,
-     I        KappaRU, KappaRV,
+     I        kappaRU, kappaRV,
      I        fVerUkm, fVerVkm,
      O        fVerUkp, fVerVkp,
      O        guDiss, gvDiss,
@@ -72,8 +72,8 @@ C     myIter  :: current time-step number
 C     myThid  :: my Thread Id number
       INTEGER bi,bj,k
       INTEGER iMin,iMax,jMin,jMax
-      _RL KappaRU(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr)
-      _RL KappaRV(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr)
+      _RL kappaRU(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr+1)
+      _RL kappaRV(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr+1)
       _RL fVerUkm(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL fVerVkm(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL fVerUkp(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
@@ -230,7 +230,7 @@ C       vorticity at a no-slip boundary by a factor of 2 = sideDragFactor
       ENDIF
 
       IF (     no_slip_bottom
-     &    .OR. bottomDragQuadratic.NE.0.
+     &    .OR. selectBotDragQuadr.GE.0
      &    .OR. bottomDragLinear.NE.0.) THEN
        bottomDragTerms=.TRUE.
       ELSE
@@ -358,7 +358,7 @@ C---  Other dissipation terms in Zonal momentum equation
 C--   Vertical flux (fVer is at upper face of "u" cell)
 C     Eddy component of vertical flux (interior component only) -> vrF
       IF ( .NOT.implicitViscosity ) THEN
-       CALL MOM_U_RVISCFLUX(bi,bj,k+1,uVel,KappaRU,vrF,myThid)
+       CALL MOM_U_RVISCFLUX(bi,bj,k+1,uVel,kappaRU,vrF,myThid)
 C     Combine fluxes
        DO j=jMin,jMax
         DO i=iMin,iMax
@@ -394,7 +394,10 @@ C-     No-slip BCs impose a drag at walls...
 
 C-    No-slip BCs impose a drag at bottom
       IF ( bottomDragTerms ) THEN
-       CALL MOM_U_BOTTOMDRAG(bi,bj,k,uFld,KE,KappaRU,vF,myThid)
+       CALL MOM_U_BOTTOMDRAG( bi, bj, k,
+     I            uFld, vFld, KE, kappaRU,
+     O            vF,
+     I            myThid )
        DO j=jMin,jMax
         DO i=iMin,iMax
          guDiss(i,j) = guDiss(i,j)+vF(i,j)
@@ -402,8 +405,11 @@ C-    No-slip BCs impose a drag at bottom
        ENDDO
       ENDIF
 #ifdef ALLOW_SHELFICE
-      IF ( useShelfIce.AND.bottomDragTerms ) THEN
-       CALL SHELFICE_U_DRAG(bi,bj,k,uFld,KE,KappaRU,vF,myThid)
+      IF ( useShelfIce ) THEN
+       CALL SHELFICE_U_DRAG( bi, bj, k,
+     I            uFld, vFld, KE, kappaRU,
+     O            vF,
+     I            myThid )
        DO j=jMin,jMax
         DO i=iMin,iMax
          guDiss(i,j) = guDiss(i,j) + vF(i,j)
@@ -417,7 +423,7 @@ C---  Other dissipation terms in Meridional momentum equation
 C--   Vertical flux (fVer is at upper face of "v" cell)
 C     Eddy component of vertical flux (interior component only) -> vrF
       IF ( .NOT.implicitViscosity ) THEN
-       CALL MOM_V_RVISCFLUX(bi,bj,k+1,vVel,KappaRV,vrF,myThid)
+       CALL MOM_V_RVISCFLUX(bi,bj,k+1,vVel,kappaRV,vrF,myThid)
 C     Combine fluxes -> fVerV
        DO j=jMin,jMax
         DO i=iMin,iMax
@@ -453,7 +459,10 @@ C-     No-slip BCs impose a drag at walls...
 
 C-    No-slip BCs impose a drag at bottom
       IF ( bottomDragTerms ) THEN
-       CALL MOM_V_BOTTOMDRAG(bi,bj,k,vFld,KE,KappaRV,vF,myThid)
+       CALL MOM_V_BOTTOMDRAG( bi, bj, k,
+     I            uFld, vFld, KE, kappaRV,
+     O            vF,
+     I            myThid )
        DO j=jMin,jMax
         DO i=iMin,iMax
          gvDiss(i,j) = gvDiss(i,j)+vF(i,j)
@@ -461,14 +470,17 @@ C-    No-slip BCs impose a drag at bottom
        ENDDO
       ENDIF
 #ifdef ALLOW_SHELFICE
-      IF  (useShelfIce.AND.bottomDragTerms ) THEN
-         CALL SHELFICE_V_DRAG(bi,bj,k,vFld,KE,KappaRV,vF,myThid)
-         DO j=jMin,jMax
-          DO i=iMin,iMax
-           gvDiss(i,j) = gvDiss(i,j) + vF(i,j)
-          ENDDO
-         ENDDO
-        ENDIF
+      IF ( useShelfIce ) THEN
+       CALL SHELFICE_V_DRAG( bi, bj, k,
+     I            uFld, vFld, KE, kappaRV,
+     O            vF,
+     I            myThid )
+       DO j=jMin,jMax
+        DO i=iMin,iMax
+         gvDiss(i,j) = gvDiss(i,j) + vF(i,j)
+        ENDDO
+       ENDDO
+      ENDIF
 #endif /* ALLOW_SHELFICE */
 
 C--   if (momViscosity) end of block.
@@ -762,8 +774,6 @@ C--   Set du/dt & dv/dt on boundaries to zero
         CALL DIAGNOSTICS_FILL(KE,     'momKE   ',k,1,2,bi,bj,myThid)
        IF (momViscosity) THEN
         CALL DIAGNOSTICS_FILL(hDiv,   'momHDiv ',k,1,2,bi,bj,myThid)
-        CALL DIAGNOSTICS_FILL(guDiss, 'Um_Diss ',k,1,2,bi,bj,myThid)
-        CALL DIAGNOSTICS_FILL(gvDiss, 'Vm_Diss ',k,1,2,bi,bj,myThid)
        ENDIF
        IF ( useVariableVisc .OR. useStrainTensionVisc ) THEN
         CALL DIAGNOSTICS_FILL(tension, 'Tension ',k,1,2,bi,bj,myThid)

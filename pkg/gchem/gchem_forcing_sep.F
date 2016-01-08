@@ -66,12 +66,18 @@ C  k                    :: vertical level
       INTEGER bi,bj,iMin,iMax,jMin,jMax,isub,iTracer
       INTEGER k
       _RL midTime, subTime
+      PARAMETER( iMin = 1 , iMax = sNx )
+      PARAMETER( jMin = 1 , jMax = sNy )
 #if (defined ALLOW_OBCS) || (defined ALLOW_DIAGNOSTICS)
       INTEGER iTr
 #endif
 #ifdef ALLOW_DIAGNOSTICS
       CHARACTER*8 diagName
 #endif /* ALLOW_DIAGNOSTICS */
+
+#ifdef ALLOW_DEBUG
+      IF (debugMode) CALL DEBUG_ENTER('GCHEM_FORCING_SEP',myThid)
+#endif
 
 #ifdef ALLOW_DIAGNOSTICS
       IF ( useDiagnostics ) THEN
@@ -126,13 +132,6 @@ c find global surface averages
 c     ENDIF
 #endif
 ccccccccccccccccccccccccccccccccccccccccccc
-#ifdef ALLOW_OFFLINE
-      IF ( useOffLine ) THEN
-        CALL TIMER_START('GCHEM_OFFLINE [GCHEM_FORCING_SEP]',myThid)
-        CALL OFFLINE_GET_SURFFORCING( myTime, myIter, myThid )
-        CALL TIMER_STOP ('GCHEM_OFFLINE [GCHEM_FORCING_SEP]',myThid)
-      ENDIF
-#endif /* ALLOW_OFFLINE */
 #endif /* ALLOW_OLD_VIRTUALFLUX */
 
 #ifdef ALLOW_DARWIN
@@ -152,11 +151,6 @@ C$taf loop = parallel
 C$taf loop = parallel
        DO bi=myBxLo(myThid),myBxHi(myThid)
 
-        jMin=1
-        jMax=sNy
-        iMin=1
-        iMax=sNx
-c
 ccccccccccccccccccccccccccc DIC cccccccccccccccccccccccccccccccc
 
 #ifdef ALLOW_DIC
@@ -165,6 +159,9 @@ ccccccccccccccccccccccccccc DIC cccccccccccccccccccccccccccccccc
 # else /* ALLOW_AUTODIFF */
         IF ( useDIC ) THEN
 # endif /* ALLOW_AUTODIFF */
+#ifdef ALLOW_DEBUG
+          IF (debugMode) CALL DEBUG_CALL('DIC_BIOTIC_FORCING',myThid)
+#endif
 #ifdef ALLOW_FE
           CALL DIC_BIOTIC_FORCING( pTracer(1-OLx,1-OLy,1,bi,bj,1),
      &                          pTracer(1-OLx,1-OLy,1,bi,bj,2),
@@ -203,6 +200,9 @@ cccccccccccccccccccccccccc DARWIN ccccccccccccccccccccccccccccccccccc
          IF ( useDARWIN ) THEN
 #ifdef NUT_SUPPLY
 c articficial supply of nutrients
+#ifdef ALLOW_DEBUG
+          IF (debugMode) CALL DEBUG_CALL('DARWIN_NUT_SUPPLY',myThid)
+#endif
           CALL DARWIN_NUT_SUPPLY( pTracer(1-OLx,1-OLy,1,bi,bj,1),
      &                          bi, bj, iMin, iMax, jMin, jMax,
      &                          myIter, myTime, myThid )
@@ -219,6 +219,9 @@ c articficial supply of nutrients
 ccccccccccccccc
 C darwin_forcing operates on bi,bj part only, but needs to get full
 C array because of last (iPtr) index
+#ifdef ALLOW_DEBUG
+          IF (debugMode) CALL DEBUG_CALL('DARWIN_FORCING',myThid)
+#endif
           CALL DARWIN_FORCING(  pTracer(1-OLx,1-OLy,1,1,1,1),
      &                          bi, bj, iMin, iMax, jMin, jMax,
      &                          myIter, myTime, myThid )
@@ -232,6 +235,9 @@ C Note: could skip this 2nd call to OBCS_APPLY if all DIC/DARWIN
 C       updates of ptracers were only done in the interior (i.e. with
 C       tendency multiplied by maskInC)
         IF ( useOBCS .AND. .NOT.useDIC ) THEN
+#ifdef ALLOW_DEBUG
+          IF (debugMode) CALL DEBUG_CALL('OBCS_APPLY_PTRACER',myThid)
+#endif
           DO iTr = 1,PTRACERS_numInUse
             CALL OBCS_APPLY_PTRACER(
      I                bi, bj, 0, iTr,
@@ -262,6 +268,9 @@ C--   end bi,bj loops.
 # else /* ALLOW_AUTODIFF */
       IF ( useDIC ) THEN
 # endif /* ALLOW_AUTODIFF */
+#ifdef ALLOW_DEBUG
+       IF (debugMode) CALL DEBUG_CALL('DIC_ATMOS',myThid)
+#endif
        CALL DIC_ATMOS( myTime, myIter, myThid )
 # ifdef COMPONENT_MODULE
        CALL DIC_STORE_FLUXCO2( myTime, myIter, myThid )
@@ -350,6 +359,10 @@ C--   end bi,bj loops.
        ENDIF
 #endif /* ALLOW_GUD */
 cccccccccccccccccccccccccc END GUD ccccccccccccccccccccccccccccccc
+
+#ifdef ALLOW_DEBUG
+      IF (debugMode) CALL DEBUG_LEAVE('GCHEM_FORCING_SEP',myThid)
+#endif
 
 #endif /* GCHEM_SEPARATE_FORCING */
 #endif /* ALLOW_GCHEM */

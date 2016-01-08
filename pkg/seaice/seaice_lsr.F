@@ -152,15 +152,11 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
       printResidual = debugLevel.GE.debLevA
      &  .AND. DIFFERENT_MULTIPLE( SEAICE_monFreq, myTime, deltaTClock )
 
-CMLC     extra overlap for (restricted) additive Schwarz method
-CML      jMin = 1   - SEAICE_OLy
-CML      jMax = sNy + SEAICE_OLy
-CML      iMin = 1   - SEAICE_OLx
-CML      iMax = sNx + SEAICE_OLx
-      jMin = 1
-      jMax = sNy
-      iMin = 1
-      iMax = sNx
+C     extra overlap for (restricted) additive Schwarz method
+      jMin = 1   - SEAICE_OLy
+      jMax = sNy + SEAICE_OLy
+      iMin = 1   - SEAICE_OLx
+      iMax = sNx + SEAICE_OLx
 
 #ifdef ALLOW_AUTODIFF_TAMC
 cph break artificial dependencies
@@ -168,8 +164,10 @@ cph break artificial dependencies
        DO bi=myBxLo(myThid),myBxHi(myThid)
         DO j=1-OLy,sNy+OLy
          DO i=1-OLx,sNx+OLx
-          press  (i,j,bi,bj )= 0. _d 0
+          deltaC (i,j,bi,bj) = 0. _d 0
+          press  (i,j,bi,bj) = 0. _d 0
           zeta   (i,j,bi,bj) = 0. _d 0
+          zetaZ  (i,j,bi,bj) = 0. _d 0
           eta    (i,j,bi,bj) = 0. _d 0
           etaZ   (i,j,bi,bj) = 0. _d 0
           uIceC  (i,j,bi,bj) = 0. _d 0
@@ -280,10 +278,8 @@ C     That is an important one! Note, that
 C     * lsr is called multiple times (twice by default), thus the 
 C       ipass index is part of itmpkey
 C     * this storing is still outside the lsr iteration loop
-CADJ STORE uice = comlev1_dynsol, kind=isbyte,
-CADJ &     key = itmpkey
-CADJ STORE vice = comlev1_dynsol, kind=isbyte,
-CADJ &     key = itmpkey
+CADJ STORE uice = comlev1_dynsol, kind=isbyte, key = itmpkey
+CADJ STORE vice = comlev1_dynsol, kind=isbyte, key = itmpkey
 #endif /* ALLOW_AUTODIFF_TAMC */
 
       CALL SEAICE_CALC_STRAINRATES(
@@ -293,7 +289,7 @@ CADJ &     key = itmpkey
 
       CALL SEAICE_CALC_VISCOSITIES(
      I     e11, e22, e12, zMin, zMax, hEffM, press0,
-     O     eta, etaZ, zeta, press, deltaC,
+     O     eta, etaZ, zeta, zetaZ, press, deltaC,
      I     ipass, myTime, myIter, myThid )
 
       CALL SEAICE_OCEANDRAG_COEFFS(
@@ -385,7 +381,8 @@ C
          ENDDO
         ENDDO
         CALL SEAICE_LSR_RHSU(
-     I       zetaMinusEta, etaPlusZeta, etaZ, press, vIceC, 
+     I       zetaMinusEta, etaPlusZeta, etaZ, zetaZ, press,
+     I       uIceC, vIceC, 
      U       rhsU,
      I       iMin, iMax, jMin, jMax, bi, bj, myThid )
 C
@@ -397,7 +394,8 @@ C
          ENDDO
         ENDDO
         CALL SEAICE_LSR_RHSV(
-     I       zetaMinusEta, etaPlusZeta, etaZ, press, uIceC, 
+     I       zetaMinusEta, etaPlusZeta, etaZ, zetaZ, press,
+     I       uIceC, vIceC, 
      U       rhsV,
      I       iMin, iMax, jMin, jMax, bi, bj, myThid )
        ENDDO
@@ -411,7 +409,7 @@ C     calculate coefficients of tridiagonal matrices for both u- and
 C     v-equations
 C
       CALL SEAICE_LSR_CALC_COEFFS( 
-     I     etaPlusZeta, zetaMinusEta, etaZ, dwatn,
+     I     etaPlusZeta, zetaMinusEta, etaZ, zetaZ, dwatn,
      O     AU, BU, CU, AV, BV, CV, uRt1, uRt2, vRt1, vRt2,
      I     iMin, iMax, jMin, jMax, myTime, myIter, myThid )
 
@@ -1092,7 +1090,7 @@ CBOP
 C     !ROUTINE: SEAICE_LSR_CALC_COEFFS
 C     !INTERFACE:
       SUBROUTINE SEAICE_LSR_CALC_COEFFS( 
-     I     etaPlusZeta, zetaMinusEta, etaZloc, dwatnLoc,
+     I     etaPlusZeta, zetaMinusEta, etaZloc, zetaZloc, dwatnLoc,
      O     AU, BU, CU, AV, BV, CV, uRt1, uRt2, vRt1, vRt2,
      I     iMin, iMax, jMin, jMax, myTime, myIter, myThid )
 
@@ -1128,8 +1126,9 @@ C     combinations of bulk and shear viscosity at C points
 C     abbreviations
       _RL etaPlusZeta (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL zetaMinusEta(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
-C     shear viscosity at Z points
-      _RL etaZloc     (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+C     shear and bulk viscosity at Z points
+      _RL  etaZloc    (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL zetaZloc    (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 C     ice-ocean stress coefficient
       _RL dwatnLoc    (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 C     coefficients of ice velocities in coefficient matrix
@@ -1159,6 +1158,8 @@ C     i,j,bi,bj  :: Loop counters
       _RL hFacM, hFacP
 C     backward difference extrapolation factor
       _RL bdfAlpha
+C     strongly implicit coupling factor
+      _RL strImpCplFac
 
 C     coefficients of ice velocities in coefficient matrix
 C     for both U and V-equation
@@ -1189,6 +1190,9 @@ C     backward difference extrapolation factor
        ENDIF
       ENDIF
 
+      strImpCplFac = 0. _d 0
+      IF ( SEAICEuseStrImpCpl ) strImpCplFac = 1. _d 0
+
       DO bj=myByLo(myThid),myByHi(myThid)
        DO bi=myBxLo(myThid),myBxHi(myThid)
 C
@@ -1207,7 +1211,8 @@ C     ... d/dx (zeta-eta) k1 u
         DO J=jMin,jMax+1
          DO I=iMin,iMax
 C     ... d/dy eta d/dy u
-          UYY(I,J) = _dxV(I,J,bi,bj) * etaZloc(I,J,bi,bj)
+          UYY(I,J) = _dxV(I,J,bi,bj) * 
+     &         ( etaZloc(I,J,bi,bj) + strImpCplFac*zetaZloc(I,J,bi,bj) )
      &         * _recip_dyU(I,J,bi,bj)
 C     ... d/dy eta k2 u
           UYM(I,J) = _dxV(I,J,bi,bj) * etaZloc(I,J,bi,bj)
@@ -1217,7 +1222,8 @@ C     ... d/dy eta k2 u
         DO J=jMin,jMax
          DO I=iMin,iMax+1
 C     ... d/dx eta dv/dx
-          VXX(I,J) = _dyU(I,J,bi,bj) * etaZloc(I,J,bi,bj)
+          VXX(I,J) = _dyU(I,J,bi,bj) * 
+     &         ( etaZloc(I,J,bi,bj) + strImpCplFac*zetaZloc(I,J,bi,bj) )
      &         * _recip_dxV(I,J,bi,bj)
 C     ... d/dx eta k1 v
           VXM(I,J) = _dyU(I,J,bi,bj) * etaZloc(I,J,bi,bj)
@@ -1282,11 +1288,11 @@ C     reset coefficients of U(I,J-1) and U(I,J+1)
 C     now we need to normalize everything by the grid cell area
         DO J=jMin,jMax
          DO I=iMin,iMax
-          AU(I,J,bi,bj)    = AU(I,J,bi,bj)    * recip_rAw(I,J,bi,bj)
-          CU(I,J,bi,bj)    = CU(I,J,bi,bj)    * recip_rAw(I,J,bi,bj)
+          AU(I,J,bi,bj)   = AU(I,J,bi,bj)   * recip_rAw(I,J,bi,bj)
+          CU(I,J,bi,bj)   = CU(I,J,bi,bj)   * recip_rAw(I,J,bi,bj)
 C     here we need ad in the contribution from the time derivative
 C     and the symmetric drag term; must be done after normalizing
-          BU(I,J,bi,bj)    = BU(I,J,bi,bj)    * recip_rAw(I,J,bi,bj)
+          BU(I,J,bi,bj)    = BU(I,J,bi,bj)  * recip_rAw(I,J,bi,bj)
      &         + seaiceMaskU(I,J,bi,bj) *
      &         ( bdfAlpha*seaiceMassU(I,J,bi,bj)/SEAICE_deltaTdyn
      &         + 0.5 _d 0 * ( dwatnLoc(I,  J,bi,bj) 
@@ -1344,11 +1350,11 @@ C     reset coefficients of V(I-1,J) and V(I+1,J)
 C     now we need to normalize everything by the grid cell area
         DO J=jMin,jMax
          DO I=iMin,iMax
-          AV(I,J,bi,bj)    = AV(I,J,bi,bj)    * recip_rAs(I,J,bi,bj)
-          CV(I,J,bi,bj)    = CV(I,J,bi,bj)    * recip_rAs(I,J,bi,bj)
+          AV(I,J,bi,bj)   = AV(I,J,bi,bj)   * recip_rAs(I,J,bi,bj)
+          CV(I,J,bi,bj)   = CV(I,J,bi,bj)   * recip_rAs(I,J,bi,bj)
 C     here we need ad in the contribution from the time derivative
 C     and the symmetric drag term; must be done after normalizing
-          BV(I,J,bi,bj)    = BV(I,J,bi,bj)    * recip_rAs(I,J,bi,bj)
+          BV(I,J,bi,bj)   = BV(I,J,bi,bj)   * recip_rAs(I,J,bi,bj)
      &         + seaiceMaskV(I,J,bi,bj) *
      &         ( bdfAlpha*seaiceMassV(I,J,bi,bj)/SEAICE_deltaTdyn
      &         + 0.5 _d 0 * ( dwatnLoc(I,J,  bi,bj) 
@@ -1359,6 +1365,19 @@ C     and the symmetric drag term; must be done after normalizing
          ENDDO
         ENDDO
 
+        IF ( useCubedSphereExchange .AND.
+     &       (SEAICE_OLx.GT.0 .OR. SEAICE_OLy.GT.0) ) THEN
+C     this is clearly a hack: make sure that diagonals BU/BV are non-zero.
+C     In my experience we only need to catch the case of SEAICE_OLx/y=OLx/y-2,
+C     but for safety lets call this routine whenever SEAICE_OLx/y > 0
+C     &       (SEAICE_OLx.EQ.OLx-2 .OR. SEAICE_OLy.EQ.OLy-2) ) THEN
+         DO J=jMin,jMax
+          DO I=iMin,iMax
+           IF (BU(I,J,bi,bj).EQ.0 _d 0) BU(I,J,bi,bj) = 1. _d 0
+           IF (BV(I,J,bi,bj).EQ.0 _d 0) BV(I,J,bi,bj) = 1. _d 0
+          ENDDO
+         ENDDO
+        ENDIF
 C     bi/bj-loops
        ENDDO
       ENDDO
@@ -1372,7 +1391,8 @@ CBOP
 C     !ROUTINE: SEAICE_LSR_RHSU
 C     !INTERFACE:
       SUBROUTINE SEAICE_LSR_RHSU(
-     I     zetaMinusEta, etaPlusZeta, etaZloc, pressLoc, vIceC, 
+     I     zetaMinusEta, etaPlusZeta, etaZloc, zetaZloc, pressLoc, 
+     I     uIceC, vIceC, 
      U     rhsU,
      I     iMin, iMax, jMin, jMax, bi, bj, myThid )
 
@@ -1386,8 +1406,10 @@ C     \ev
 C     !USES:
       IMPLICIT NONE
 #include "SIZE.h"
+#include "EEPARAMS.h"
 #include "GRID.h"
 #include "SEAICE_SIZE.h"
+#include "SEAICE_PARAMS.h"
 #include "SEAICE.h"
 
 C     !INPUT/OUTPUT PARAMETERS:
@@ -1399,7 +1421,9 @@ C
       _RL zetaMinusEta(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL etaPlusZeta (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL etaZloc     (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL zetaZloc    (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL pressloc    (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL uIceC       (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL vIceC       (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL rhsU        (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 
@@ -1453,6 +1477,30 @@ C     only need to deal with v(i)-v(i-1)
        ENDDO
       ENDDO
 
+      IF ( SEAICEuseStrImpCpl ) THEN
+C     strictly speaking, this is not a contribution to sig12, but for 
+C     convenience we add the explicit term -zetaZ*du/dy here;
+C     we do not have to add any metric terms, because they cancel.
+       DO J=jMin,jMax+1
+        DO I=iMin,iMax
+         hFacM = seaiceMaskV(I,J,bi,bj) - seaiceMaskV(I-1,J,bi,bj)
+         sig12(I,J) = sig12(I,J) - zetaZ(I,J,bi,bj) * (
+     &        ( uIceC(I,J,bi,bj) - uIceC(I,J-1,bi,bj) )
+     &        * _recip_dyU(I,J,bi,bj)
+     &        )
+C     free slip conditions (sig12=0) are taken care of by masking sig12
+     &        *maskC(I  ,J  ,kSrf,bi,bj)*maskC(I-1,J  ,kSrf,bi,bj)
+     &        *maskC(I  ,J-1,kSrf,bi,bj)*maskC(I-1,J-1,kSrf,bi,bj)
+C     no slip boundary conditions (u(j-1)=-u(j))
+C     u(j)+u(j-1) = 0 is also taken care of by masking sig12, so that we
+C     only need to deal with u(j)-u(j-1)
+     &        - zetaZ(I,J,bi,bj) * _recip_dyU(I,J,bi,bj)
+     &        * ( uIceC(I,J,bi,bj) + uIceC(I,J-1,bi,bj) )
+     &        * hFacM * 2. _d 0
+        ENDDO
+       ENDDO
+      ENDIF
+        
       DO J=jMin,jMax
        DO I=iMin,iMax
 C     contribution to the rhs part of grad(sigma)_x
@@ -1474,7 +1522,8 @@ CBOP
 C     !ROUTINE: SEAICE_LSR_RHSV
 C     !INTERFACE:
       SUBROUTINE SEAICE_LSR_RHSV(
-     I     zetaMinusEta, etaPlusZeta, etaZloc, pressLoc, uIceC, 
+     I     zetaMinusEta, etaPlusZeta, etaZloc, zetaZloc, pressLoc,
+     I     uIceC, vIceC,
      U     rhsV,
      I     iMin, iMax, jMin, jMax, bi, bj, myThid )
 
@@ -1488,8 +1537,10 @@ C     \ev
 C     !USES:
       IMPLICIT NONE
 #include "SIZE.h"
+#include "EEPARAMS.h"
 #include "GRID.h"
 #include "SEAICE_SIZE.h"
+#include "SEAICE_PARAMS.h"
 #include "SEAICE.h"
 
 C     !INPUT/OUTPUT PARAMETERS:
@@ -1501,8 +1552,10 @@ C
       _RL zetaMinusEta(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL etaPlusZeta (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL etaZloc     (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL zetaZloc    (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL pressloc    (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL uIceC       (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL vIceC       (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL rhsV        (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 
 C     !LOCAL VARIABLES:
@@ -1556,6 +1609,30 @@ C     only need to deal with u(j)-u(j-1)
        ENDDO
       ENDDO
 
+      IF ( SEAICEuseStrImpCpl ) THEN
+C     strictly speaking, this is not a contribution to sig12, but for 
+C     convenience we add the explicit term -zetaZ*dv/dx here;
+C     we do not have to add any metric terms, because they cancel.
+       DO J=jMin,jMax
+        DO I=iMin,iMax+1
+         hFacM = seaiceMaskU(i,j,bi,bj) - seaiceMaskU(i,j-1,bi,bj)
+         sig12(I,J) = sig12(I,J) - zetaZ(I,J,bi,bj) * (
+     &        ( vIceC(I,J,bi,bj) - vIceC(I-1,J,bi,bj) )
+     &        * _recip_dxV(I,J,bi,bj)
+     &        )
+C     free slip conditions (sig12=0) are taken care of by masking sig12
+     &        *maskC(I  ,J  ,kSrf,bi,bj)*maskC(I-1,J  ,kSrf,bi,bj)
+     &        *maskC(I  ,J-1,kSrf,bi,bj)*maskC(I-1,J-1,kSrf,bi,bj)
+C     no slip boundary conditions (v(i-1)=-v(i))
+C     v(i)+v(i-1) = 0 is also taken care of by masking sig12, so that we
+C     only need to deal with v(i)-v(i-1)
+     &        - zetaZ(I,J,bi,bj) * _recip_dxV(I,J,bi,bj)
+     &        * ( vIceC(I,J,bi,bj) + vIceC(I-1,J,bi,bj) )
+     &        * hFacM * 2. _d 0
+        ENDDO
+       ENDDO
+      ENDIF
+
       DO J=jMin,jMax
        DO I=iMin,iMax
 C     contribution to the rhs part of grad(sigma)_y
@@ -1591,9 +1668,6 @@ C     \ev
 C     !USES:
       IMPLICIT NONE
 #include "SIZE.h"
-#ifdef ALLOW_AUTODIFF_TAMC
-# include "tamc.h"
-#endif /* ALLOW_AUTODIFF_TAMC */
 
 C     !INPUT/OUTPUT PARAMETERS:
 C     === Routine arguments ===
@@ -1627,19 +1701,17 @@ C     !LOCAL VARIABLES:
 C     === Local variables ===
 C     i,j  :: Loop counters
       INTEGER I,J,IM
-#ifdef SEAICE_VECTORIZE_LSR_ZEBRA
+      INTEGER jMinLoc, jStep
+#ifdef SEAICE_LSR_ZEBRA
       INTEGER K
-#endif
-#ifdef ALLOW_AUTODIFF_TAMC
-      INTEGER ilockey
-#endif /* ALLOW_AUTODIFF_TAMC */
+      PARAMETER ( jStep = 2 )
+#else
+      PARAMETER ( jStep = 1 )
+#endif /* SEAICE_LSR_ZEBRA */
       _RL AA3, bet
       _RL URT(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL CUU(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       
-#ifdef ALLOW_AUTODIFF_TAMC
-CADJ INIT comlev1_tridiagu = COMMON, (sNx+2*Olx)*(sNy+2*Oly)
-#endif /* ALLOW_AUTODIFF_TAMC */
 C     Need to initialize local arrays
       DO J = 1-OLy,sNy+OLy
        DO I = 1-OLx,sNx+OLx
@@ -1647,12 +1719,13 @@ C     Need to initialize local arrays
         CUU(I,J) = 0. _d 0
        ENDDO
       ENDDO
-#ifdef SEAICE_VECTORIZE_LSR_ZEBRA
+#ifdef SEAICE_LSR_ZEBRA
       DO K=0,1
-      DO J=jMin+K,jMax,2
+      jMinLoc = jMin+K
 #else
-      DO J=jMin,jMax
-#endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
+      jMinLoc = jMin
+#endif /* SEAICE_LSR_ZEBRA */
+      DO J=jMinLoc,jMax,jStep
        DO I=iMin,iMax
         AA3 = 0. _d 0
         IF (I.EQ.iMin) AA3 = AA3 - AU(I,J,bi,bj)*uIce(I-1,J,bi,bj)
@@ -1664,7 +1737,7 @@ C     Need to initialize local arrays
      &       + uRt2(I,J,bi,bj)*uIce(I,J+1,bi,bj)
         URT(I,J)=URT(I,J)* seaiceMaskU(I,J,bi,bj)
        ENDDO
-
+C     beginning of tridiagnoal solver
        DO I=iMin,iMax
         CUU(I,J)=CU(I,J,bi,bj)
        ENDDO
@@ -1673,54 +1746,49 @@ C     Need to initialize local arrays
 #ifdef SEAICE_VECTORIZE_LSR
       ENDDO
 C     start a new loop with reversed order to support automatic vectorization
+CADJ loop = sequential
       DO I=iMin+1,iMax
        IM=I-1
-# ifdef SEAICE_VECTORIZE_LSR_ZEBRA
-       DO J=jMin+K,jMax,2
-# else
-       DO J=jMin,jMax
-# endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
+       DO J=jMinLoc,jMax,jStep
 #else /* do not SEAICE_VECTORIZE_LSR */
+CADJ loop = sequential
        DO I=iMin+1,iMax
         IM=I-1
 #endif /* SEAICE_VECTORIZE_LSR */
-#ifdef ALLOW_AUTODIFF_TAMC
-        ilockey = 1 + I-iMin + (sNx+2*OLx)*(J-jMin)
-CADJ STORE urt(i,j),urt(im,j),cuu(i,j),cuu(im,j) = comlev1_tridiagu, 
-CADJ & kind=isbyte, key = ilockey
-C     appart from storing urt/cuu(i/im,j), it seems to be important to 
-C     rewrite the code: introduce abbreviate "bet"
-#endif /* ALLOW_AUTODIFF_TAC */
         bet      = BU(I,J,bi,bj)-AU(I,J,bi,bj)*CUU(IM,J)
         CUU(I,J) = CUU(I,J)/bet
         URT(I,J) = (URT(I,J)-AU(I,J,bi,bj)*URT(IM,J))/bet
        ENDDO
 #ifdef SEAICE_VECTORIZE_LSR
       ENDDO
-C     go back to original order
-#ifdef SEAICE_VECTORIZE_LSR_ZEBRA
-      DO J=jMin+K,jMax,2
+CADJ loop = sequential
+      DO I=iMin,iMax-1
+       IM=iMax-I
+       DO J=jMinLoc,jMax,jStep
 #else
-      DO J=jMin,jMax
-#endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
-#endif /* SEAICE_VECTORIZE_LSR */
+CADJ loop = sequential
        DO I=iMin,iMax-1
         IM=iMax-I
-#ifdef ALLOW_AUTODIFF_TAMC
-        ilockey = 1 + I-iMin + (sNx+2*OLx)*(J-jMin)
-CADJ STORE urt(im,j),urt(im+1,j) = comlev1_tridiagu, 
-CADJ & kind=isbyte, key = ilockey
-#endif /* ALLOW_AUTODIFF_TAMC */
+#endif /* SEAICE_VECTORIZE_LSR */
         URT(IM,J)=URT(IM,J)-CUU(IM,J)*URT(IM+1,J)
        ENDDO
+#ifdef SEAICE_VECTORIZE_LSR
+      ENDDO
+#endif /* SEAICE_VECTORIZE_LSR */
+C     end of tridiagnoal solver, solution is URT
+C     relaxation with WFAU
+#ifdef SEAICE_VECTORIZE_LSR
+C     go back to original order
+      DO J=jMinLoc,jMax,jStep
+#endif /* SEAICE_VECTORIZE_LSR */
        DO I=iMin,iMax
         uIce(I,J,bi,bj)=uTmp(I,J,bi,bj)
      &       +WFAU*(URT(I,J)-uTmp(I,J,bi,bj))
        ENDDO
       ENDDO
-#ifdef SEAICE_VECTORIZE_LSR_ZEBRA
+#ifdef SEAICE_LSR_ZEBRA
       ENDDO
-#endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
+#endif /* SEAICE_LSR_ZEBRA */
 
       RETURN
       END
@@ -1745,9 +1813,6 @@ C     \ev
 C     !USES:
       IMPLICIT NONE
 #include "SIZE.h"
-#ifdef ALLOW_AUTODIFF_TAMC
-# include "tamc.h"
-#endif /* ALLOW_AUTODIFF_TAMC */
 
 C     !INPUT/OUTPUT PARAMETERS:
 C     === Routine arguments ===
@@ -1781,19 +1846,17 @@ C     !LOCAL VARIABLES:
 C     === Local variables ===
 C     i,j  :: Loop counters
       INTEGER I,J,JM
-#ifdef SEAICE_VECTORIZE_LSR_ZEBRA
+      INTEGER iMinLoc, iStep
+#ifdef SEAICE_LSR_ZEBRA
       INTEGER K
-#endif
-#ifdef ALLOW_AUTODIFF_TAMC
-      INTEGER ilockey
-#endif /* ALLOW_AUTODIFF_TAMC */
+      PARAMETER ( iStep = 2 )
+#else
+      PARAMETER ( iStep = 1 )
+#endif /* SEAICE_LSR_ZEBRA */
       _RL AA3, bet
       _RL VRT(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL CVV(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
 
-#ifdef ALLOW_AUTODIFF_TAMC
-CADJ INIT comlev1_tridiagv = COMMON, (sNx+2*Olx)*(sNy+2*Oly)
-#endif /* ALLOW_AUTODIFF_TAMC */
 C     Need to initialize local arrays
       DO J = 1-OLy,sNy+OLy
        DO I = 1-OLx,sNx+OLx
@@ -1801,26 +1864,17 @@ C     Need to initialize local arrays
         CVV(I,J) = 0. _d 0
        ENDDO
       ENDDO
-#ifdef SEAICE_VECTORIZE_LSR_ZEBRA
+#ifdef SEAICE_LSR_ZEBRA
       DO K=0,1
-#endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
-#ifdef SEAICE_VECTORIZE_LSR
-# ifdef SEAICE_VECTORIZE_LSR_ZEBRA
-#  ifdef ALLOW_AUTODIFF_TAMC
-C     the order of the loop is relevant for TAF. We avoid having
-C     to store vice with this order
-      DO I=iMin+K,iMax,2
-       DO J=jMin,jMax
-#  else
-      DO J=jMin,jMax
-       DO I=iMin+K,iMax,2
-#  endif /* ALLOW_AUTODIFF_TAMC */
-# else
-      DO J=jMin,jMax
-       DO I=iMin,iMax
-# endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
+      iMinLoc = iMin+K
 #else
-      DO I=iMin,iMax
+      iMinLoc = iMin
+#endif /*  SEAICE_LSR_ZEBRA */
+#ifdef SEAICE_VECTORIZE_LSR
+      DO J=jMin,jMax
+       DO I=iMinLoc,iMax,iStep
+#else
+      DO I=iMinLoc,iMax,iStep
        DO J=jMin,jMax
 #endif /* SEAICE_VECTORIZE_LSR */
         AA3 = 0. _d 0
@@ -1833,39 +1887,27 @@ C     to store vice with this order
      &       + vRt2(I,J,bi,bj)*vIce(I+1,J,bi,bj)
         VRT(I,J)=VRT(I,J)* seaiceMaskV(I,J,bi,bj)
 
+C     beginning of tridiagnoal solver
         CVV(I,J)=CV(I,J,bi,bj)
        ENDDO
 #ifdef SEAICE_VECTORIZE_LSR
       ENDDO
-# ifdef SEAICE_VECTORIZE_LSR_ZEBRA
-      DO I=iMin+K,iMax,2
-# else
-      DO I=iMin,iMax
-# endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
+      DO I=iMinLoc,iMax,iStep
 #endif /* SEAICE_VECTORIZE_LSR */
        CVV(I,jMin)=CVV(I,jMin)/BV(I,jMin,bi,bj)
        VRT(I,jMin)=VRT(I,jMin)/BV(I,jMin,bi,bj)
 #ifdef SEAICE_VECTORIZE_LSR
       ENDDO
 C     start a new loop with reversed order to support automatic vectorization
+CADJ loop = sequential
       DO J=jMin+1,jMax
        JM=J-1
-# ifdef SEAICE_VECTORIZE_LSR_ZEBRA
-       DO I=iMin+K,iMax,2
-# else
-       DO I=iMin,iMax
-# endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
+       DO I=iMinLoc,iMax,iStep
 #else /* do not SEAICE_VECTORIZE_LSR */
+CADJ loop = sequential
        DO J=jMin+1,jMax
         JM=J-1
 #endif /* SEAICE_VECTORIZE_LSR */
-#ifdef ALLOW_AUTODIFF_TAMC
-        ilockey = 1 + J-jMin + (sNy+2*OLy)*(I-iMin)
-CADJ STORE vrt(i,j),vrt(i,jm),cvv(i,j),cvv(i,jm) = comlev1_tridiagv, 
-CADJ & kind=isbyte, key = ilockey
-C     appart from storing vrt/cvv(i,j/jm), it seems to be important to 
-C     rewrite the code: introduce abbreviate "bet"
-#endif /* ALLOW_AUTODIFF_TAMC */
         bet      = BV(I,J,bi,bj)-AV(I,J,bi,bj)*CVV(I,JM)
         CVV(I,J) = CVV(I,J)/bet
         VRT(I,J) = (VRT(I,J)-AV(I,J,bi,bj)*VRT(I,JM))/bet
@@ -1873,29 +1915,33 @@ C     rewrite the code: introduce abbreviate "bet"
 #ifdef SEAICE_VECTORIZE_LSR
       ENDDO
 C     go back to original order
-# ifdef SEAICE_VECTORIZE_LSR_ZEBRA
-      DO I=iMin+K,iMax,2
-# else
-      DO I=iMin,iMax
-# endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
-#endif /* SEAICE_VECTORIZE_LSR */
+CADJ loop = sequential
+      DO J=jMin,jMax-1
+       JM=jMax-J
+       DO I=iMinLoc,iMax,iStep
+#else
+CADJ loop = sequential
        DO J=jMin,jMax-1
         JM=jMax-J
-#ifdef ALLOW_AUTODIFF_TAMC
-        ilockey = 1 + J-jMin + (sNy+2*OLy)*(I-iMin)
-CADJ STORE vrt(i,jm), vrt(i,jm+1) = comlev1_tridiagv, 
-CADJ &                              kind=isbyte, key = ilockey
-#endif /* ALLOW_AUTODIFF_TAMC */
+#endif /* SEAICE_VECTORIZE_LSR */
         VRT(I,JM)=VRT(I,JM)-CVV(I,JM)*VRT(I,JM+1)
        ENDDO
+#ifdef SEAICE_VECTORIZE_LSR
+      ENDDO
+C     end of tridiagnoal solver, solution is VRT
+C     relaxation with WFAV
+      DO J=jMin,jMax
+       DO I=iMinLoc,iMax,iStep
+#else
        DO J=jMin,jMax
+#endif /* SEAICE_VECTORIZE_LSR */
         vIce(I,J,bi,bj)=vTmp(I,J,bi,bj)
      &       +WFAV*(VRT(I,J)-vTmp(I,J,bi,bj))
        ENDDO
       ENDDO
-#ifdef SEAICE_VECTORIZE_LSR_ZEBRA
+#ifdef SEAICE_LSR_ZEBRA
       ENDDO
-#endif /* SEAICE_VECTORIZE_LSR_ZEBRA */
+#endif /* SEAICE_LSR_ZEBRA */
 
 #endif /* SEAICE_ALLOW_DYNAMICS */
 #endif /* SEAICE_CGRID */

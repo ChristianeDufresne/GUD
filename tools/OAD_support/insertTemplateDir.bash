@@ -9,6 +9,13 @@ do
   echo "/^ *SUBROUTINE $srName(/i\\" >> temp.sed
   case "$srName" in
     "OpenAD_main_do_loop" )
+      if [ -z ${ALLOW_OPENAD_DIVA+x} ]; then
+        echo "c\$openad XXX Template ad_template.revolve.f" >> temp.sed
+      else
+        echo "c\$openad XXX Template ad_template.regular.f" >> temp.sed
+      fi
+      ;;
+    "OpenAD_inner_do_loop" )
       echo "c\$openad XXX Template ad_template.revolve.f" >> temp.sed
       ;;
     "OpenAD_cg2d" )
@@ -17,8 +24,23 @@ do
     "OpenAD_streamice_cg_solve" )
       echo "c\$openad XXX Template ad_template.streamice_cg_solve.f" >> temp.sed
       ;;
+    "OpenAD_active_read_xyz" )
+      echo "c\$openad XXX Template ad_template.active_read_xyz.f" >> temp.sed
+      ;;
     "OpenAD_active_read_xy" )
-      echo "c\$openad XXX Template oad_template.active_read_xy.f" >> temp.sed
+      echo "c\$openad XXX Template ad_template.active_read_xy.f" >> temp.sed
+      ;;
+    "OpenAD_active_write_xy" )
+      echo "c\$openad XXX Template ad_template.active_write_xy.f" >> temp.sed
+      ;;
+    "OpenAD_streamice_vel_phistage" )
+      echo "c\$openad XXX Template ad_template.streamice_vel_phistage.f" >> temp.sed
+      ;;
+    "OpenAD_streamice_get_fp_err_oad" )
+      echo "c\$openad XXX Template ad_template.streamice_get_fp_err_oad.f" >> temp.sed
+      ;;
+    "OpenAD_streamice_get_vel_resid_err_oad" )
+      echo "c\$openad XXX Template ad_template.streamice_get_vel_resid_err_oad.f" >> temp.sed
       ;;
     "OpenAD_exch1_rl" |          \
     "OpenAD_exch1_rs" |          \

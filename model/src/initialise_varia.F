@@ -37,6 +37,7 @@ C #endif
 C       |-- INI_NLFS_VARS
 C       |-- INI_DYNVARS
 C       |-- INI_NH_VARS
+C       |-- INI_FFIELDS
 C       |
 C       |-- INI_FIELDS
 C       |
@@ -128,6 +129,9 @@ C--   Initialize NH_VARS arrays to zero [always]
       CALL INI_NH_VARS( myThid )
 #endif
 
+C--   Initialize FFIELDS arrays to zero [always]
+      CALL INI_FFIELDS( myThid )
+
 C--   Initialise model fields.
 C     Starting values of U, V, W, temp., salt. and tendency terms
 C     are set here. Fields are either set to default or read from
@@ -156,7 +160,7 @@ C--   Initialise model forcing fields.
 
 #ifdef ALLOW_AUTODIFF
 C--   Initialise active fields to help TAMC
-      CALL AUTODIFF_INIT_VARIA( myThid )
+      if (useAUTODIFF) CALL AUTODIFF_INIT_VARIA( myThid )
 #endif
 
 C--   Initialize variable data for packages

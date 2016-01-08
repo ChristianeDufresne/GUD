@@ -751,6 +751,13 @@ C--   Momentum related limitations:
         CALL PRINT_ERROR( msgBuf, myThid )
         errCount = errCount + 1
       ENDIF
+      IF ( selectBotDragQuadr.LT.-1 .OR. selectBotDragQuadr.GT.2 ) THEN
+        WRITE(msgBuf,'(2A,I8,A)') 'CONFIG_CHECK: ',
+     &       'selectBotDragQuadr=', selectBotDragQuadr,
+     &       ' not valid (-1,0,1,2)'
+        CALL PRINT_ERROR( msgBuf, myThid )
+        errCount = errCount + 1
+      ENDIF
       IF ( useSmag3D .AND.
      &    ( usingPCoords .OR. deepAtmosphere .OR. selectSigmaCoord.NE.0
      &                   .OR. rhoRefFile.NE.' ' .OR. hasWetCSCorners )
@@ -761,13 +768,23 @@ C--   Momentum related limitations:
         errCount = errCount + 1
       ENDIF
 
-      IF (.NOT.useCDscheme .AND. (tauCD.NE.0. .OR. rCD.NE.-1.) ) THEN
+      IF ( momStepping .AND. .NOT.useCDscheme
+     &                 .AND. (tauCD.NE.0. .OR. rCD.NE.-1.) ) THEN
 C- jmc: since useCDscheme is a new [04-13-03] flag (default=F),
 C       put this WARNING to stress that even if CD-scheme parameters
 C       (tauCD,rCD) are set, CD-scheme is not used without useCDscheme=T
 C-    and STOP if using mom_fluxform (following Chris advise).
 C- jmc: but ultimately, this block can/will be removed.
-       IF (.NOT.vectorInvariantMomentum.AND.momStepping) THEN
+       IF ( vectorInvariantMomentum ) THEN
+        WRITE(msgBuf,'(2A)') '** WARNING ** CONFIG_CHECK: ',
+     &   'CD-scheme is OFF but params(tauCD,rCD) are set'
+        CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
+     &                      SQUEEZE_RIGHT, myThid )
+        WRITE(msgBuf,'(3A)') '** WARNING ** to turn ON CD-scheme:',
+     &   ' => "useCDscheme=.TRUE." in "data", namelist PARM01'
+        CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
+     &                      SQUEEZE_RIGHT, myThid )
+       ELSE
         WRITE(msgBuf,'(A)')
      &   'CONFIG_CHECK: CD-scheme is OFF but params(tauCD,rCD) are set'
         CALL PRINT_ERROR( msgBuf, myThid )
@@ -777,14 +794,6 @@ C- jmc: but ultimately, this block can/will be removed.
         CALL PRINT_ERROR( msgBuf, myThid )
         errCount = errCount + 1
        ENDIF
-        WRITE(msgBuf,'(2A)') '** WARNING ** CONFIG_CHECK: ',
-     &   'CD-scheme is OFF but params(tauCD,rCD) are set'
-        CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
-     &                      SQUEEZE_RIGHT, myThid )
-        WRITE(msgBuf,'(3A)') '** WARNING ** to turn ON CD-scheme:',
-     &   ' => "useCDscheme=.TRUE." in "data", namelist PARM01'
-        CALL PRINT_MESSAGE( msgBuf, errorMessageUnit,
-     &                      SQUEEZE_RIGHT, myThid )
       ENDIF
 
       IF ( useCDscheme .AND. hasWetCSCorners ) THEN
@@ -819,9 +828,9 @@ C--   Time-stepping limitations
         CALL PRINT_ERROR( msgBuf, myThid )
         errCount = errCount + 1
       ENDIF
-      IF ( addFrictionHeating .AND. .NOT.staggerTimeStep ) THEN
-        WRITE(msgBuf,'(2A)') 'CONFIG_CHECK: addFrictionHeating',
-     &  ' not yet coded for synchronous time-stepping.'
+      IF ( implBottomFriction ) THEN
+        WRITE(msgBuf,'(2A)') 'CONFIG_CHECK: implBottomFriction',
+     &  ' not yet coded.'
         CALL PRINT_ERROR( msgBuf, myThid )
         errCount = errCount + 1
       ENDIF

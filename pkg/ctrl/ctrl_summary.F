@@ -330,6 +330,7 @@ c     == end of interface ==
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
 
+#ifdef ECCO_CTRL_DEPRECATED
       write(msgbuf,'(a)')
      &' Settings of diffusion based correlation operators:'
       call print_message( msgbuf, standardmessageunit,
@@ -339,29 +340,28 @@ c     == end of interface ==
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
 
-#ifdef ALLOW_SMOOTH_CORREL3D
       write(msgbuf,'(a,L5,a)')
      &' ctrlSmoothCorrel3D        = ',ctrlSmoothCorrel3D,
      &' /* use 3D controls correlation */'
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
-#endif /* ALLOW_SMOOTH_CORREL3D */
 
-#ifdef ALLOW_SMOOTH_CORREL2D
       write(msgbuf,'(a,L5,a)')
-     &' ctrlSmoothCorrel2D        = ',ctrlSmoothCorrel3D,
+     &' ctrlSmoothCorrel2D        = ',ctrlSmoothCorrel2D,
      &' /* use 2D controls correlation */'
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
-#endif /* ALLOW_SMOOTH_CORREL2D */
+#endif /* ECCO_CTRL_DEPRECATED */
 
 #ifdef ALLOW_AUTODIFF
+      if (ctrlSmoothCorrel2D.AND..NOT.useSmoothCorrel2DinAdMode) then
 c allow for switching off correl2d in adjoint
       write(msgbuf,'(a,L5,a)')
      &' useSmoothCorrel2DinAdMode = ',useSmoothCorrel2DinAdMode,
      &' /* use in adjoint mode */'
       call print_message( msgbuf, standardmessageunit,
      &                    SQUEEZE_RIGHT , mythid)
+      endif
 #endif
 
 #endif /* ALLOW_SMOOTH */
@@ -492,30 +492,42 @@ c allow for switching off correl2d in adjoint
      &                    SQUEEZE_RIGHT , mythid)
 #endif
 
-        write(msgbuf,'(a,L5)')
-     &'      cumsum     = ',xx_gentim2d_cumsum(iarr)
-        call print_message( msgbuf, standardmessageunit,
-     &                    SQUEEZE_RIGHT , mythid)
-
-        write(msgbuf,'(a,L5)')
-     &'      glosum     = ',xx_gentim2d_glosum(iarr)
-        call print_message( msgbuf, standardmessageunit,
-     &                    SQUEEZE_RIGHT , mythid)
-
          do jarr=1,maxCtrlProc
           if (xx_gentim2d_preproc(jarr,iarr).NE.' ') then
             il = ilnblnk(xx_gentim2d_preproc(jarr,iarr))
-            write(msgbuf,'(a,a)') ' preprocess = ',
-     &                            xx_gentim2d_preproc(jarr,iarr)(1:il)
+            write(msgbuf,'(a,a)') '      preprocess = ',
+     &                        xx_gentim2d_preproc(jarr,iarr)(1:il)
             call print_message( msgbuf, standardmessageunit,
      &                        SQUEEZE_RIGHT , mythid)
+C
+          if (xx_gentim2d_preproc_c(jarr,iarr).NE.' ') then
+            il = ilnblnk(xx_gentim2d_preproc_c(jarr,iarr))
+            write(msgbuf,'(a,a)') '        param. (text)= ',
+     &                        xx_gentim2d_preproc_c(jarr,iarr)(1:il)
+            call print_message( msgbuf, standardmessageunit,
+     &                        SQUEEZE_RIGHT , mythid)
+          endif
+C
+          if (xx_gentim2d_preproc_i(jarr,iarr).NE.0) then
+            write(msgbuf,'(a,i6)') '        param. (int.)= ',
+     &                        xx_gentim2d_preproc_i(jarr,iarr)
+            call print_message( msgbuf, standardmessageunit,
+     &                        SQUEEZE_RIGHT , mythid)
+          endif
+C
+          if (xx_gentim2d_preproc_r(jarr,iarr).NE.0. _d 0) then
+            write(msgbuf,'(a,e10.3)') '        param. (real)= ',
+     &                        xx_gentim2d_preproc_r(jarr,iarr)
+            call print_message( msgbuf, standardmessageunit,
+     &                        SQUEEZE_RIGHT , mythid)
+          endif
+
           endif
          enddo
 
        endif
       enddo
 #endif
-
 
 #endif
 

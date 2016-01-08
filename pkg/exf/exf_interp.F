@@ -370,7 +370,7 @@ C-      Check that we found the right lat. index
      &        ', nLoop=', nLoop
             CALL PRINT_ERROR( msgBuf, myThid )
             WRITE(msgBuf,'(A)')
-     &        'EXF_INTERP: did not found Latitude index for grid-pt:'
+     &        'EXF_INTERP: did not find Latitude index for grid-pt:'
             CALL PRINT_ERROR( msgBuf, myThid )
             WRITE(msgBuf,'(A,2I8,2I6,A,1PE16.8)')
      &        'EXF_INTERP: i,j,bi,bj=',i,j,bi,bj,' , yG=',yG(i,j,bi,bj)

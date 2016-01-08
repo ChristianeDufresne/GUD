@@ -39,7 +39,7 @@ C !ROUTINE: MOM_FLUXFORM
 C !INTERFACE: ==========================================================
       SUBROUTINE MOM_FLUXFORM(
      I        bi,bj,k,iMin,iMax,jMin,jMax,
-     I        KappaRU, KappaRV,
+     I        kappaRU, kappaRV,
      U        fVerUkm, fVerVkm,
      O        fVerUkp, fVerVkp,
      O        guDiss, gvDiss,
@@ -72,8 +72,8 @@ C !INPUT PARAMETERS: ===================================================
 C  bi,bj                :: current tile indices
 C  k                    :: current vertical level
 C  iMin,iMax,jMin,jMax  :: loop ranges
-C  KappaRU              :: vertical viscosity
-C  KappaRV              :: vertical viscosity
+C  kappaRU              :: vertical viscosity
+C  kappaRV              :: vertical viscosity
 C  fVerUkm              :: vertical advective flux of U, interface above (k-1/2)
 C  fVerVkm              :: vertical advective flux of V, interface above (k-1/2)
 C  fVerUkp              :: vertical advective flux of U, interface below (k+1/2)
@@ -85,8 +85,8 @@ C  myIter               :: current time-step number
 C  myThid               :: my Thread Id number
       INTEGER bi,bj,k
       INTEGER iMin,iMax,jMin,jMax
-      _RL KappaRU(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr)
-      _RL KappaRV(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr)
+      _RL kappaRU(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr+1)
+      _RL kappaRV(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr+1)
       _RL fVerUkm(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL fVerVkm(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL fVerUkp(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
@@ -253,7 +253,7 @@ C       vorticity at a no-slip boundary by a factor of 2 = sideDragFactor
       ENDIF
 
       IF (     no_slip_bottom
-     &    .OR. bottomDragQuadratic.NE.0.
+     &    .OR. selectBotDragQuadr.GE.0
      &    .OR. bottomDragLinear.NE.0.) THEN
        bottomDragTerms=.TRUE.
       ELSE
@@ -524,8 +524,8 @@ C     Laplacian and bi-harmonic termis, Merid Fluxes -> fMer
 
 C     Eddy component of vertical flux (interior component only) -> fVrUp & fVrDw
        IF (.NOT.implicitViscosity) THEN
-        CALL MOM_U_RVISCFLUX( bi,bj, k, uVel,KappaRU,fVrUp,myThid )
-        CALL MOM_U_RVISCFLUX( bi,bj,k+1,uVel,KappaRU,fVrDw,myThid )
+        CALL MOM_U_RVISCFLUX( bi,bj, k, uVel,kappaRU,fVrUp,myThid )
+        CALL MOM_U_RVISCFLUX( bi,bj,k+1,uVel,kappaRU,fVrDw,myThid )
        ENDIF
 
 C--   Tendency is minus divergence of the fluxes
@@ -574,7 +574,10 @@ C-     No-slip BCs impose a drag at walls...
         ENDIF
 C-    No-slip BCs impose a drag at bottom
         IF (bottomDragTerms) THEN
-         CALL MOM_U_BOTTOMDRAG( bi,bj,k,uFld,KE,KappaRU,vF,myThid )
+         CALL MOM_U_BOTTOMDRAG( bi, bj, k,
+     I              uFld, vFld, KE, kappaRU,
+     O              vF,
+     I              myThid )
          DO j=jMin,jMax
           DO i=iMin,iMax
            gUdiss(i,j) = gUdiss(i,j) + vF(i,j)
@@ -584,7 +587,10 @@ C-    No-slip BCs impose a drag at bottom
 
 #ifdef ALLOW_SHELFICE
         IF (useShelfIce) THEN
-         CALL SHELFICE_U_DRAG( bi,bj,k,uFld,KE,KappaRU,vF,myThid )
+         CALL SHELFICE_U_DRAG( bi, bj, k,
+     I              uFld, vFld, KE, kappaRU,
+     O              vF,
+     I              myThid )
          DO j=jMin,jMax
           DO i=iMin,iMax
            gUdiss(i,j) = gUdiss(i,j) + vF(i,j)
@@ -800,7 +806,10 @@ C-     No-slip BCs impose a drag at walls...
         ENDIF
 C-    No-slip BCs impose a drag at bottom
         IF (bottomDragTerms) THEN
-         CALL MOM_V_BOTTOMDRAG( bi,bj,k,vFld,KE,KappaRV,vF,myThid )
+         CALL MOM_V_BOTTOMDRAG( bi, bj, k,
+     I              uFld, vFld, KE, kappaRV,
+     O              vF,
+     I              myThid )
          DO j=jMin,jMax
           DO i=iMin,iMax
            gvDiss(i,j) = gvDiss(i,j) + vF(i,j)
@@ -810,7 +819,10 @@ C-    No-slip BCs impose a drag at bottom
 
 #ifdef ALLOW_SHELFICE
         IF (useShelfIce) THEN
-         CALL SHELFICE_V_DRAG( bi,bj,k,vFld,KE,KappaRV,vF,myThid )
+         CALL SHELFICE_V_DRAG( bi, bj, k,
+     I              uFld, vFld, KE, kappaRV,
+     O              vF,
+     I              myThid )
          DO j=jMin,jMax
           DO i=iMin,iMax
            gvDiss(i,j) = gvDiss(i,j) + vF(i,j)
@@ -919,10 +931,6 @@ C--   Set du/dt & dv/dt on boundaries to zero
      &                               'Um_Advec',k,1,2,bi,bj,myThid)
         CALL DIAGNOSTICS_FILL(gV(1-OLx,1-OLy,k,bi,bj),
      &                               'Vm_Advec',k,1,2,bi,bj,myThid)
-       IF (momViscosity) THEN
-        CALL DIAGNOSTICS_FILL(guDiss,'Um_Diss ',k,1,2,bi,bj,myThid)
-        CALL DIAGNOSTICS_FILL(gvDiss,'Vm_Diss ',k,1,2,bi,bj,myThid)
-       ENDIF
       ENDIF
 #endif /* ALLOW_DIAGNOSTICS */
 

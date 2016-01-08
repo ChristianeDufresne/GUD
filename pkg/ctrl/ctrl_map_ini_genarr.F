@@ -47,123 +47,45 @@ C     == routine arguments ==
 
 C     !LOCAL VARIABLES:
 C     == local variables ==
+#if (defined (ALLOW_GENARR2D_CONTROL) || defined(ALLOW_GENARR3D_CONTROL))
       integer iarr
-      integer igen_etan0,igen_bdrag,igen_geoth
+#endif
+#ifdef ALLOW_GENARR2D_CONTROL
+      integer igen_etan,igen_bdrag,igen_geoth
+#endif /* ALLOW_GENARR2D_CONTROL */
+#ifdef ALLOW_GENARR3D_CONTROL
       integer igen_theta0, igen_salt0
       integer igen_kapgm, igen_kapredi, igen_diffkr
-      integer smoothOpNb
-#ifdef ALLOW_GENTIM2D_CONTROL
-      character*(80) fnamegenIn
-      character*(80) fnamegenOut
-      integer startrec
-      integer endrec
-      integer diffrec
-      integer irec
-      logical doglobalread
-      logical ladinit
-      _RL     xx_gen(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-      integer bi,bj
-      integer i,j,k2
-      INTEGER  ILNBLNK
-      EXTERNAL ILNBLNK
-      integer ilgen
-#endif /* ALLOW_GENTIM2D_CONTROL */
+#endif /* ALLOW_GENARR3D_CONTROL */
 CEOP
-
-#ifdef ALLOW_GENTIM2D_CONTROL
-
-c--   Now, read the control vector.
-      doglobalread = .false.
-      ladinit      = .false.
-
-C--   generic 2D control variables
-      DO iarr = 1, maxCtrlTim2D
-
-        if (xx_gentim2d_weight(iarr).NE.' ') then
-
-        call ctrl_init_rec ( xx_gentim2d_file(iarr)(1:MAX_LEN_FNAM),
-     I       xx_gentim2d_startdate1(iarr),
-     I       xx_gentim2d_startdate2(iarr),
-     I       xx_gentim2d_period(iarr),
-     I       1,
-     O       xx_gentim2d_startdate(1,iarr),
-     O       diffrec, startrec, endrec,
-     I       myThid )
-
-        ilgen=ilnblnk( xx_gentim2d_file(iarr) )
-        write(fnamegenIn(1:80),'(2a,i10.10)')
-     &       xx_gentim2d_file(iarr)(1:ilgen), '.', optimcycle
-        write(fnamegenOut(1:80),'(2a,i10.10)')
-     &       xx_gentim2d_file(iarr)(1:ilgen),'.effective.',optimcycle
-
-         smoothOpNb=1
-         do k2 = 1, maxCtrlProc
-          if (xx_gentim2d_preproc(k2,iarr).EQ.'smooth') then
-             if (xx_gentim2d_preproc_i(k2,iarr).NE.0) 
-     &           smoothOpNb=xx_gentim2d_preproc_i(k2,iarr)
-          endif
-         enddo
-
-        DO irec = 1, endrec
-
-        call active_read_xy( fnamegenIn, xx_gen, irec,
-     &                       doglobalread, ladinit, optimcycle,
-     &                       mythid, xx_gentim2d_dummy(iarr) )
-
-#ifdef ALLOW_SMOOTH
-        IF ( ctrlSmoothCorrel2D ) THEN
-        IF ( useSMOOTH ) THEN
-        call smooth_correl2D(xx_gen,maskC,smoothOpNb,mythid)
-
-        DO bj=myByLo(myThid), myByHi(myThid)
-         DO bi=myBxLo(myThid), myBxHi(myThid)
-          DO j = 1,sNy
-           DO i = 1,sNx
-            if ((maskC(i,j,1,bi,bj).NE.0.).AND.
-     &          (wgentim2d(i,j,bi,bj,iarr).GT.0.)) then
-                xx_gen(i,j,bi,bj)=xx_gen(i,j,bi,bj)
-     &                  /sqrt(wgentim2d(i,j,bi,bj,iarr))
-            else
-                xx_gen(i,j,bi,bj)=0. _d 0
-            endif
-           ENDDO
-          ENDDO
-         ENDDO
-        ENDDO
-
-        _EXCH_XY_RL ( xx_gen , myThid )
-        ENDIF
-        ENDIF
-#endif /* ALLOW_SMOOTH */
-
-        call active_write_xy( fnamegenOut, xx_gen, irec, optimcycle,
-     &       mythid, xx_gentim2d_dummy(iarr) )
-
-        ENDDO
-
-        endif
-      ENDDO
-#endif /* ALLOW_GENTIM2D_CONTROL */
 
 #ifdef ALLOW_GENARR2D_CONTROL
 
 C--   generic 2D control variables
 
-      igen_etan0=0
+      igen_etan=0
       igen_bdrag=0
       igen_geoth=0
       DO iarr = 1, maxCtrlArr2D
-      if (xx_genarr2d_file(iarr).EQ.'xxg_etan0') igen_etan0=iarr
-      if (xx_genarr2d_file(iarr).EQ.'xxg_bottomdrag') igen_bdrag=iarr
-      if (xx_genarr2d_file(iarr).EQ.'xxg_geothermal') igen_geoth=iarr
+      if (xx_genarr2d_weight(iarr).NE.' ') then
+        if (xx_genarr2d_file(iarr)(1:7).EQ.'xx_etan') 
+     &     igen_etan=iarr
+        if (xx_genarr2d_file(iarr)(1:13).EQ.'xx_bottomdrag') 
+     &     igen_bdrag=iarr
+        if (xx_genarr2d_file(iarr)(1:13).EQ.'xx_geothermal') 
+     &     igen_geoth=iarr
+      endif
       ENDDO
 
-      call ctrl_map_genarr2d(etaN,igen_etan0,myThid)
+      if (igen_etan.GT.0)
+     &      call ctrl_map_genarr2d(etaN,igen_etan,myThid)
 #ifdef ALLOW_BOTTOMDRAG_CONTROL
-      call ctrl_map_genarr2d(bottomDragFld,igen_bdrag,myThid)
+      if (igen_bdrag.GT.0)
+     &  call ctrl_map_genarr2d(bottomDragFld,igen_bdrag,myThid)
 #endif
 #ifdef ALLOW_GEOTHERMAL_FLUX
-      call ctrl_map_genarr2d(geothermalFlux,igen_geoth,myThid)
+      if (igen_geoth.GT.0)
+     &  call ctrl_map_genarr2d(geothermalFlux,igen_geoth,myThid)
 #endif
 
 #endif /* ALLOW_GENARR2D_CONTROL */
@@ -178,23 +100,35 @@ C--   generic 3D control variables
       igen_kapredi=0
       igen_diffkr=0
       DO iarr = 1, maxCtrlArr3D
-      if (xx_genarr3d_file(iarr).EQ.'xx_theta') igen_theta0=iarr
-      if (xx_genarr3d_file(iarr).EQ.'xx_salt') igen_salt0=iarr
-      if (xx_genarr3d_file(iarr).EQ.'xx_kapgm') igen_kapgm=iarr
-      if (xx_genarr3d_file(iarr).EQ.'xx_kapredi') igen_kapredi=iarr
-      if (xx_genarr3d_file(iarr).EQ.'xx_diffkr') igen_diffkr=iarr
+      if (xx_genarr3d_weight(iarr).NE.' ') then
+        if (xx_genarr3d_file(iarr)(1:8).EQ.'xx_theta') 
+     &     igen_theta0=iarr
+        if (xx_genarr3d_file(iarr)(1:7).EQ.'xx_salt') 
+     &     igen_salt0=iarr
+        if (xx_genarr3d_file(iarr)(1:8).EQ.'xx_kapgm') 
+     &     igen_kapgm=iarr
+        if (xx_genarr3d_file(iarr)(1:10).EQ.'xx_kapredi') 
+     &     igen_kapredi=iarr
+        if (xx_genarr3d_file(iarr)(1:9).EQ.'xx_diffkr') 
+     &     igen_diffkr=iarr
+      endif
       ENDDO
 
-      call ctrl_map_genarr3d(theta,igen_theta0,myThid)
-      call ctrl_map_genarr3d(salt,igen_salt0,myThid)
+      if (igen_theta0.GT.0)
+     &   call ctrl_map_genarr3d(theta,igen_theta0,myThid)
+      if (igen_salt0.GT.0)
+     &   call ctrl_map_genarr3d(salt,igen_salt0,myThid)
 #ifdef ALLOW_KAPGM_CONTROL
-      call ctrl_map_genarr3d(kapgm,igen_kapgm,myThid)
+      if (igen_kapgm.GT.0)
+     &   call ctrl_map_genarr3d(kapgm,igen_kapgm,myThid)
 #endif
 #ifdef ALLOW_KAPREDI_CONTROL
-      call ctrl_map_genarr3d(kapredi,igen_kapredi,myThid)
+      if (igen_kapredi.GT.0)
+     &   call ctrl_map_genarr3d(kapredi,igen_kapredi,myThid)
 #endif
 #ifdef ALLOW_3D_DIFFKR
-      call ctrl_map_genarr3d(diffkr,igen_diffkr,myThid)
+      if (igen_diffkr.GT.0)
+     &   call ctrl_map_genarr3d(diffkr,igen_diffkr,myThid)
 #endif
 
 #endif /* ALLOW_GENARR3D_CONTROL */
@@ -228,6 +162,7 @@ C     == global variables ==
 
 #include "CTRL_SIZE.h"
 #include "ctrl.h"
+#include "optim.h"
 #include "CTRL_GENARR.h"
 #include "ctrl_dummy.h"
 
@@ -245,50 +180,89 @@ C     == local variables ==
       integer i,j
       integer jmin,jmax
       integer imin,imax
-      integer smoothOpNb, k2
-      _RL fldTmp  (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
+      integer numsmo, k2
+      logical dowc01
+      logical dosmooth
+      _RL xx_gen  (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
+      character*(80) fnamegenIn
+      character*(80) fnamegenOut
+      character*(80) fnamebase
+      INTEGER  ILNBLNK
+      EXTERNAL ILNBLNK
+      integer ilgen
+      logical doglobalread
+      logical ladinit
 CEOP
 
-      jmin = 1
-      jmax = sNy
-      imin = 1
-      imax = sNx
+c--   Now, read the control vector.
+      doglobalread = .false.
+      ladinit      = .false.
 
-       DO bj=myByLo(myThid), myByHi(myThid)
+      dosmooth=.false.
+      dowc01  = .false.
+      if (ctrlSmoothCorrel2d) dowc01=.TRUE.
+
+      numsmo=1
+      do k2 = 1, maxCtrlProc
+          if (xx_genarr2d_preproc(k2,iarr).EQ.'WC01') then
+             dowc01=.TRUE.
+             if (xx_genarr2d_preproc_i(k2,iarr).NE.0)
+     &           numsmo=xx_genarr2d_preproc_i(k2,iarr)
+          endif
+          if ((.NOT.dowc01).AND.
+     &        (xx_genarr2d_preproc(k2,iarr).EQ.'smooth')) then
+             dosmooth=.TRUE.
+             if (xx_genarr2d_preproc_i(k2,iarr).NE.0)
+     &           numsmo=xx_genarr2d_preproc_i(k2,iarr)
+          endif
+      enddo
+
+      fnamebase = xx_genarr2d_file(iarr)
+      ilgen=ilnblnk( fnamebase )
+      write(fnamegenIn(1:80),'(2a,i10.10)')
+     &       fnamebase(1:ilgen),'.',optimcycle
+      write(fnamegenOut(1:80),'(2a,i10.10)')
+     &       fnamebase(1:ilgen),'.effective.',optimcycle
+
+      call mdsreadfield(xx_genarr2d_weight(iarr),ctrlprec,'RL',1,
+     &     wgenarr2d(1-Olx,1-Oly,1,1,iarr),1,mythid)
+
+      call active_read_xy( fnamegenIn, xx_gen, 1, doglobalread,
+     & ladinit, optimcycle, mythid, xx_genarr2d_dummy(iarr) )
+
+#ifdef ALLOW_SMOOTH
+      IF (useSMOOTH) THEN
+       IF (dowc01) call smooth_correl2d(xx_gen,maskC,numsmo,mythid)
+       IF (dosmooth) call smooth2d(xx_gen,maskC,numsmo,mythid)
+      ENDIF
+#endif
+
+      DO bj=myByLo(myThid), myByHi(myThid)
         DO bi=myBxLo(myThid), myBxHi(myThid)
-          DO j = jmin,jmax
-            DO i = imin,imax
-                fldTmp(i,j,bi,bj) = fld(i,j,bi,bj)
-            ENDDO
-          ENDDO
-        ENDDO
-       ENDDO
+            DO j = 1,sNy
+              DO i = 1,sNx
+c scale param adjustment
+                if ( (maskC(i,j,1,bi,bj).NE.0.).AND.
+     &               (wgenarr2d(i,j,bi,bj,iarr).GT.0.) ) then
+                  xx_gen(i,j,bi,bj)=xx_gen(i,j,bi,bj)
+     &                     /sqrt( wgenarr2d(i,j,bi,bj,iarr) )
+                else
+                  xx_gen(i,j,bi,bj)=0.
+                endif
+c add to model parameter
+                fld(i,j,bi,bj)=fld(i,j,bi,bj)+xx_gen(i,j,bi,bj)
+              enddo
+            enddo
+        enddo
+      enddo
 
-       smoothOpNb=1
-       do k2 = 1, maxCtrlProc
-        if (xx_genarr2d_preproc(k2,iarr).EQ.'smooth') then
-           if (xx_genarr2d_preproc_i(k2,iarr).NE.0)
-     &         smoothOpNb=xx_genarr2d_preproc_i(k2,iarr)
-        endif
-       enddo
+c avoid param out of [boundsVec(1) boundsVec(4)]
+      CALL CTRL_BOUND_2D(fld,maskC,xx_genarr2d_bounds(1,iarr),myThid)
 
-       if ( (xx_genarr2d_weight(iarr).NE.' ').AND.(iarr.GT.0) )
-     &  call ctrl_map_ini_gen2D(xx_genarr2d_file(iarr),
-     &       xx_genarr2d_weight(iarr), xx_genarr2d_dummy(iarr),
-     &       xx_genarr2d_bounds(1,iarr), fldTmp, maskc,
-     &       smoothOpNb, mythid )
+      CALL EXCH_XY_RL( fld, mythid )
 
-       _EXCH_XY_RL( fldTmp, mythid)
-
-       DO bj=myByLo(myThid), myByHi(myThid)
-        DO bi=myBxLo(myThid), myBxHi(myThid)
-          DO j = 1-Oly,sNy+Oly
-            DO i = 1-Olx,sNy+Olx
-                fld(i,j,bi,bj) = fldTmp(i,j,bi,bj)
-            ENDDO
-          ENDDO
-        ENDDO
-       ENDDO
+      CALL mdswritefield(fnamegenOut,ctrlprec,.FALSE.,'RL',
+     &    1, fld, 1, optimcycle, mythid)
 
 #endif /* ALLOW_GENARR2D_CONTROL */
 
@@ -321,6 +295,7 @@ C     == global variables ==
 
 #include "CTRL_SIZE.h"
 #include "ctrl.h"
+#include "optim.h"
 #include "CTRL_GENARR.h"
 #include "ctrl_dummy.h"
 
@@ -336,56 +311,91 @@ C     !LOCAL VARIABLES:
 C     == local variables ==
       integer bi,bj
       integer i,j,k
-      integer jmin,jmax
-      integer imin,imax
-      integer smoothOpNb,k2
-      _RL fldTmp  (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+      integer numsmo,k2
+      logical dowc01
+      logical dosmooth
+      _RL xx_gen  (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
+      character*(80) fnamegenIn
+      character*(80) fnamegenOut
+      character*(80) fnamebase
+      INTEGER  ILNBLNK
+      EXTERNAL ILNBLNK
+      integer ilgen
+      logical doglobalread
+      logical ladinit
 CEOP
 
-      jmin = 1
-      jmax = sNy
-      imin = 1
-      imax = sNx
+c--   Now, read the control vector.
+      doglobalread = .false.
+      ladinit      = .false.
 
-       DO bj=myByLo(myThid), myByHi(myThid)
+      dosmooth=.false.
+      dowc01  = .false.
+      if (ctrlSmoothCorrel3D) dowc01=.TRUE.
+
+      numsmo=1
+      do k2 = 1, maxCtrlProc
+          if (xx_genarr3d_preproc(k2,iarr).EQ.'WC01') then
+             dowc01=.TRUE.
+             if (xx_genarr3d_preproc_i(k2,iarr).NE.0)
+     &           numsmo=xx_genarr3d_preproc_i(k2,iarr)
+          endif
+          if ((.NOT.dowc01).AND.
+     &        (xx_genarr3d_preproc(k2,iarr).EQ.'smooth')) then
+             dosmooth=.TRUE.
+             if (xx_genarr3d_preproc_i(k2,iarr).NE.0)
+     &           numsmo=xx_genarr3d_preproc_i(k2,iarr)
+          endif
+      enddo
+
+      fnamebase = xx_genarr3d_file(iarr)
+      ilgen=ilnblnk( fnamebase )
+      write(fnamegenIn(1:80),'(2a,i10.10)')
+     &       fnamebase(1:ilgen),'.',optimcycle
+      write(fnamegenOut(1:80),'(2a,i10.10)')
+     &       fnamebase(1:ilgen),'.effective.',optimcycle
+
+      call mdsreadfield(xx_genarr3d_weight(iarr),ctrlprec,'RL',nR,
+     &     wgenarr3d(1-Olx,1-Oly,1,1,1,iarr),1,mythid)
+
+      call active_read_xyz( fnamegenIn, xx_gen, 1, doglobalread,
+     & ladinit, optimcycle, mythid, xx_genarr3d_dummy(iarr) )
+
+#ifdef ALLOW_SMOOTH
+      IF (useSMOOTH) THEN
+       IF (dowc01) call smooth_correl3D(xx_gen,numsmo,mythid)
+       IF (dosmooth) call smooth3d(xx_gen,numsmo,mythid)
+      ENDIF
+#endif
+
+      DO bj=myByLo(myThid), myByHi(myThid)
         DO bi=myBxLo(myThid), myBxHi(myThid)
-          DO j = jmin,jmax
-            DO i = imin,imax
-              DO k = 1,nr
-                fldTmp(i,j,k,bi,bj) = fld(i,j,k,bi,bj)
-              ENDDO
-            ENDDO
-          ENDDO
-        ENDDO
-       ENDDO
+          do k = 1,nr
+            DO j = 1,sNy
+              DO i = 1,sNx
+c scale param adjustment
+                if ( (maskC(i,j,k,bi,bj).NE.0.).AND.
+     &               (wgenarr3d(i,j,k,bi,bj,iarr).GT.0.) ) then
+                  xx_gen(i,j,k,bi,bj)=xx_gen(i,j,k,bi,bj)
+     &                     /sqrt( wgenarr3d(i,j,k,bi,bj,iarr) )
+                else
+                  xx_gen(i,j,k,bi,bj)=0.
+                endif
+c add to model parameter
+                fld(i,j,k,bi,bj)=fld(i,j,k,bi,bj)+xx_gen(i,j,k,bi,bj)
+              enddo
+            enddo
+          enddo
+        enddo
+      enddo
 
-       smoothOpNb=1
-       do k2 = 1, maxCtrlProc
-        if (xx_genarr3d_preproc(k2,iarr).EQ.'smooth') then
-           if (xx_genarr3d_preproc_i(k2,iarr).NE.0)
-     &         smoothOpNb=xx_genarr3d_preproc_i(k2,iarr)
-        endif
-       enddo
+c avoid param out of [boundsVec(1) boundsVec(4)]
+      CALL CTRL_BOUND_3D(fld,maskC,xx_genarr3d_bounds(1,iarr),myThid)
 
-       if ( (xx_genarr3d_weight(iarr).NE.' ').AND.(iarr.GT.0) )
-     &  call ctrl_map_ini_gen3D(xx_genarr3d_file(iarr),
-     &       xx_genarr3d_weight(iarr), xx_genarr3d_dummy(iarr),
-     &       xx_genarr3d_bounds(1,iarr), fldTmp, maskc,
-     &       smoothOpNb, mythid )
+      CALL EXCH_XYZ_RL( fld, mythid )
 
-       _EXCH_XYZ_RL( fldTmp, mythid)
-
-       DO bj=myByLo(myThid), myByHi(myThid)
-        DO bi=myBxLo(myThid), myBxHi(myThid)
-          DO j = 1-Oly,sNy+Oly
-            DO i = 1-Olx,sNy+Olx
-              DO k = 1,nr
-                fld(i,j,k,bi,bj) = fldTmp(i,j,k,bi,bj)
-              ENDDO
-            ENDDO
-          ENDDO
-        ENDDO
-       ENDDO
+      CALL mdswritefield(fnamegenOut,ctrlprec,.FALSE.,'RL',
+     &    nr, fld, 1, optimcycle, mythid)
 
 #endif /* ALLOW_GENARR3D_CONTROL */
 

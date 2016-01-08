@@ -248,7 +248,8 @@ c tpfi, tpsta, tpper
        tpfi=gencost_datafile(igen_tp)(1:ilps)
        call cal_CopyDate(gencost_startdate(1,igen_tp),tpsta,mythid)
        tpper=gencost_period(igen_tp)
-       if (gencost_barfile(igen_tp).EQ.'etaday') igen_etaday=igen_tp
+       if (gencost_barfile(igen_tp)(1:5).EQ.'m_eta') 
+     &    igen_etaday=igen_tp
       endif
 c ersfi, erssta, ersper
       if (igen_ers.GT.0) then
@@ -256,7 +257,8 @@ c ersfi, erssta, ersper
        ersfi=gencost_datafile(igen_ers)(1:ilps)
        call cal_CopyDate(gencost_startdate(1,igen_ers),erssta,mythid)
        ersper=gencost_period(igen_ers)
-       if (gencost_barfile(igen_ers).EQ.'etaday') igen_etaday=igen_ers
+       if (gencost_barfile(igen_ers)(1:5).EQ.'m_eta') 
+     &    igen_etaday=igen_ers
       endif
 c gfofi, gfosta, gfoper
       if (igen_gfo.GT.0) then
@@ -264,7 +266,8 @@ c gfofi, gfosta, gfoper
        gfofi=gencost_datafile(igen_gfo)(1:ilps)
        call cal_CopyDate(gencost_startdate(1,igen_gfo),gfosta,mythid)
        gfoper=gencost_period(igen_gfo)
-       if (gencost_barfile(igen_gfo).EQ.'etaday') igen_etaday=igen_gfo
+       if (gencost_barfile(igen_gfo)(1:5).EQ.'m_eta') 
+     &    igen_etaday=igen_gfo
       endif
 
 c mdt_y0, mdt_y1
@@ -499,9 +502,14 @@ cgf =======================================================
 
       do irec = 1, ndaysrec
 
+#ifdef ALLOW_AUTODIFF
         call active_read_xy( fname, etaday, irec, doglobalread,
      &                       ladinit, eccoiter, mythid,
      &                       gencost_dummy(igen_etaday) )
+#else
+        CALL READ_REC_XY_RL( fname, etaday, iRec, 1, myThid )
+#endif
+
 
         if (.NOT.useEtaMean) 
      &  CALL REMOVE_MEAN_RL( 1, etaday, maskInC, maskInC, rA, drF,
@@ -858,9 +866,13 @@ c ------------------------------------------------------
 
         krec=irec+jrec-1
 
+#ifdef ALLOW_AUTODIFF
         call active_read_xy( fname, etaday, krec, doglobalread,
      &                       ladinit, eccoiter, mythid,
      &                       gencost_dummy(igen_etaday) )
+#else
+        CALL READ_REC_XY_RL( fname, etaday, kRec, 1, myThid )
+#endif
 
         if (.NOT.useEtaMean)
      &  CALL REMOVE_MEAN_RL( 1, etaday, maskInC, maskInC, rA, drF,
@@ -1137,9 +1149,13 @@ cgf =======================================================
 c time associated with this ndaysrec mean
         krec = irec + (ndaysave/2)
 
+#ifdef ALLOW_AUTODIFF
         call active_read_xy( fname, etaday, krec, doglobalread,
      &                       ladinit, eccoiter, mythid,
      &                       gencost_dummy(igen_etaday) )
+#else
+        CALL READ_REC_XY_RL( fname, etaday, kRec, 1, myThid )
+#endif
 
         if (.NOT.useEtaMean)
      &  CALL REMOVE_MEAN_RL( 1, etaday, maskInC, maskInC, rA, drF,

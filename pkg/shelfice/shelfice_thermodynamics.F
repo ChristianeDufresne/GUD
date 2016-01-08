@@ -24,6 +24,7 @@ C     |
 C     | stresses at the ice/water interface are computed in separate
 C     | routines that are called from mom_fluxform/mom_vecinv
 C     *=============================================================*
+C     \ev
 
 C     !USES:
       IMPLICIT NONE
@@ -57,7 +58,6 @@ C     myThid :: thread number for this instance of the routine.
       _RL  myTime
       INTEGER myIter
       INTEGER myThid
-CEOP
 
 #ifdef ALLOW_SHELFICE
 C     !LOCAL VARIABLES :
@@ -72,10 +72,11 @@ C                         (negative density x melt rate)
 C     convertFW2SaltLoc:: local copy of convertFW2Salt
 C     cFac             :: 1 for conservative form, 0, otherwise
 C     rFac             :: realFreshWaterFlux factor
-C     dFac             :: 0 for diffusive heat flux (Holland and Jenkins, 1999, eq21)
+C     dFac             :: 0 for diffusive heat flux (Holland and Jenkins, 1999,
+C                           eq21)
 C                         1 for advective and diffusive heat flux (eq22, 26, 31)
-C     fwflxFac         :: only effective for dFac=1, 1 if we expect a melting fresh
-C                         water flux, 0 otherwise
+C     fwflxFac         :: only effective for dFac=1, 1 if we expect a melting
+C                         fresh water flux, 0 otherwise
 C     auxiliary variables and abbreviations:
 C     a0, a1, a2, b, c0
 C     eps1, eps2, eps3, eps3a, eps4, eps5, eps6, eps7, eps8
@@ -95,6 +96,7 @@ C     drKp1, recip_drLoc
       _RL cFac, rFac, dFac, fwflxFac
       _RL aqe, bqe, cqe, discrim, recip_aqe
       _RL drKp1, recip_drLoc
+      _RL recip_latentHeat
       _RL tmpFac
 
 #ifdef SHI_ALLOW_GAMMAFRICT
@@ -102,6 +104,9 @@ C     drKp1, recip_drLoc
       _RL gammaTmoleT, gammaTmoleS, gammaTurb, gammaTurbConst
       _RL ustar, ustarSq, etastar
       PARAMETER ( shiTwoThirds = 0.66666666666666666666666666667D0 )
+#ifdef ALLOW_DIAGNOSTICS
+      _RL uStarDiag(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+#endif /* ALLOW_DIAGNOSTICS */
 #endif
 
 #ifndef ALLOW_OPENAD
@@ -112,6 +117,7 @@ C     drKp1, recip_drLoc
 #ifdef ALLOW_SHIFWFLX_CONTROL
       _RL xx_shifwflx_loc(1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
 #endif
+CEOP
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 #ifdef SHI_ALLOW_GAMMAFRICT
@@ -158,6 +164,9 @@ C     instead of etastar = sqrt(1+zetaN*ustar./(f*Lo*Rc))
       ENDIF
 #endif /* SHI_ALLOW_GAMMAFRICT */
 
+      recip_latentHeat = 0. _d 0
+      IF ( SHELFICElatentHeat .NE. 0. _d 0 )
+     &     recip_latentHeat = 1. _d 0/SHELFICElatentHeat
 C     are we doing the conservative form of Jenkins et al. (2001)?
       recip_Cp = 1. _d 0 / HeatCapacity_Cp
       cFac = 0. _d 0
@@ -200,6 +209,9 @@ C     where this value is part of the protocol
           shelfIceFreshWaterFlux(I,J,bi,bj) = 0. _d 0
           shelficeForcingT      (I,J,bi,bj) = 0. _d 0
           shelficeForcingS      (I,J,bi,bj) = 0. _d 0
+#if (defined SHI_ALLOW_GAMMAFRICT && defined ALLOW_DIAGNOSTICS)
+          uStarDiag             (I,J,bi,bj) = 0. _d 0
+#endif /* SHI_ALLOW_GAMMAFRICT and ALLOW_DIAGNOSTICS */
          ENDDO
         ENDDO
        ENDDO
@@ -268,6 +280,7 @@ C--   overlap into lower cell
             drKp1 = drF(K)*( 1. _d 0 - _hFacC(I,J,K,bi,bj) )
 C--   lower cell may not be as thick as required
             drKp1 = MIN( drKp1, drF(Kp1) * _hFacC(I,J,Kp1,bi,bj) )
+            drKp1 = MAX( drKp1, 0. _d 0 )
             recip_drLoc = 1. _d 0 /
      &           ( drF(K)*_hFacC(I,J,K,bi,bj) + drKp1 )
             tLoc(I,J) = ( tLoc(I,J) * drF(K)*_hFacC(I,J,K,bi,bj)
@@ -312,6 +325,9 @@ C--   to the surface
             ustarSq = shiCdrag * MAX( 1.D-6,
      &           0.25 _d 0 *(uLoc(I,J)*uLoc(I,J)+vLoc(I,J)*vLoc(I,J)) )
             ustar   = SQRT(ustarSq)
+#ifdef ALLOW_DIAGNOSTICS
+            uStarDiag(I,J,bi,bj) = ustar
+#endif /* ALLOW_DIAGNOSTICS */
 C     instead of etastar = sqrt(1+zetaN*ustar./(f*Lo*Rc))
 C           etastar = 1. _d 0
 C           gammaTurbConst  = 1. _d 0 / (2. _d 0 * shiZetaN*etastar)
@@ -368,7 +384,7 @@ C     thus a downward (negative upward) fresh water flux (as a mass flux),
 C     and vice versa
             shelfIceFreshWaterFlux(I,J,bi,bj) =
      &           - shelfIceHeatFlux(I,J,bi,bj)
-     &           *recip_SHELFICElatentHeat
+     &           *recip_latentHeat
 C--   compute surface tendencies
             shelficeForcingT(i,j,bi,bj) =
      &           - shelfIceHeatFlux(I,J,bi,bj)
@@ -520,6 +536,10 @@ C     endif (not) useISOMIPTD
        ENDDO
       ENDDO
 
+      IF (SHELFICEMassStepping) THEN
+       CALL SHELFICE_STEP_ICEMASS( myTime, myIter, myThid )
+      ENDIF
+
 C--  Calculate new loading anomaly (in case the ice-shelf mass was updated)
 #ifndef ALLOW_AUTODIFF
 c     IF ( SHELFICEloadAnomalyFile .EQ. ' ' ) THEN
@@ -555,6 +575,11 @@ C     Transfer coefficients
      &      0,1,0,1,1,myThid)
        CALL DIAGNOSTICS_FILL(shiTransCoeffS,'SHIgammS',
      &      0,1,0,1,1,myThid)
+C     Friction velocity
+#ifdef SHI_ALLOW_GAMMAFRICT
+       IF ( SHELFICEuseGammaFrict )
+     &  CALL DIAGNOSTICS_FILL(uStarDiag,'SHIuStar',0,1,0,1,1,myThid)
+#endif /* SHI_ALLOW_GAMMAFRICT */
       ENDIF
 #endif /* ALLOW_DIAGNOSTICS */
 

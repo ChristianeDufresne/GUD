@@ -192,7 +192,8 @@ C--   Continuous equation parameters
      & eosType, integr_GeoPot, selectFindRoSurf,
      & HeatCapacity_Cp, celsius2K, atm_Cp, atm_Rd, atm_Rq, atm_Po,
      & no_slip_sides, sideDragFactor,
-     & no_slip_bottom, bottomDragLinear, bottomDragQuadratic,
+     & no_slip_bottom, bottomVisc_pCell,
+     & bottomDragLinear, bottomDragQuadratic, selectBotDragQuadr,
      & momViscosity,  momAdvection, momForcing, useCoriolis,
      & useConstantF, useBetaPlaneF, useSphereF, use3dCoriolis,
      & momPressureForcing, metricTerms, vectorInvariantMomentum,
@@ -206,7 +207,7 @@ C--   Continuous equation parameters
      & nonHydrostatic, selectNHfreeSurf, quasiHydrostatic,
      & implicitIntGravWave, staggerTimeStep, doResetHFactors,
      & tempStepping, saltStepping, momStepping,
-     & implicitDiffusion, implicitViscosity,
+     & implicitDiffusion, implicitViscosity, implBottomFriction,
      & tempImplVertAdv, saltImplVertAdv, momImplVertAdv,
      & viscAz, diffKzT, diffKzS, viscAp, diffKpT, diffKpS,
      & viscAr, diffKrT, diffKrS, viscArNr, diffKrNrT, diffKrNrS,
@@ -242,7 +243,7 @@ C--   Elliptic solver parameters
 
 C--   Time stepping parammeters
       NAMELIST /PARM03/
-     & nIter0, nTimeSteps, nEndIter,
+     & nIter0, nTimeSteps, nTimeSteps_l2, nEndIter,
      & baseTime, startTime, endTime,
      & deltaT, deltaTClock, deltaTMom,
      & deltaTtracer, dTtracerLev, deltaTFreeSurf,
@@ -498,6 +499,11 @@ C--   z,p,r coord input switching.
           viscArNr(k) = viscAr
         ENDDO
       ENDIF
+#ifdef ALLOW_MOM_COMMON
+C-    set default scheme for quadratic bottom-drag
+      IF ( selectBotDragQuadr.EQ.-1 .AND. bottomDragQuadratic.NE.0. )
+     &  selectBotDragQuadr = 0
+#endif /* ALLOW_MOM_COMMON */
 
       IF ( diffKzT .NE. UNSET_RL ) zCoordInputData  = .TRUE.
       IF ( diffKpT .NE. UNSET_RL ) pCoordInputData  = .TRUE.
@@ -546,20 +552,25 @@ C--   z,p,r coord input switching.
         CALL PRINT_ERROR( msgBuf, myThid )
         errCount = errCount + 1
       ENDIF
-      specifiedDiffKrS = vertSetCount.EQ.Nr
-      IF ( diffKrS .EQ. UNSET_RL ) THEN
-        diffKrS = diffKrSDefault
-      ELSEIF ( vertSetCount.GT.0 ) THEN
-        WRITE(msgBuf,'(2A)') 'S/R INI_PARMS: Cannot set both ',
-     &     'diffKrNrS and diffKrS (or Kp,Kz) in param file data'
-        CALL PRINT_ERROR( msgBuf, myThid )
-        errCount = errCount + 1
-      ELSE
+      IF ( vertSetCount.EQ.Nr ) THEN
         specifiedDiffKrS = .TRUE.
-      ENDIF
-      IF ( vertSetCount.EQ.0 ) THEN
+        IF ( diffKrS.NE.UNSET_RL ) THEN
+         WRITE(msgBuf,'(2A)') 'S/R INI_PARMS: Cannot set both ',
+     &     'diffKrNrS and diffKrS (or Kp,Kz) in param file data'
+         CALL PRINT_ERROR( msgBuf, myThid )
+         errCount = errCount + 1
+        ENDIF
+      ELSEIF ( diffKrS.NE.UNSET_RL ) THEN
+        specifiedDiffKrS = .TRUE.
         DO k=1,Nr
           diffKrNrS(k) = diffKrS
+        ENDDO
+      ELSE
+        specifiedDiffKrS = .FALSE.
+        diffKrS = diffKrSDefault
+C-    use temp diffusivity as default salt diffusivity:
+        DO k=1,Nr
+          diffKrNrS(k) = diffKrNrT(k)
         ENDDO
       ENDIF
 
@@ -954,6 +965,7 @@ C     o set base time from the 2 others
          baseTime = startTime - deltaTClock*float(nIter0)
       ENDIF
 
+      nTimeSteps_l2 = 4
 C     o nTimeSteps 1
       IF ( nTimeSteps .EQ. 0 .AND. nEndIter .NE. 0 )
      &     nTimeSteps = nEndIter-nIter0

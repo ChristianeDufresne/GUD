@@ -5,6 +5,15 @@ C $Name$
 #ifdef ALLOW_SEAICE
 # include "SEAICE_OPTIONS.h"
 #endif
+#ifdef ALLOW_EXF
+# include "EXF_OPTIONS.h"
+#endif
+#ifdef ALLOW_CTRL
+# include "CTRL_OPTIONS.h"
+#endif
+#ifdef ALLOW_GMREDI
+# include "GMREDI_OPTIONS.h"
+#endif
 
       subroutine cost_gencost_customize( mythid )
 
@@ -32,6 +41,9 @@ c     == global variables ==
 #ifdef ALLOW_EXF
 # include "EXF_FIELDS.h"
 #endif
+#ifdef ALLOW_CTRL
+# include "CTRL_FIELDS.h"
+#endif
 
 c     == routine arguments ==
 
@@ -47,10 +59,11 @@ c     == local variables ==
 #endif
 #ifdef ALLOW_EXF
       _RL uBarC, vBarC
+      _RL zontau        (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
+      _RL mertau        (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
+      _RL zonwind        (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
+      _RL merwind        (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
 #endif
-
-      _RL tauZonC        (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
-      _RL tauMerC        (1-olx:snx+olx,1-oly:sny+oly,nsx,nsy)
       integer itlo,ithi
       integer jtlo,jthi
       integer jmin,jmax
@@ -78,18 +91,22 @@ c rotated to EW/NS tracer point
      &           *(ustress(i,j,bi,bj)+ustress(i+1,j,bi,bj))
                 vBarC = 0.5 _d 0
      &           *(vstress(i,j,bi,bj)+vstress(i,j+1,bi,bj))
-                tauZonC(i,j,bi,bj) = angleCosC(i,j,bi,bj)*uBarC
+                zontau(i,j,bi,bj) = angleCosC(i,j,bi,bj)*uBarC
      &                           -angleSinC(i,j,bi,bj)*vBarC
-                tauMerC(i,j,bi,bj) = angleSinC(i,j,bi,bj)*uBarC
+                mertau(i,j,bi,bj) = angleSinC(i,j,bi,bj)*uBarC
      &                           +angleCosC(i,j,bi,bj)*vBarC
               enddo
             enddo
           enddo
         enddo
 
+c the following should be identical to the above
+c     CALL ROTATE_UV2EN_RL(ustress,vstress,zontau,mertau,
+c    &     .TRUE.,.TRUE.,.TRUE.,1,myThid)
+
+      CALL ROTATE_UV2EN_RL(uwind,vwind,zonwind,merwind,
+     &     .TRUE.,.FALSE.,.TRUE.,1,myThid)
 #endif
-
-
 
       do k=1,NGENCOST
       do bj = jtlo,jthi
@@ -97,48 +114,117 @@ c rotated to EW/NS tracer point
         do j = jmin,jmax
          do i =  imin,imax
 
-         if (gencost_barfile(k)(1:3).EQ.'eta') then
+         if (gencost_barfile(k)(1:5).EQ.'m_eta') then
            gencost_modfld(i,j,bi,bj,k) = 
      &      etanFull(i,j,bi,bj)*maskC(i,j,1,bi,bj)
-         elseif (gencost_barfile(k)(1:3).EQ.'sst') then
+         elseif (gencost_barfile(k)(1:5).EQ.'m_sst') then
            gencost_modfld(i,j,bi,bj,k) = 
      &      THETA(i,j,1,bi,bj)*maskC(i,j,1,bi,bj)
-         elseif (gencost_barfile(k)(1:3).EQ.'sss') then
+         elseif (gencost_barfile(k)(1:5).EQ.'m_sss') then
            gencost_modfld(i,j,bi,bj,k) = 
      &      SALT(i,j,1,bi,bj)*maskC(i,j,1,bi,bj)
-         elseif (gencost_barfile(k)(1:2).EQ.'bp') then
+         elseif (gencost_barfile(k)(1:4).EQ.'m_bp') then
            gencost_modfld(i,j,bi,bj,k) = 
      &      phiHydLow(i,j,bi,bj)*maskC(i,j,1,bi,bj)
-         elseif (gencost_barfile(k)(1:6).EQ.'tauZon') then
+#ifdef ALLOW_GEOTHERMAL_FLUX
+         elseif (gencost_barfile(k)(1:16).EQ.'m_geothermalflux') then
+           gencost_modfld(i,j,bi,bj,k) =
+     &      geothermalFlux(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+#endif
+#ifdef ALLOW_EXF
+         elseif (gencost_barfile(k)(1:9).EQ.'m_ustress') then
            gencost_modfld(i,j,bi,bj,k) = 
-     &      tauZonC(i,j,bi,bj)*maskC(i,j,1,bi,bj)
-         elseif (gencost_barfile(k)(1:6).EQ.'tauMer') then
+     &      zontau(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+         elseif (gencost_barfile(k)(1:9).EQ.'m_vstress') then
            gencost_modfld(i,j,bi,bj,k) = 
-     &      tauMerC(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+     &      mertau(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+         elseif (gencost_barfile(k)(1:9).EQ.'m_uwind') then
+           gencost_modfld(i,j,bi,bj,k) =
+     &      zonwind(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+         elseif (gencost_barfile(k)(1:9).EQ.'m_vwind') then
+           gencost_modfld(i,j,bi,bj,k) =
+     &      merwind(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+         elseif (gencost_barfile(k)(1:7).EQ.'m_atemp') then
+           gencost_modfld(i,j,bi,bj,k) =
+     &      atemp(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+         elseif (gencost_barfile(k)(1:5).EQ.'m_aqh') then
+           gencost_modfld(i,j,bi,bj,k) =
+     &      aqh(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+         elseif (gencost_barfile(k)(1:8).EQ.'m_precip') then
+           gencost_modfld(i,j,bi,bj,k) =
+     &      precip(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+         elseif (gencost_barfile(k)(1:8).EQ.'m_swdown') then
+           gencost_modfld(i,j,bi,bj,k) =
+     &      swdown(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+         elseif (gencost_barfile(k)(1:8).EQ.'m_lwdown') then
+           gencost_modfld(i,j,bi,bj,k) =
+     &      lwdown(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+         elseif (gencost_barfile(k)(1:8).EQ.'m_wspeed') then
+           gencost_modfld(i,j,bi,bj,k) =
+     &      wspeed(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+#endif
+#ifdef ALLOW_CTRL
+#ifdef ALLOW_BOTTOMDRAG_CONTROL
+         elseif (gencost_barfile(k)(1:15).EQ.'m_bottomdrag') then
+           gencost_modfld(i,j,bi,bj,k) =
+     &      bottomDragFld(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+#endif
+#endif
 #ifdef ALLOW_SEAICE
-         elseif (gencost_name(k).EQ.'siv4-conc') then
+         elseif ( (gencost_name(k).EQ.'siv4-conc').OR.
+     &            (gencost_barfile(k)(1:8).EQ.'m_siarea') ) then
            gencost_modfld(i,j,bi,bj,k) = 
      &      area(i,j,bi,bj)*maskC(i,j,1,bi,bj) 
          elseif (gencost_name(k).EQ.'siv4-deconc') then
            gencost_modfld(i,j,bi,bj,k) = 
      &      theta(i,j,1,bi,bj)*maskC(i,j,1,bi,bj)
-         elseif (gencost_name(k).EQ.'siv4-exconc') then  
+         elseif ( (gencost_name(k).EQ.'siv4-exconc').OR.
+     &            (gencost_barfile(k)(1:8).EQ.'m_siheff') ) then  
            gencost_modfld(i,j,bi,bj,k) = 
      &      heff(i,j,bi,bj)*maskC(i,j,1,bi,bj)
+         elseif (gencost_barfile(k)(1:9).EQ.'m_sihsnow') then
+           gencost_modfld(i,j,bi,bj,k) =
+     &      hsnow(i,j,bi,bj)*maskC(i,j,1,bi,bj)
 #endif
 #ifdef ALLOW_GENCOST3D
-         elseif (gencost_barfile(k)(1:5).EQ.'theta') then
+         elseif (gencost_barfile(k)(1:7).EQ.'m_theta') then
            kk=gencost_pointer3d(k)
            do k2=1,nr
             gencost_mod3d(i,j,k2,bi,bj,kk) =
      &       theta(i,j,k2,bi,bj)*maskC(i,j,k2,bi,bj)
            enddo
-         elseif (gencost_barfile(k)(1:4).EQ.'salt') then
+         elseif (gencost_barfile(k)(1:6).EQ.'m_salt') then
            kk=gencost_pointer3d(k)
            do k2=1,nr
             gencost_mod3d(i,j,k2,bi,bj,kk) =
      &       salt(i,j,k2,bi,bj)*maskC(i,j,k2,bi,bj)
            enddo
+#if (defined (ALLOW_3D_DIFFKR) || defined (ALLOW_DIFFKR_CONTROL))
+         elseif (gencost_barfile(k)(1:8).EQ.'m_diffkr') then
+           kk=gencost_pointer3d(k)
+           do k2=1,nr
+            gencost_mod3d(i,j,k2,bi,bj,kk) =
+     &       diffkr(i,j,k2,bi,bj)*maskC(i,j,k2,bi,bj)
+           enddo
+#endif
+#ifdef ALLOW_CTRL
+#ifdef ALLOW_KAPGM_CONTROL
+         elseif (gencost_barfile(k)(1:7).EQ.'m_kapgm') then
+           kk=gencost_pointer3d(k)
+           do k2=1,nr
+            gencost_mod3d(i,j,k2,bi,bj,kk) =
+     &       kapgm(i,j,k2,bi,bj)*maskC(i,j,k2,bi,bj)
+           enddo
+#endif
+#ifdef ALLOW_KAPREDI_CONTROL
+         elseif (gencost_barfile(k)(1:9).EQ.'m_kapredi') then
+           kk=gencost_pointer3d(k)
+           do k2=1,nr
+            gencost_mod3d(i,j,k2,bi,bj,kk) =
+     &       kapredi(i,j,k2,bi,bj)*maskC(i,j,k2,bi,bj)
+           enddo
+#endif
+#endif
 #endif
          endif
 

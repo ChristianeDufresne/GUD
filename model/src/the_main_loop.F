@@ -265,10 +265,10 @@ CADJ STORE recip_hFacC = tapelev_init, key = 1
 
 #ifdef ALLOW_OPENAD
 # ifdef ALLOW_THETA0_CONTROL
-c$openad INDEPENDENT(xx_theta)
+c$openad INDEPENDENT(xx_theta_dummy)
 # endif
 # ifdef ALLOW_SALT0_CONTROL
-c$openad INDEPENDENT(xx_salt)
+c$openad INDEPENDENT(xx_salt_dummy)
 # endif
 # ifdef ALLOW_HFLUX0_CONTROL
 c$openad INDEPENDENT(xx_hflux0)
@@ -283,7 +283,7 @@ c$openad INDEPENDENT(xx_tauu0)
 c$openad INDEPENDENT(xx_tauv0)
 # endif
 # ifdef ALLOW_DIFFKR_CONTROL
-c$openad INDEPENDENT(xx_diffkr)
+c$openad INDEPENDENT(xx_diffkr_dummy)
 # endif
 # ifdef ALLOW_KAPGM_CONTROL
 c$openad INDEPENDENT(xx_kapgm)
@@ -295,13 +295,15 @@ c$openad INDEPENDENT(xx_tr1)
 c$openad INDEPENDENT(xx_hfluxm)
 # endif
 # ifdef ALLOW_GENARR2D_CONTROL
-c$openad INDEPENDENT(xx_genarr2d)
+cphc$openad INDEPENDENT(xx_genarr2d)
+c$openad INDEPENDENT(xx_genarr2d_dummy)
 # endif
 # ifdef ALLOW_GENARR3D_CONTROL
-c$openad INDEPENDENT(xx_genarr3d)
+cphc$openad INDEPENDENT(xx_genarr3d)
+c$openad INDEPENDENT(xx_genarr3d_dummy)
 # endif
 # ifdef ALLOW_GENTIM2D_CONTROL
-c$openad INDEPENDENT(xx_gentim2d)
+cphc$openad INDEPENDENT(xx_gentim2d)
 c$openad INDEPENDENT(xx_gentim2d_dummy)
 # endif
 #endif /* ALLOW_OPENAD */
@@ -409,6 +411,10 @@ c--
 CADJ INIT comlev1        = COMMON,nchklev_1
 CADJ INIT comlev1_bibj   = COMMON,nchklev_1*nsx*nsy*nthreads_chkpt
 CADJ INIT comlev1_bibj_k = COMMON,nchklev_1*nsx*nsy*nr*nthreads_chkpt
+c--
+#ifdef ALLOW_CTRL
+CADJ INIT ctrltape       = COMMON,1
+#endif
 c--
 #   ifdef ALLOW_KPP
 CADJ INIT comlev1_kpp    = COMMON,nchklev_1*nsx*nsy
@@ -638,6 +644,8 @@ c--   Accumulate in-situ time averages of temperature, salinity, SSH.
         CALL TIMER_START('PROFILES_INLOOP    [THE_MAIN_LOOP]', myThid)
         CALL PROFILES_INLOOP( endtime, myThid )
         CALL TIMER_STOP ('PROFILES_INLOOP    [THE_MAIN_LOOP]', myThid)
+c--   Compute all profiles cost function contributions.
+        CALL cost_profiles( myiter, mytime, mythid)
       ENDIF
 #endif
 

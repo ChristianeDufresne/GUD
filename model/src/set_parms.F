@@ -120,6 +120,8 @@ C-    On/Off flags for viscosity coefficients
       useHarmonicVisc   = momViscosity .AND. useHarmonicVisc
       useBiharmonicVisc = momViscosity .AND. useBiharmonicVisc
 #endif /* ALLOW_MOM_COMMON */
+      IF ( bottomDragQuadratic.EQ.0. .OR. .NOT.momViscosity )
+     &  selectBotDragQuadr = -1
 
 C--   Free-surface & pressure method
       uniformFreeSurfLev = usingZCoords
@@ -208,10 +210,10 @@ C--   Advection and Forcing for Temp and salt  on/off flags
       saltForcing   = saltStepping .AND. saltForcing
       tempImplVertAdv = tempAdvection .AND. tempImplVertAdv
       saltImplVertAdv = saltAdvection .AND. saltImplVertAdv
-      doThetaClimRelax = tempForcing .AND.
-     &                 ( tauThetaClimRelax.GT.0. _d 0 )
-      doSaltClimRelax  = saltForcing .AND.
-     &                 ( tauSaltClimRelax .GT.0. _d 0 )
+      doThetaClimRelax = ( tempForcing .OR.( useOffLine.AND.useKPP ) )
+     &             .AND. ( tauThetaClimRelax.GT.0. _d 0 )
+      doSaltClimRelax  = ( saltForcing .OR.( useOffLine.AND.useKPP ) )
+     &             .AND. ( tauSaltClimRelax .GT.0. _d 0 )
 
 C--   Dynamically Active Tracers : set flags
       tempIsActiveTr = momPressureForcing .AND. tempAdvection
@@ -231,6 +233,8 @@ c     useDynP_inEos_Zc = .FALSE.
      &                      eosType .EQ. 'UNESCO' .OR.
      &                      eosType .EQ. 'MDJWF'  .OR.
      &                      eosType .EQ. 'TEOS10'      )  )
+C-    pkg/atm_phys uses main-model geopotential:
+      useDynP_inEos_Zc = useDynP_inEos_Zc .OR. useAtm_Phys
 
 C--   Adjust parameters related to length of the simulation
 

@@ -1,5 +1,8 @@
 C $Header$
 C $Name$
+
+#include "OPENAD_OPTIONS.h"
+
 C ###########################################################
       SUBROUTINE EXCH1_RL(
      U                 array,
@@ -86,6 +89,7 @@ C dummy self dependence (nontrivial so mfef90 doesn't kill it)
       sumPhi=2*phiTile(1,1)
       end subroutine
 C ###########################################################
+#ifndef ALLOW_STREAMICE
       SUBROUTINE CG2D(
      I                cg2d_b,
      U                cg2d_x,
@@ -111,8 +115,53 @@ C ###########################################################
 C dummy self dependence (nontrivial so mfef90 doesn't kill it)
       cg2d_x(1,1,1,1)=2*cg2d_b(1,1,1,1)
       end subroutine
+#endif
 C ###########################################################
-      subroutine oad_active_read_xy(
+#ifdef ALLOW_STREAMICE
+      SUBROUTINE STREAMICE_CG_SOLVE( 
+     U                               cg_Uin,     ! x-velocities
+     U                               cg_Vin,     ! y-velocities
+     I                               cg_Bu,      ! force in x dir
+     I                               cg_Bv,      ! force in y dir
+     I                               A_uu,       ! section of matrix that multiplies u and projects on u
+     I                               A_uv,       ! section of matrix that multiplies v and projects on u
+     I                               A_vu,       ! section of matrix that multiplies u and projects on v
+     I                               A_vv,       ! section of matrix that multiplies v and projects on v
+     I                               tolerance, 
+     O                               iters,
+     I                               maxiter,
+     I                               myThid )
+      IMPLICIT NONE
+
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "PARAMS.h"
+#include "STREAMICE.h"
+#include "STREAMICE_CG.h"
+      INTEGER myThid
+      INTEGER iters
+      INTEGER maxiter
+      _RL tolerance
+      _RL cg_Uin (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL cg_Vin (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL cg_Bu (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL cg_Bv (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL 
+     & A_uu (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy,-1:1,-1:1),
+     & A_vu (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy,-1:1,-1:1),
+     & A_uv (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy,-1:1,-1:1),
+     & A_vv (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy,-1:1,-1:1)
+
+      cg_Uin(1,1,1,1) = A_uu(1,1,1,1,1,1) + A_uv(1,1,1,1,1,1) + 
+     & A_vu(1,1,1,1,1,1) + A_vv(1,1,1,1,1,1) + cg_Bu(1,1,1,1)  
+
+      cg_Vin(1,1,1,1) = A_uu(1,1,1,1,1,1) + A_uv(1,1,1,1,1,1) + 
+     & A_vu(1,1,1,1,1,1) + A_vv(1,1,1,1,1,1) + cg_Bv(1,1,1,1)  
+
+      end subroutine
+#endif /* ALLOW_STREAMICE */
+C ###########################################################
+      subroutine active_read_xyz(
      I                           active_var_file,
      O                           active_var,
      I                           iRec,
@@ -122,12 +171,41 @@ C ###########################################################
      I                           myThid,
      I                           dummy
      &                         )
-!$openad xxx template oad_template.active_read_xy.f90
+! xxx template ad_template.active_read_xyz.f90
         implicit none
 !     == global variables ==
 #include "EEPARAMS.h"
 #include "SIZE.h"
-      CHARACTER*(MAX_LEN_MBUF) active_var_file
+      CHARACTER*(80) active_var_file
+      _RL     active_var(1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
+      INTEGER iRec
+      INTEGER myOptimIter
+      INTEGER myThid
+      LOGICAL doglobalread
+      LOGICAL lAdInit
+      _RL     dummy
+#ifdef ALLOW_OPENAD_ACTIVE_READ_XYZ
+      active_var = dummy + active_var
+      dummy = active_var(1,1,1,1,1) + dummy
+#endif /* ALLOW_OPENAD_ACTIVE_READ_XYZ */
+      end subroutine
+C ###########################################################
+      subroutine active_read_xy(
+     I                           active_var_file,
+     O                           active_var,
+     I                           iRec,
+     I                           doglobalread,
+     I                           lAdInit,
+     I                           myOptimIter,
+     I                           myThid,
+     I                           dummy
+     &                         )
+! xxx template ad_template.active_read_xy.f90
+        implicit none
+!     == global variables ==
+#include "EEPARAMS.h"
+#include "SIZE.h"
+      CHARACTER*(80) active_var_file
       _RL     active_var(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       INTEGER iRec
       INTEGER myOptimIter
@@ -135,6 +213,35 @@ C ###########################################################
       LOGICAL doglobalread
       LOGICAL lAdInit
       _RL     dummy
+#ifdef ALLOW_OPENAD_ACTIVE_READ_XY
       active_var = dummy + active_var
       dummy = active_var(1,1,1,1) + dummy
+#endif /* ALLOW_OPENAD_ACTIVE_READ_XY */
       end subroutine
+C ###########################################################
+      subroutine active_write_xy(
+     I                           active_var_file,
+     I                           active_var,
+     I                           iRec,
+     I                           myOptimIter,
+     I                           myThid,
+     I                           dummy
+     &                         )
+! xxx template ad_template.active_write_xy.f90
+        implicit none
+!     == global variables ==
+#include "EEPARAMS.h"
+#include "SIZE.h"
+      CHARACTER*(80) active_var_file
+      _RL     active_var(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      INTEGER iRec
+      INTEGER myOptimIter
+      INTEGER myThid
+      _RL     dummy
+#ifdef ALLOW_OPENAD_ACTIVE_WRITE
+      active_var = dummy + active_var
+      dummy = active_var(1,1,1,1) + dummy
+#endif /* ALLOW_OPENAD_ACTIVE_WRITE */
+      end subroutine
+C ###########################################################
+

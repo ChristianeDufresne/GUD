@@ -1,4 +1,6 @@
 
+#include "CTRL_OPTIONS.h"
+
 cph #ifdef TARGET_CRAY_VECTOR
 cph #  define NML_OPTIM ECCO_OPTIM
 cph #  define NML_ECCO  ECCO_PARMS
@@ -77,6 +79,10 @@ cdfer#include "ecco.h"
 #include "ctrl.h"
 #include "optim.h"
 #include "minimization.h"
+#ifndef ECCO_CTRL_DEPRECATED
+# include "ctrl_local_params.h"
+# include "CTRL_OBCS.h"
+#endif
 
 c     == routine arguments ==
 
@@ -164,10 +170,8 @@ c     == end of interface ==
      &  xx_shifwflx_remo_intercept, xx_shifwflx_remo_slope, 
      &  xx_shifwflxstartdate1, xx_shifwflxstartdate2, xx_shifwflxperiod,
      &  doInitXX, doPackDiag, doZscaleUnpack, doZscalePack,
-     &  doMainUnpack, doMainPack, doAdmtlmBypassAD, delZexp
-cdfer
-     & ,xx_hfluxm_file
-cdfer
+     &  doMainUnpack, doMainPack, doAdmtlmBypassAD, delZexp,
+     &  xx_hfluxm_file, doSinglePrecTapelev
 
       namelist /CTRL_PACKNAMES/
      &  yadmark, yctrlid, yctrlposunpack, yctrlpospack,

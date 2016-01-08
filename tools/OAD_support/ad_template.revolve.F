@@ -1,4 +1,5 @@
 #include "PACKAGES_CONFIG.h"
+#include "OPENAD_OPTIONS.h"
 
       subroutine template()
       use OAD_cp
@@ -28,11 +29,20 @@ c we may need these for the checkpointing
 #endif
       use GLOBAL_MAX_mod
       use GLOBAL_SUM_mod
+#ifdef ALLOW_GGL90
+      use GGL90_mod
+      use GGL90_TAVE_mod
+#endif
 #ifdef ALLOW_GMREDI
       use GMREDI_mod
       use GMREDI_TAVE_mod
 #endif
       use GRID_mod
+#ifdef ALLOW_KPP
+      use KPP_mod
+      use KPP_PARAMS_mod
+      use KPP_TAVE_mod
+#endif
 #ifdef ALLOW_MOM_COMMON
       use MOM_VISC_mod
 #endif
@@ -112,9 +122,17 @@ c we may need these for the checkpointing
      +'OAD:',indentation(1:our_indent), 
      +' __SRNAME__: run plain, down plain'
 #endif
+#ifdef ALLOW_OPENAD_DIVA
+      DO iloop1 = 1, nTimeSteps
+        PROD = (ILOOP1 + NTIMESTEPS_L2 *(ILOOP +(-1)))
+        print *, 'DIVA Revolve Plain PROD = ', PROD
+        CALL OpenAD_forward_step( PROD, mytime, myiter, mythid )
+      enddo
+#else 
       DO iloop = 1, nTimeSteps
         CALL OpenAD_forward_step( iloop, mytime, myiter, mythid )
       enddo
+#endif
       end if
       if (our_rev_mode%tape) then
 #ifdef OAD_DEBUG_JOINT
@@ -137,13 +155,27 @@ c we may need these for the checkpointing
              case (rvForward)
                 call OAD_revPlain
                 do currIter=currIter,theAction%iteration-1
-                   CALL OpenAD_forward_step( currIter+1, mytime, 
+#ifdef ALLOW_OPENAD_DIVA 
+                   PROD = (currIter+1 + NTIMESTEPS_L2 *(ILOOP +(-1)))
+                   print *, 'DIVA Revolve Tape rvForward PROD = ', PROD
+                   CALL OpenAD_forward_step( PROD, mytime, 
      +myiter, mythid )
+#else
+                   CALL OpenAD_forward_step( currIter+1, mytime,
+     +myiter, mythid ) 
+#endif
                 end do
                 call OAD_revTape
              case (rvFirstUTurn)
-                CALL OpenAD_forward_step( currIter+1, mytime, myiter, 
+#ifdef ALLOW_OPENAD_DIVA 
+                PROD = (currIter+1 + NTIMESTEPS_L2 *(ILOOP +(-1)))
+                print *, 'DIVA Revolve Tape rvFirstUTurn PROD = ', PROD
+                CALL OpenAD_forward_step( PROD, mytime, myiter, 
      +mythid )
+#else
+                CALL OpenAD_forward_step( currIter+1, mytime, myiter,
+     +mythid )
+#endif
 ! get out now ...
                 exit                
              end select   
@@ -155,8 +187,15 @@ c we may need these for the checkpointing
            select case (theAction%actionFlag) 
              case (rvFirstUTurn)
 !we taped already ... see above
+#ifdef ALLOW_OPENAD_DIVA 
+                PROD = (currIter+1 + NTIMESTEPS_L2 *(ILOOP +(-1))) 
+                print *, 'DIVA Revolve Adjoint rvFirstUTurn PROD = ', PROD
+                CALL OpenAD_forward_step( PROD, mytime, myiter, 
+     +mythid )
+#else
                 CALL OpenAD_forward_step( currIter+1, mytime, myiter, 
      +mythid )
+#endif
              case (rvStore)
                 call cp_write_open(theAction%cpNum+jointCPCount)
 !$PLACEHOLDER_PRAGMA$ id=8
@@ -169,17 +208,39 @@ c we may need these for the checkpointing
              case (rvForward)
                 call OAD_revPlain
                 do currIter=currIter,theAction%iteration-1
+#ifdef ALLOW_OPENAD_DIVA
+                   PROD = (currIter+1 + NTIMESTEPS_L2 *(ILOOP +(-1)))
+                   print *, 'DIVA Revolve Adjoint rvForward PROD = ', PROD 
+                   CALL OpenAD_forward_step( PROD, mytime, myiter,
+     + mythid )
+#else
                    CALL OpenAD_forward_step( currIter+1, mytime, myiter,
      + mythid )
+#endif
                 end do
                 call OAD_revAdjoint
              case (rvUTurn)
+#ifdef ALLOW_OPENAD_DIVA
+                PROD = (currIter+1 + NTIMESTEPS_L2 *(ILOOP +(-1))) 
+#endif
                 call OAD_revTape
-                CALL OpenAD_forward_step( currIter+1, mytime, myiter, 
+#ifdef ALLOW_OPENAD_DIVA
+                print *, 'DIVA Revolve Adjoint rvUTurn tp PROD = ', PROD 
+                CALL OpenAD_forward_step( PROD, mytime, myiter, 
      +mythid )
+#else
+                CALL OpenAD_forward_step( currIter+1, mytime, myiter,
+     +mythid )
+#endif
                 call OAD_revAdjoint
-                CALL OpenAD_forward_step( currIter+1, mytime, myiter, 
+#ifdef ALLOW_OPENAD_DIVA
+                print *, 'DIVA Revolve Adjoint rvUTurn ad PROD = ', PROD 
+                CALL OpenAD_forward_step( PROD, mytime, myiter, 
      +mythid )
+#else
+                CALL OpenAD_forward_step( currIter+1, mytime, myiter,
+     +mythid )
+#endif
            end select   
            theAction=rvNextAction()
         end do

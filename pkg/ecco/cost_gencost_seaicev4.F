@@ -30,6 +30,7 @@ c     == global variables ==
 # include "ecco.h"
 #endif
 #ifdef ALLOW_SEAICE
+# include "SEAICE_SIZE.h"
 # include "SEAICE_COST.h"
 # include "SEAICE_PARAMS.h"
 #endif
@@ -42,8 +43,8 @@ c     == routine arguments ==
 
 c     == local variables ==
 
-      integer nnzobs
-      parameter (nnzobs = 1 )
+      integer nnzsiv4
+      parameter (nnzsiv4 = 1 )
       integer nrecloc
       integer localstartdate(4)
 
@@ -90,16 +91,16 @@ c old:sst  -> model has deficiency in iceconc -> new:deconc
       _RL junk
 
       _RL localmask  (1-olx:snx+olx,1-oly:sny+oly,nr,nsx,nsy)
-      _RL localobs   (1-olx:snx+olx,1-oly:sny+oly,nnzobs,nsx,nsy)
-      _RL cmask (1-olx:snx+olx,1-oly:sny+oly,nnzobs)
+      _RL localobs   (1-olx:snx+olx,1-oly:sny+oly,nnzsiv4,nsx,nsy)
+      _RL cmask (1-olx:snx+olx,1-oly:sny+oly,nnzsiv4)
 
       character*(128) fname0, fname1, fname2, fname3
 
 #ifdef ALLOW_GENCOST_TIMEVARY_WEIGHT
       character*(MAX_LEN_FNAM) localobswfile
       character*(128) fname0w
-      _RL localobsweight (1-olx:snx+olx,1-oly:sny+oly,nnzobs,nsx,nsy)
-      _RL tmpobsweight (1-olx:snx+olx,1-oly:sny+oly,nnzobs,nsx,nsy)
+      _RL localobsweight (1-olx:snx+olx,1-oly:sny+oly,nnzsiv4,nsx,nsy)
+      _RL tmpobsweight (1-olx:snx+olx,1-oly:sny+oly,nnzsiv4,nsx,nsy)
 #endif /* ALLOW_GENCOST_TIMEVARY_WEIGHT */
 
       _RL daytime
@@ -169,7 +170,7 @@ c--   Initialise local variables.
 
       do bj = jtlo,jthi
         do bi = itlo,ithi
-          do k = 1,nnzobs
+          do k = 1,nnzsiv4
             do j = jmin,jmax
               do i = imin,imax
                 localobs(i,j,k,bi,bj) = 0. _d 0
@@ -242,6 +243,7 @@ c--   First, read tiled data.
 c--   Loop over records for the second time.
       do irec = 1, nrecloc
 
+#ifdef ALLOW_AUTODIFF
            call active_read_xy( fname1, areabbbar, irec, doglobalread,
      &                      ladinit, eccoiter, mythid,
      &                      xx_areabbbar_mean_dummy )
@@ -253,6 +255,16 @@ c--   Loop over records for the second time.
            call active_read_xy( fname3, deconcbbbar, irec,doglobalread,
      &                      ladinit, eccoiter, mythid,
      &                      xx_deconcbbbar_mean_dummy )
+#else
+           CALL READ_REC_XY_RL( fname1, areabbbar,
+     &                          iRec, 1, myThid )
+
+           CALL READ_REC_XY_RL( fname2, exconcbbbar,
+     &                          iRec, 1, myThid )
+
+           CALL READ_REC_XY_RL( fname3, deconcbbbar,
+     &                          iRec, 1, myThid )
+#endif
 
         if ( localperiod .EQ. 86400. ) then
 c-- assume daily fields
@@ -299,12 +311,12 @@ c to use the data in a repreated cycle, comment next line?
         endif
 
         if ( localrec .GT. 0 ) then
-          call mdsreadfield( fname0, cost_iprec, cost_yftype, nnzobs,
+          call mdsreadfield( fname0, cost_iprec, cost_yftype, nnzsiv4,
      &         localobs, localrec, mythid )
         else
           do bj = jtlo,jthi
             do bi = itlo,ithi
-              do k = 1,nnzobs
+              do k = 1,nnzsiv4
                 do j = jmin,jmax
                   do i = imin,imax
                      localobs(i,j,k,bi,bj) = spval
@@ -332,14 +344,14 @@ c to use the data in a repreated cycle, comment next line?
           endif
 
           if ( localrec .GT. 0 ) then
-          call mdsreadfield( fname0w, cost_iprec, cost_yftype, nnzobs,
+          call mdsreadfield( fname0w, cost_iprec, cost_yftype, nnzsiv4,
      &         tmpobsweight, localrec, mythid )
           else
           WRITE(standardMessageUnit,'(A)')
      &     'siv4cost WARNING: ALL WEIGHTS ZEROS! NO CONTRIBUTION'
           do bj = jtlo,jthi
             do bi = itlo,ithi
-              do k = 1,nnzobs
+              do k = 1,nnzsiv4
                 do j = jmin,jmax
                   do i = imin,imax
                      tmpobsweight(i,j,k,bi,bj) = 0. _d 0
@@ -357,7 +369,7 @@ catn---------------------------------------------
           do bi = itlo,ithi
 
 c--           Determine the mask on weights
-            do k = 1,nnzobs
+            do k = 1,nnzsiv4
              do j = jmin,jmax
               do i = imin,imax
                cmask(i,j,k) = localmask(i,j,k,bi,bj)
@@ -393,7 +405,7 @@ catn----------------------------------------------
              enddo
             enddo
 c--
-            do k = 1,nnzobs
+            do k = 1,nnzsiv4
              do j = jmin,jmax
               do i = imin,imax
 

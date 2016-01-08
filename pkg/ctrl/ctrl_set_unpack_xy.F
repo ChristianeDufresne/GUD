@@ -73,6 +73,8 @@ c     == local variables ==
       real*4 globfldtmp2( snx,nsx,npx,sny,nsy,npy )
       real*4 globfldtmp3( snx,nsx,npx,sny,nsy,npy )
 
+      LOGICAL doPackOld
+
 c     == external ==
 
       integer  ilnblnk
@@ -90,6 +92,7 @@ c     == end of interface ==
       imax = snx
 
       nbuffGlobal = nbuffGlobal + 1
+      doPackOld = (.NOT.ctrlSmoothCorrel2D).AND.(.NOT.ctrlUseGen)
 
 c     Initialise temporary file
       do k = 1,nr
@@ -228,7 +231,7 @@ cph(
      &                 phtmpadmtlm(nveccount)
 cph)
 #endif
-                     IF ( .NOT.ctrlSmoothCorrel2D ) THEN
+                     IF ( doPackOld ) THEN
                       if ( lxxadxx ) then
                         globfld3d(i,bi,ip,j,bj,jp,k) =
      &                       globfld3d(i,bi,ip,j,bj,jp,k)
@@ -244,7 +247,7 @@ cph)
 #endif
      &                       / precondScalar
                       endif
-                     ELSE !IF ( .NOT.ctrlSmoothCorrel2D ) THEN
+                     ELSE !IF ( doPackOld ) THEN
                       if ( lxxadxx ) then
                         globfld3d(i,bi,ip,j,bj,jp,k) =
      &                       globfld3d(i,bi,ip,j,bj,jp,k)
@@ -254,7 +257,7 @@ cph)
      &                       globfld3d(i,bi,ip,j,bj,jp,k)
      &                       / precondScalar
                       endif
-                     ENDIF !IF ( .NOT.ctrlSmoothCorrel2D ) THEN
+                     ENDIF !IF ( doPackOld ) THEN
                   else
                      globfld3d(i,bi,ip,j,bj,jp,k) = 0. _d 0
                   endif
@@ -338,7 +341,7 @@ cph(
      &                 phtmpadmtlm(nveccount)
 cph)
 #endif
-                     IF ( .NOT.ctrlSmoothCorrel2D ) THEN
+                     IF ( doPackOld ) THEN
                       if ( lxxadxx ) then
                         globfld3d(i,bi,ip,j,bj,jp,k) =
      &                       globfld3d(i,bi,ip,j,bj,jp,k)
@@ -354,7 +357,7 @@ cph)
 #endif
      &                       / precondScalar
                       endif
-                     ELSE !IF ( .NOT.ctrlSmoothCorrel2D ) THEN
+                     ELSE !IF ( doPackOld ) THEN
                       if ( lxxadxx ) then
                         globfld3d(i,bi,ip,j,bj,jp,k) =
      &                       globfld3d(i,bi,ip,j,bj,jp,k)
@@ -364,7 +367,7 @@ cph)
      &                       globfld3d(i,bi,ip,j,bj,jp,k)
      &                       / precondScalar
                       endif
-                     ENDIF !IF ( .NOT.ctrlSmoothCorrel2D ) THEN
+                     ENDIF !IF ( doPackOld ) THEN
                   else
                      globfld3d(i,bi,ip,j,bj,jp,k) = 0. _d 0
                   endif
@@ -433,6 +436,8 @@ c     == local variables ==
       character*(80) cfile2, cfile3
       _RL dummy
 
+      LOGICAL doPackOld
+
 c     == external ==
 
       integer  ilnblnk
@@ -442,13 +447,23 @@ c     == end of interface ==
 
 c-- part 1: preliminary reads and definitions
 
+      doPackOld = (.NOT.ctrlSmoothCorrel2D).AND.(.NOT.ctrlUseGen)
+
 #ifdef ALLOW_NONDIMENSIONAL_CONTROL_IO
+#ifdef ALLOW_AUTODIFF
       call active_read_xy(weighttype, wei2d, 1,
      &    .FALSE., .FALSE., 0 , mythid, dummy)
+#else
+      CALL READ_REC_XY_RL( weighttype, wei2d, 1, 1, myThid )
+#endif
 #endif
 
+#ifdef ALLOW_AUTODIFF
       call active_read_xyz(masktype, msk3d, 1,
      &    .FALSE., .FALSE., 0 , mythid, dummy)
+#else
+      CALL READ_REC_XYZ_RL( masktype, msk3d, 1, 1, myThid )
+#endif
 
       if ( doPackDiag ) then
          write(cfile2(1:80),'(80a)') ' '
@@ -554,7 +569,7 @@ c-- 2.2: normalize field if needed
             nveccount = nveccount + 1
             fld2dNodim(i,j,bi,bj)=phtmpadmtlm(nveccount)
 #endif
-           IF ( ctrlSmoothCorrel2D ) THEN
+           IF ( .NOT.doPackOld ) THEN
             if (lxxadxx) then
                fld2dDim(i,j,bi,bj) =
      &              fld2dNodim(i,j,bi,bj) * precondScalar
@@ -562,7 +577,7 @@ c-- 2.2: normalize field if needed
                fld2dDim(i,j,bi,bj) =
      &              fld2dNodim(i,j,bi,bj) / precondScalar
             endif
-           ELSE !IF ( ctrlSmoothCorrel2D ) THEN
+           ELSE !IF ( .NOT.doPackOld ) THEN
 # ifndef ALLOW_NONDIMENSIONAL_CONTROL_IO
             if (lxxadxx) then
                fld2dDim(i,j,bi,bj) = fld2dNodim(i,j,bi,bj)
@@ -582,7 +597,7 @@ c-- 2.2: normalize field if needed
      &                       / precondScalar
             endif
 # endif /* ALLOW_NONDIMENSIONAL_CONTROL_IO */
-           ENDIF !IF ( ctrlSmoothCorrel2D ) THEN
+           ENDIF !IF ( .NOT.doPackOld ) THEN
            endif
           ENDDO
          ENDDO

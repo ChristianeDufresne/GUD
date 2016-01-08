@@ -6,12 +6,15 @@ C $Name$
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 CBOP 0
 C !ROUTINE: GGL90_INIT_FIXED
-
 C !INTERFACE:
       SUBROUTINE GGL90_INIT_FIXED( myThid )
 
-C     !DESCRIPTION:
-C     Initialize GGL90 variables that are kept fixed during the run.
+C     !DESCRIPTION: \bv
+C     *================================================================*
+C     | S/R GGL90_INIT_FIXED
+C     | Initialize GGL90 variables that are kept fixed during the run.
+C     *================================================================*
+C     \ev
 
 C     !USES:
       IMPLICIT NONE
@@ -23,13 +26,13 @@ C     !USES:
 C     !INPUT/OUTPUT PARAMETERS:
 C     myThid ::  my Thread Id number
       INTEGER myThid
-CEOP
 
 C     !LOCAL VARIABLES:
 C     === Local variables ===
 #ifdef ALLOW_GGL90_SMOOTH
       INTEGER i, j, bi, bj
 #endif
+CEOP
 
 C#ifdef ALLOW_MNC
 C      IF (useMNC) THEN
@@ -51,11 +54,13 @@ C#endif /* ALLOW_MNC */
           mskCor(i,j,bi,bj) = 1. _d 0
          ENDDO
         ENDDO
+# ifdef ALLOW_EXCH2
         IF ( useCubedSphereExchange ) THEN
           CALL FILL_CS_CORNER_TR_RL( 0, .FALSE.,
      U                               mskCor(1-OLx,1-OLy,bi,bj),
      I                               bi,bj, myThid )
         ENDIF
+# endif
        ENDDO
       ENDDO
 #endif

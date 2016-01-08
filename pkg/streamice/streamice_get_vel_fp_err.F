@@ -21,9 +21,7 @@ C     === Global variables ===
 #include "PARAMS.h"
 #include "STREAMICE.h"
 #include "STREAMICE_CG.h"
-!#ifdef ALLOW_PETSC
-!#include "finclude/petsc.h"
-!#endif
+
 
 C     !INPUT/OUTPUT ARGUMENTS
       _RL err_max
@@ -48,11 +46,19 @@ C     !INPUT/OUTPUT ARGUMENTS
            err_tempv = 0. _d 0
            IF (STREAMICE_umask(i,j,bi,bj).eq.1) THEN
             err_tempu =
+#ifdef ALLOW_STREAMICE_OAD_FP
+     &       ABS (U_streamice(i,j,bi,bj)-u_new_SI(i,j,bi,bj))
+#else
      &       ABS (U_streamice(i,j,bi,bj)-u_old_SI(i,j,bi,bj))
+#endif
            ENDIF
            IF (STREAMICE_vmask(i,j,bi,bj).eq.1) THEN
             err_tempv = MAX( err_tempu,
+#ifdef ALLOW_STREAMICE_OAD_FP
+     &       ABS (V_streamice(i,j,bi,bj)-v_new_SI(i,j,bi,bj)))
+#else
      &       ABS (V_streamice(i,j,bi,bj)-v_old_SI(i,j,bi,bj)))
+#endif
            ENDIF
            IF (err_tempv .ge. err_max) err_max = err_tempv
           ENDDO

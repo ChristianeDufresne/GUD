@@ -106,14 +106,16 @@ C-    Initialise fist guess & RHS
             ENDDO
            ENDDO
 C-    calculate cg2d matrix:
+C     Note: Here, at Open-Boundary location, we keep non-zero aW & aS (using
+C     maskInW & maskInS) whereas in S/R CG2D they are zero (product of maskInC)
            DO j = 1,sNy+1
             DO i = 1,sNx+1
               aW2d(i,j,bi,bj) = dyG(i,j,bi,bj)*recip_dxC(i,j,bi,bj)
      &                         *drF(k)*hFacW(i,j,k,bi,bj)
-     &                         *maskInC(i-1,j,bi,bj)*maskInC(i,j,bi,bj)
+     &                         *maskInW(i,j,bi,bj)
               aS2d(i,j,bi,bj) = dxG(i,j,bi,bj)*recip_dyC(i,j,bi,bj)
      &                         *drF(k)*hFacS(i,j,k,bi,bj)
-     &                         *maskInC(i,j-1,bi,bj)*maskInC(i,j,bi,bj)
+     &                         *maskInS(i,j,bi,bj)
               a2dMax = MAX(a2dMax,aW2d(i,j,bi,bj))
               a2dMax = MAX(a2dMax,aS2d(i,j,bi,bj))
             ENDDO
@@ -132,15 +134,6 @@ C-   end bi,bj loops
          ENDDO
         ENDDO
 
-#ifdef ALLOW_OBCS
-        IF ( useOBCS ) THEN
-         CALL OBCS_DIAG_BALANCE(
-     I             k,
-     U             uTrans, vTrans,
-     I             myTime, myIter, myThid )
-        ENDIF
-#endif /* ALLOW_OBCS */
-
 C-    calculate RHS = rAc*Div(uVel,vVel):
         DO bj = myByLo(myThid), myByHi(myThid)
          DO bi = myBxLo(myThid), myBxHi(myThid)
@@ -150,16 +143,49 @@ C-    calculate RHS = rAc*Div(uVel,vVel):
      &                    ( uTrans(i+1,j,bi,bj) - uTrans(i,j,bi,bj) )
      &                  + ( vTrans(i,j+1,bi,bj) - vTrans(i,j,bi,bj) )
      &                         )*maskInC(i,j,bi,bj)
-              rhsMax = MAX(ABS(b2d(I,J,bi,bj)),rhsMax)
             ENDDO
            ENDDO
          ENDDO
         ENDDO
 
+#ifdef ALLOW_OBCS
+C  There is ambiguity in splitting OB cross flow into divergent (grad.Phi)
+C    contribution and rotational (rot.Psi) contribution:
+C  a) In most cases, will interpret most of the OB cross flow (except
+C     the net inflow which has to come from grad.Phi) as non divergent
+C     and only keep the divergence associated with the net inflow
+C     (assuming here uniform distribution along the OB section;
+C     This processing must be done for each domain-connected section
+C     of the OB (using pkg/obcs OB[N,S,E,W]_connect Id) otherwise the
+C     solver will not converge.
+C  b) When setting a null domain-connected Id for some OB section,
+C     we can recover the other extreme where the OB cross flow is
+C     interpreted as a pure divergent (grad.Phi) contribution (-> constant
+C      Psi along this section). This is done by keeping the full RHS just
+C     outside OB (i.e., where tracer OBCS are applied.
+        IF ( useOBCS ) THEN
+         CALL OBCS_DIAG_BALANCE(
+     U             b2d,
+     I             uTrans, vTrans, k,
+     I             myTime, myIter, myThid )
+        ENDIF
+#endif /* ALLOW_OBCS */
+
 C-    Normalise Matrice & RHS :
         diagNormaliseRHS = diagCG_resTarget.GT.0.
         normaliseMatrice = .TRUE.
         diagNormaliseRHS = .TRUE.
+        IF ( diagNormaliseRHS ) THEN
+         DO bj = myByLo(myThid), myByHi(myThid)
+          DO bi = myBxLo(myThid), myBxHi(myThid)
+           DO j = 1,sNy
+            DO i = 1,sNx
+              rhsMax = MAX(ABS(b2d(I,J,bi,bj)),rhsMax)
+            ENDDO
+           ENDDO
+          ENDDO
+         ENDDO
+        ENDIF
         a2dNorm = 1. _d 0
         b2dNorm = 1. _d 0
         x2dNorm = 1. _d 0
@@ -243,12 +269,12 @@ C-    Compte divergence-free transport:
      &                        - ( x2d(i,j,bi,bj) - x2d(i-1,j,bi,bj) )
      &                         *recip_dxC(i,j,bi,bj)*dyG(i,j,bi,bj)
      &                         *drF(k)*hFacW(i,j,k,bi,bj)
-     &                         *maskInC(i-1,j,bi,bj)*maskInC(i,j,bi,bj)
+     &                         *maskInW(i,j,bi,bj)
             vTrans(i,j,bi,bj) = vTrans(i,j,bi,bj)
      &                        - ( x2d(i,j,bi,bj) - x2d(i,j-1,bi,bj) )
      &                         *recip_dyC(i,j,bi,bj)*dxG(i,j,bi,bj)
      &                         *drF(k)*hFacS(i,j,k,bi,bj)
-     &                         *maskInC(i,j-1,bi,bj)*maskInC(i,j,bi,bj)
+     &                         *maskInS(i,j,bi,bj)
            ENDDO
           ENDDO
          ENDDO

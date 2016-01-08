@@ -104,6 +104,9 @@ C--   When set use SEAICE_zetaMin and SEAICE_evpDampC to limit viscosities
 C     from below and above in seaice_evp: not necessary, and not recommended
 #  undef SEAICE_ALLOW_CLIPZETA
 # endif /* SEAICE_ALLOW_EVP */
+C     smooth regularization (without max-function) of delta for
+C     better differentiability
+# undef SEAICE_DELTA_SMOOTHREG
 C     regularize zeta to zmax with a smooth tanh-function instead
 C     of a min(zeta,zmax). This improves convergence of iterative
 C     solvers (Lemieux and Tremblay 2009, JGR). No effect on EVP
@@ -116,14 +119,12 @@ C     more than made up by the much faster code on vector machines. For
 C     the only regularly test vector machine these flags a specified
 C     in the build options file SUPER-UX_SX-8_sxf90_awi, so that we comment
 C     them out here.
-C# define SEAICE_VECTORIZE_LSR
-C# ifdef SEAICE_VECTORIZE_LSR
-C     Use modified LSR vector code that splits vector loop into two with
-C     step size 2. This modification improves the convergence of the vector
-C     code dramatically, so that is may actually be useful in general, but
-C     that needs to be tested.
-C#  define SEAICE_VECTORIZE_LSR_ZEBRA
-C# endif
+# undef SEAICE_VECTORIZE_LSR
+C     Use zebra-method (alternate lines) for line-successive-relaxation
+C     This modification improves the convergence of the vector code
+C     dramatically, so that is may actually be useful in general, but
+C     that needs to be tested. Can be used without vectorization options.
+#  undef SEAICE_LSR_ZEBRA
 #else /* not SEAICE_CGRID, but old B-grid */
 C--   By default for B-grid dynamics solver wind stress under sea-ice is
 C     set to the same value as it would be if there was no sea-ice.

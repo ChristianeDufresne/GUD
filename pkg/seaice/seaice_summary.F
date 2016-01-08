@@ -119,6 +119,8 @@ C--  Seaice-Dynamics parameters
       CALL WRITE_0D_C( 'B-GRID', -1, INDEX_NONE,
      & 'model grid type   =', ' /* type of sea ice model grid */')
 #endif /* SEAICE_CGRID */
+      CALL WRITE_0D_L ( SEAICEuseStrImpCpl, INDEX_NONE,
+     & 'SEAICEuseStrImpCpl =', ' /* use strongly implicit coupling */')
       CALL WRITE_0D_L ( SEAICEuseEVP, INDEX_NONE,
      & 'SEAICEuseEVP      =', ' /* use EVP solver rather than LSR */')
 #ifdef SEAICE_ALLOW_FREEDRIFT
@@ -141,6 +143,10 @@ C--  Seaice-Dynamics parameters
      & 'SEAICEuseTEM      =', ' /* use truncated ellipse rheology */')
       CALL WRITE_0D_RL( SEAICE_strength   ,INDEX_NONE,
      & 'SEAICE_strength   =', ' /* sea-ice strength Pstar */')
+      CALL WRITE_0D_RL( SEAICE_cStar   ,INDEX_NONE,
+     & 'SEAICE_cStar      =', ' /* sea-ice strength parameter cStar */')
+      CALL WRITE_0D_RL( SEAICE_tensilFac   ,INDEX_NONE,
+     & 'SEAICE_tensilFac  =', ' /* sea-ice tensile strength factor */')
       CALL WRITE_0D_RL( SEAICEpresH0   ,INDEX_NONE,
      & 'SEAICEpresH0   =', ' /* sea-ice strength Heff threshold */')
        CALL WRITE_0D_I ( SEAICEpresPow0,    INDEX_NONE,
@@ -471,6 +477,8 @@ c
       CALL WRITE_0D_I (SEAICE_multDim,INDEX_NONE,'SEAICE_multDim    ='
      & , ' /* number of ice categories (1 or 7) */')
 #endif
+      CALL WRITE_1D_RL( SEAICE_PDF,nITD,INDEX_K, 'SEAICE_PDF        =',
+     &  ' /* sea-ice distribution (-) */')
       CALL WRITE_0D_I ( IMAX_TICE,         INDEX_NONE,
      & 'IMAX_TICE         =', ' /* iterations for ice surface temp */')
       CALL WRITE_0D_I ( postSolvTempIter,  INDEX_NONE,
@@ -632,10 +640,12 @@ C--  Output related param.
       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &                    SQUEEZE_RIGHT, myThid )
 
+      CALL WRITE_0D_RL( SEAICE_deltaMin   ,INDEX_NONE,
+     & 'SEAICE_deltaMin   =', ' /* reduce singularities in Delta */')
       CALL WRITE_0D_RL( SEAICE_EPS        ,INDEX_NONE,
-     & 'SEAICE_EPS        =', ' /* reduce derivative singularities */')
+     & 'SEAICE_EPS        =', ' /* small number */')
       CALL WRITE_0D_RL( SEAICE_EPS_SQ        ,INDEX_NONE,
-     & 'SEAICE_EPS_SQ     =', ' /* reduce derivative singularities */')
+     & 'SEAICE_EPS_SQ     =', ' /* small number squared */')
       CALL WRITE_0D_RL( SEAICE_area_reg        ,INDEX_NONE,
      & 'SEAICE_area_reg   =', ' /* reduce derivative singularities */')
       CALL WRITE_0D_RL( SEAICE_hice_reg        ,INDEX_NONE,

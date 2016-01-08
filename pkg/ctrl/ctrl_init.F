@@ -52,7 +52,7 @@ c     == routine arguments ==
 c     == local variables ==
 
       integer bi,bj
-      integer i,j
+      integer i,j,k
       integer itlo,ithi
       integer jtlo,jthi
       integer jmin,jmax
@@ -64,15 +64,18 @@ c     == local variables ==
       integer diffrec
       integer iarr
 
+      _RL dummy
+      _RL loctmp3d (1-olx:snx+olx,1-oly:sny+oly,Nr,nsx,nsy)
+
 #ifdef ALLOW_OBCS_CONTROL_MODES
-      INTEGER  k,length_of_rec,dUnit
+      INTEGER  length_of_rec,dUnit
       INTEGER  MDS_RECLEN
       EXTERNAL MDS_RECLEN
 #endif
 
 #ifdef ALLOW_GENTIM2D_CONTROL
       CHARACTER*(MAX_LEN_FNAM) fnamegen
-      INTEGER ilgen
+      INTEGER ilgen, k2, diffrecFull, endrecFull
 #endif
 
 c     == external ==
@@ -100,6 +103,24 @@ c--     Set default values.
        ncvarnrmax(ivar) =  0
        ncvargrd(ivar)   = '?'
       enddo
+
+c     Set unit weight to 1
+c
+
+      do bj=1,nSy
+         do bi=1,nSx
+            do k=1,Nr
+             wunit(k,bi,bj) = 1. _d 0
+             do j=1-oly,sNy+oly
+              do i=1-olx,sNx+olx
+               loctmp3d(i,j,k,bi,bj) = 1. _d 0
+              enddo
+             enddo
+            enddo
+         enddo
+      enddo
+
+      call active_write_xyz( 'wunit', loctmp3d, 1, 0, mythid, dummy)
 
       _BARRIER
 
@@ -797,10 +818,16 @@ c----------------------------------------------------------------------
 c--
 #ifdef ALLOW_GENARR2D_CONTROL
        do iarr = 1, maxCtrlArr2D
+#ifndef ALLOW_OPENAD
+        if (xx_genarr2d_weight(iarr).NE.' ')
+     &  call ctrl_init_ctrlvar (
+#else
         call ctrl_init_ctrlvar (
+#endif
      &       xx_genarr2d_file(iarr)(1:MAX_LEN_FNAM),
      &       100+iarr, 200+iarr, 1, 1, 1,
      &       snx, sny, 1, 'c', 'xy', myThid )
+
        enddo
 #endif /* ALLOW_GENARR2D_CONTROL */
 
@@ -808,7 +835,12 @@ c----------------------------------------------------------------------
 c--
 #ifdef ALLOW_GENARR3D_CONTROL
        do iarr = 1, maxCtrlArr3D
+#ifndef ALLOW_OPENAD
+        if (xx_genarr3d_weight(iarr).NE.' ')
+     &  call ctrl_init_ctrlvar (
+#else
         call ctrl_init_ctrlvar (
+#endif
      &       xx_genarr3d_file(iarr)(1:MAX_LEN_FNAM),
      &       200+iarr, 300+iarr, 1, 1, 1,
      &       snx, sny, nr, 'c', '3d', myThid )
@@ -840,11 +872,29 @@ c--
      O       diffrec, startrec, endrec,
      I       myThid )
 C
-        call ctrl_init_ctrlvar (
-     &       xx_gentim2d_file(iarr)(1:MAX_LEN_FNAM),
-     &       300+iarr, 400+iarr,
-     &       diffrec, startrec, endrec,
-     &       snx, sny, 1, 'c', 'xy', myThid )
+
+#ifndef ALLOW_OPENAD
+        if (xx_gentim2d_weight(iarr).NE.' ') then
+#endif
+        do k2 = 1, maxCtrlProc
+         if (xx_gentim2d_preproc(k2,iarr).EQ.'replicate')
+     &   xx_gentim2d_preproc(k2,iarr)='docycle'
+         if (xx_gentim2d_preproc(k2,iarr).EQ.'doglomean')
+     &   xx_gentim2d_glosum(iarr)     = .TRUE.
+         if (xx_gentim2d_preproc(k2,iarr).EQ.'documul')
+     &   xx_gentim2d_cumsum(iarr)     = .TRUE.
+        enddo
+C
+        diffrecFull=diffrec
+        endrecFull=endrec
+        do k2 = 1, maxCtrlProc
+         if (xx_gentim2d_preproc(k2,iarr).EQ.'docycle') then
+           if (xx_gentim2d_preproc_i(k2,iarr).NE.0) then
+            diffrec=min(diffrec,xx_gentim2d_preproc_i(k2,iarr))
+            endrec=min(endrec,xx_gentim2d_preproc_i(k2,iarr))
+           endif
+         endif
+        enddo
 C
         ilgen=ilnblnk( xx_gentim2d_file(iarr) )
         write(fnamegen(1:MAX_LEN_FNAM),'(2a)')
@@ -852,8 +902,27 @@ C
         call ctrl_init_ctrlvar (
      &       fnamegen(1:MAX_LEN_FNAM),
      &       300+iarr, 400+iarr,
+     &       diffrecFull, startrec, endrecFull,
+     &       snx, sny, 1, 'c', 'xy', myThid )
+C
+        ilgen=ilnblnk( xx_gentim2d_file(iarr) )
+        write(fnamegen(1:MAX_LEN_FNAM),'(2a)')
+     &       xx_gentim2d_file(iarr)(1:ilgen),'.tmp'
+        call ctrl_init_ctrlvar (
+     &       fnamegen(1:MAX_LEN_FNAM),
+     &       300+iarr, 400+iarr,
+     &       diffrecFull, startrec, endrecFull,
+     &       snx, sny, 1, 'c', 'xy', myThid )
+C
+        call ctrl_init_ctrlvar (
+     &       xx_gentim2d_file(iarr)(1:MAX_LEN_FNAM),
+     &       300+iarr, 400+iarr,
      &       diffrec, startrec, endrec,
      &       snx, sny, 1, 'c', 'xy', myThid )
+C
+#ifndef ALLOW_OPENAD
+       endif
+#endif
 C
        enddo
 #endif /* ALLOW_GENTIM2D_CONTROL */

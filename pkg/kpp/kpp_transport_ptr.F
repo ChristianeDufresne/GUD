@@ -3,12 +3,12 @@ C $Name$
 
 #include "KPP_OPTIONS.h"
 #ifdef ALLOW_GMREDI
-#include "GMREDI_OPTIONS.h"
+# include "GMREDI_OPTIONS.h"
 #endif
 
       SUBROUTINE KPP_TRANSPORT_PTR (
-     I     iMin,iMax,jMin,jMax,bi,bj,k,km1,
-     I     tracerIdentity,
+     I     iMin, iMax, jMin, jMax,
+     I     bi, bj, k, km1, iTr,
      O     df,
      I     myTime, myIter, myThid )
 C     *==========================================================*
@@ -37,27 +37,34 @@ C     == GLobal variables ==
 #include "KPP.h"
 #include "KPP_PARAMS.h"
 #ifdef ALLOW_PTRACERS
-#include "PTRACERS_SIZE.h"
+# include "PTRACERS_SIZE.h"
 c#include "PTRACERS_PARAMS.h"
-#include "PTRACERS_FIELDS.h"
+# include "PTRACERS_FIELDS.h"
 #endif
 #ifdef ALLOW_GMREDI
-#include "GMREDI.h"
+# include "GMREDI.h"
 #endif
 #ifdef ALLOW_LONGSTEP
-#include "LONGSTEP.h"
+# include "LONGSTEP.h"
+#endif
+#ifdef ALLOW_OFFLINE
+# include "OFFLINE_SWITCH.h"
+#else
+      LOGICAL offlineLoadKPP
 #endif
 
-
 C     == Routine arguments ==
-C     iMin,iMax,jMin,  - Range of points for which calculation
-C     jMax,bi,bj,k,km1   results will be set.
-C     tracerIdentity   - Identifier for the tracer
-C     df               - Diffusive flux component work array.
-C     myTime :: Current time in simulation
-C     myIter :: Current iteration number in simulation
-C     myThid :: My Thread Id. number
-      INTEGER iMin,iMax,jMin,jMax,bi,bj,k,km1,tracerIdentity
+C     iMin,iMax :: Range of points for which calculation is done
+C     jMin,jMax :: Range of points for which calculation is done
+C     bi, bj,   :: tile indices
+C     k, km1    :: current flux and KPP ghat level index
+C     iTr       :: tracer index
+C     df        :: Diffusive flux component work array.
+C     myTime    :: Current time in simulation
+C     myIter    :: Current iteration number in simulation
+C     myThid    :: My Thread Id. number
+      INTEGER iMin, iMax, jMin, jMax
+      INTEGER bi, bj, k, km1, iTr
       _RL df      (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL     myTime
       INTEGER myIter
@@ -66,13 +73,13 @@ C     myThid :: My Thread Id. number
 #if defined(ALLOW_KPP) && defined(KPP_GHAT) && defined(ALLOW_PTRACERS)
 
 C     == Local variables ==
-C     i, j :: Loop counters
+C     i, j      :: Loop counters
       INTEGER i, j
       _RL tmpFac
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
-      IF (useOffLine) THEN
+      IF ( useOffLine.AND.offlineLoadKPP ) THEN
 
 C--   Note: in this case (offline) KPPghat array already contains
 C           the product ghat*diffKzS which has been loaded from file
@@ -80,7 +87,7 @@ C           the product ghat*diffKzS which has been loaded from file
          DO i=iMin,iMax
           df(i,j) = - _rA(i,j,bi,bj)
      &        *KPPghat(i,j,k,bi,bj)
-     &        *surfaceForcingPTr(i,j,bi,bj,tracerIdentity)
+     &        *surfaceForcingPTr(i,j,bi,bj,iTr)
          ENDDO
         ENDDO
 
@@ -107,7 +114,7 @@ C           the product ghat*diffKzS which has been loaded from file
 #endif
      &         )*KPPghat(i,j,km1,bi,bj)
 #endif /* ALLOW_LONGSTEP */
-     &        *surfaceForcingPTr(i,j,bi,bj,tracerIdentity)
+     &        *surfaceForcingPTr(i,j,bi,bj,iTr)
          ENDDO
         ENDDO
 

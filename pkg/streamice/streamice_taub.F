@@ -43,8 +43,13 @@ C     LOCAL VARIABLES
         DO j=1,sNy
          DO i=1,sNx
 cph(
+#if (defined (ALLOW_OPENAD) && defined (ALLOW_STREAMICE_OAD_FP))
+          taubx_new_si (i,j,bi,bj) = 0.
+          tauby_new_si (i,j,bi,bj) = 0.
+#else
           streamice_taubx (i,j,bi,bj) = 0.
           streamice_tauby (i,j,bi,bj) = 0.
+#endif
 cph)
           IF (STREAMICE_hmask(i,j,bi,bj).eq.1) THEN
   
@@ -61,19 +66,33 @@ cph)
              umid = umid + 0.25 * 
      &        dxG(i,j+l,bi,bj)*dyG(i+k,j,bi,bj) * 
      &        recip_rA(i,j,bi,bj) *
+#if (defined (ALLOW_STREAMICE_OAD_FP))
+     &        U_new_si(i+k,j+l,bi,bj) 
+#else
      &        U_streamice(i+k,j+l,bi,bj) 
+#endif
              vmid = vmid + 0.25 * 
      &        dxG(i,j+l,bi,bj)*dyG(i+k,j,bi,bj) * 
      &        recip_rA(i,j,bi,bj) *
+#if (defined (ALLOW_STREAMICE_OAD_FP))
+     &        V_new_si(i+k,j+l,bi,bj)
+#else
      &        V_streamice(i+k,j+l,bi,bj)
+#endif
             ENDDO
            ENDDO
   
+#if (defined (ALLOW_STREAMICE_OAD_FP))
+           taubx_new_si (i,j,bi,bj) = 
+     &      tau_beta_eff_streamice(i,j,bi,bj) * umid
+           tauby_new_si (i,j,bi,bj) = 
+     &      tau_beta_eff_streamice(i,j,bi,bj) * vmid
+#else
            streamice_taubx (i,j,bi,bj) = 
      &      tau_beta_eff_streamice(i,j,bi,bj) * umid
            streamice_tauby (i,j,bi,bj) = 
      &      tau_beta_eff_streamice(i,j,bi,bj) * vmid
-           
+#endif
           ENDIF
          ENDDO
         ENDDO

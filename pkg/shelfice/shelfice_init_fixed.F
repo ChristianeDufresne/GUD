@@ -60,21 +60,24 @@ C     Initialize MNC variable information for SHELFICE
 
 C-----------------------------------------------------------------------
 C--   Initialize SHELFICE variables kTopC
-C--   kTopC is the same as kSurfC, except for places over land.
-C--   Over land (completely dry cells), kTop = 0, while kSurfC = Nr+1
+C--   kTopC is the same as kSurfC, except outside ice-shelf area:
+C--   kTop = 0 where there is no ice-shelf (where kSurfC=1)
+C--   and over land (completely dry column) where kSurfC = Nr+1
 C-----------------------------------------------------------------------
 
       DO bj = myByLo(myThid), myByHi(myThid)
        DO bi = myBxLo(myThid), myBxHi(myThid)
         DO j = 1-OLy, sNy+OLy
          DO i = 1-OLx, sNx+OLx
-          IF ( kSurfC(i,j,bi,bj).LE.Nr ) THEN
+          IF ( kSurfC(i,j,bi,bj).LE.Nr .AND.
+     &         R_shelfIce(i,j,bi,bj).LT.zeroRS ) THEN
             kTopC(i,j,bi,bj) = kSurfC(i,j,bi,bj)
           ELSE
             kTopC(i,j,bi,bj) = 0
           ENDIF
-          shelficeMass       (i,j,bi,bj) = 0. _d 0
+          shelficeMassInit   (i,j,bi,bj) = 0. _d 0
           shelficeLoadAnomaly(i,j,bi,bj) = 0. _d 0
+          shelfIceMassDynTendency(i,j,bi,bj) = 0. _d 0
          ENDDO
         ENDDO
        ENDDO
@@ -112,18 +115,18 @@ c--   use weight as mask
 #endif /* ALLOW_COST */
 
       IF ( SHELFICEloadAnomalyFile .NE. ' ' ) THEN
-       CALL READ_FLD_XY_RS( SHELFICEloadAnomalyFile, ' ',
+       CALL READ_FLD_XY_RL( SHELFICEloadAnomalyFile, ' ',
      &                      shelficeLoadAnomaly, 0, myThid )
       ENDIF
       IF ( SHELFICEmassFile.NE.' ' ) THEN
-       CALL READ_FLD_XY_RS( SHELFICEmassFile, ' ',
-     &                      shelficeMass, 0, myThid )
+       CALL READ_FLD_XY_RL( SHELFICEmassFile, ' ',
+     &                      shelficeMassInit, 0, myThid )
       ELSE
        DO bj = myByLo(myThid), myByHi(myThid)
         DO bi = myBxLo(myThid), myBxHi(myThid)
          DO j = 1, sNy
           DO i = 1, sNx
-           shelficeMass(i,j,bi,bj) =
+           shelficeMassInit(i,j,bi,bj) =
      &         shelficeLoadAnomaly(i,j,bi,bj)*recip_gravity
      &       - rhoConst*Ro_surf(i,j,bi,bj)
           ENDDO
@@ -131,7 +134,9 @@ c--   use weight as mask
         ENDDO
        ENDDO
       ENDIF
-      _EXCH_XY_RS( shelficeMass, myThid )
+      _EXCH_XY_RL( shelficeMassInit, myThid )
+      CALL WRITE_FLD_XY_RL ( 'shelficemassinit', ' ',
+     &                       shelficeMassInit, 0, myThid )
 
 c     IF ( SHELFICEloadAnomalyFile .EQ. ' ' ) THEN
 C-   In case we need shelficeLoadAnomaly in phi0surf for initial pressure
@@ -141,7 +146,7 @@ C    calculation when useDynP_inEos_Zc
          DO j = 1-OLy, sNy+OLy
           DO i = 1-OLx, sNx+OLx
            shelficeLoadAnomaly(i,j,bi,bj) = gravity
-     &      *( shelficeMass(i,j,bi,bj) + rhoConst*Ro_surf(i,j,bi,bj) )
+     &      *(shelficeMassInit(i,j,bi,bj)+rhoConst*Ro_surf(i,j,bi,bj))
           ENDDO
          ENDDO
         ENDDO
@@ -150,8 +155,14 @@ c     ELSE
 c      _EXCH_XY_RS( shelficeLoadAnomaly, myThid )
 c     ENDIF
       IF ( debugLevel.GE.debLevC ) THEN
-       CALL WRITE_FLD_XY_RS( 'SHICE_pLoadAnom', ' ',
+       CALL WRITE_FLD_XY_RL( 'SHICE_pLoadAnom', ' ',
      I                       shelficeLoadAnomaly, -1, myThid )
+      ENDIF
+
+      IF ( SHELFICEMassStepping .AND.
+     &     SHELFICEMassDynTendFile .NE. ' ' ) THEN
+       CALL READ_FLD_XY_RS( SHELFICEMassDynTendFile, ' ',
+     &                      shelfIceMassDynTendency, 0, myThid )
       ENDIF
 
 #ifdef ALLOW_DIAGNOSTICS
@@ -210,6 +221,20 @@ c     ENDIF
        diagName  = 'SHIgammS'
        diagTitle = 'Ice shelf exchange coefficient for salt'
        diagUnits = 'm/s             '
+       diagCode  = 'SM      L1      '
+       CALL DIAGNOSTICS_ADDTOLIST( diagNum,
+     I      diagName, diagCode, diagUnits, diagTitle, 0, myThid )
+
+       diagName  = 'SHIuStar'
+       diagTitle = 'Friction velocity at bottom of ice shelf'
+       diagUnits = 'm/s             '
+       diagCode  = 'SM      L1      '
+       CALL DIAGNOSTICS_ADDTOLIST( diagNum,
+     I      diagName, diagCode, diagUnits, diagTitle, 0, myThid )
+
+       diagName  = 'SHI_mass'
+       diagTitle = 'dynamic ice shelf mass for surface load anomaly'
+       diagUnits = 'kg/m^2          '
        diagCode  = 'SM      L1      '
        CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I      diagName, diagCode, diagUnits, diagTitle, 0, myThid )

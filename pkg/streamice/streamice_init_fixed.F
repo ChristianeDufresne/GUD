@@ -46,7 +46,9 @@ C     === Local variables ===
 #endif
 
 #ifdef ALLOW_PETSC
+      if (streamice_use_petsc) then
       CALL STREAMICE_INITIALIZE_PETSC
+      endif
 #endif
 
 #ifdef ALLOW_MNC
@@ -372,7 +374,7 @@ C         INITIALIZE BOUNDARY CONDS AT SOUTH
            IF ((x .gt. min_x_FluxBdry_SOUTH) .AND.
      &         (x .le. max_x_FluxBdry_SOUTH)) THEN
             STREAMICE_vfacemask_bdry (i,j,bi,bj) = 4.0
-            u_flux_bdry_SI (i,j,bi,bj) = flux_bdry_val_SOUTH
+            v_flux_bdry_SI (i,j,bi,bj) = flux_bdry_val_SOUTH
            ENDIF
            IF ((x .gt. min_x_Dirich_SOUTH) .AND.
      &         (x .le. max_x_Dirich_SOUTH)) THEN
@@ -544,6 +546,14 @@ C         INITIALIZE BOUNDARY CONDS AT NORTH
       Xquad (2) = .5 * (1.+1./sqrt(3.))
 
       CALL STREAMICE_INIT_PHI( myThid )
+
+
+#if (defined (ALLOW_OPENAD) && defined (ALLOW_STREAMICE_OAD_FP) )
+#ifdef ALLOW_PETSC
+      STREAMICE_need2createmat = .true.
+      STREAMICE_need2destroymat = .true.
+#endif
+#endif
 
 #endif /* ALLOW_STREAMICE */
 

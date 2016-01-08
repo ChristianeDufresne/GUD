@@ -90,7 +90,7 @@ c     == end of interface ==
 
       kgen=0
       do k=1,NGENCOST
-      if ( (gencost_barfile(k)(1:2).EQ.'bp').AND.
+      if ( (gencost_barfile(k)(1:4).EQ.'m_bp').AND.
      &     (using_gencost(k)) ) kgen=k
       enddo
 
@@ -148,9 +148,14 @@ c--   ============
       do irec = 1, nmonsrec
 
 c--     Compute the mean over all bpdat records.
+#ifdef ALLOW_AUTODIFF
         call active_read_xy( fname, locbpbar, irec, doglobalread,
      &                       ladinit, eccoiter, mythid,
      &                       gencost_dummy(kgen) )
+#else
+        CALL READ_REC_XY_RL( fname, locbpbar,
+     &                       iRec, 1, myThid )
+#endif
 
         call cost_bp_read( gencost_datafile(kgen), 
      &       gencost_startdate(1,kgen),
@@ -196,10 +201,14 @@ c--   ==========
 
 c--   Loop over records for the second time.
       do irec = 1, nmonsrec
-
+#ifdef ALLOW_AUTODIFF
         call active_read_xy( fname, locbpbar, irec, doglobalread,
      &                       ladinit, eccoiter, mythid,
      &                       gencost_dummy(kgen) )
+#else
+        CALL READ_REC_XY_RL( fname, locbpbar,
+     &                       iRec, 1, myThid )
+#endif
 
         call cost_bp_read( gencost_datafile(kgen), 
      &       gencost_startdate(1,kgen),
@@ -274,13 +283,13 @@ c--    Smooth field of anomalies
 
 #ifdef ALLOW_SMOOTH
       if ( useSMOOTH )
-     &  call smooth_basic2D(bpdifanom,maskc,750000. _d 0,5000,mythid)
+     &  call smooth_basic2D(bpdifanom,maskc,500000. _d 0,5000,mythid)
 #endif
 
       if (gencost_outputlevel(kgen).GT.0) then
 #ifdef ALLOW_SMOOTH
       if ( useSMOOTH ) 
-     &  call smooth_basic2D(bpdatanom,maskc,750000. _d 0,5000,mythid)
+     &  call smooth_basic2D(bpdatanom,maskc,500000. _d 0,5000,mythid)
 #endif
 
       write(fname4test(1:80),'(1a)') 'bpdifanom_smooth'

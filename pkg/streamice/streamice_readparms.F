@@ -19,9 +19,9 @@ C     !USES:
 #include "PARAMS.h"
 #include "STREAMICE.h"
 #include "STREAMICE_BDRY.h"
-#ifdef ALLOW_STREAMICE_FLUX_CONTROL
-#include "STREAMICE_CTRL_FLUX.h"
-#endif
+!#ifdef ALLOW_STREAMICE_FLUX_CONTROL
+!#include "STREAMICE_CTRL_FLUX.h"
+!#endif
 
 C     !INPUT PARAMETERS:
       INTEGER myThid
@@ -37,6 +37,7 @@ C     iUnit      :: Work variable for IO unit number
 
       NAMELIST /STREAMICE_PARM01/
      &     streamice_density, streamice_density_ocean_avg,
+     &     streamice_density_firn,
      &     B_glen_isothermal, n_glen, eps_glen_min, eps_u_min,
      &     C_basal_fric_const, n_basal_friction,
      &     streamice_vel_update,streamice_cg_tol,streamice_nonlin_tol,
@@ -83,6 +84,7 @@ C     iUnit      :: Work variable for IO unit number
      &     STREAMICEvNormalTimeDepFile,
      &     STREAMICEuShearTimeDepFile,
      &     STREAMICEvShearTimeDepFile,
+     &     STREAMICEuFluxTimeDepFile, STREAMICEvFluxTimeDepFile,
      &     STREAMICEGlenConstFile, STREAMICEGlenConstConfig,
      &     STREAMICE_ppm_driving_stress,
      &     STREAMICE_h_ctrl_const_surf,
@@ -91,6 +93,8 @@ C     iUnit      :: Work variable for IO unit number
      &     streamice_addl_backstress,
      &     streamice_smooth_gl_width,
      &     streamice_adot_uniform,
+     &     streamice_firn_correction,
+     &     STREAMICE_apply_firn_correction,
      &     STREAMICE_ADV_SCHEME, streamice_forcing_period,
      &     STREAMICE_chkfixedptconvergence,
      &     STREAMICE_chkresidconvergence,
@@ -105,15 +109,25 @@ C     iUnit      :: Work variable for IO unit number
 
 #ifdef ALLOW_PETSC
       NAMELIST /STREAMICE_PARMPETSC/
-     &     PETSC_PRECOND_TYPE, PETSC_SOLVER_TYPE
+     &     PETSC_PRECOND_TYPE, PETSC_SOLVER_TYPE, 
+     &     streamice_use_petsc
 #endif
 
-#ifdef ALLOW_STREAMICE_FLUX_CONTROL
-      NAMELIST /STREAMICE_PARMFLUXCTRL/
-     &     n_fluxes, n_epochs,
-     &     streamice_ctrl_flux_id,
-     &     streamice_ctrl_flux_scaleVel
+#if (defined (ALLOW_OPENAD) && defined (ALLOW_STREAMICE_OAD_FP))
+      NAMELIST /STREAMICE_PARMOAD/ 
+     &     streamice_nonlin_tol_adjoint
+#ifdef ALLOW_PETSC
+     &     ,STREAMICE_OAD_petsc_reuse, 
+     &     PETSC_PRECOND_OAD
 #endif
+#endif
+
+!#ifdef ALLOW_STREAMICE_FLUX_CONTROL
+!      NAMELIST /STREAMICE_PARMFLUXCTRL/
+!     &     n_fluxes, n_epochs,
+!     &     streamice_ctrl_flux_id,
+!     &     streamice_ctrl_flux_scaleVel
+!#endif
 
       NAMELIST /STREAMICE_PARM02/
      &     shelf_max_draft,
@@ -171,6 +185,7 @@ C--   Default values for STREAMICE
 
       streamice_density = 917.
       streamice_density_ocean_avg = 1024.
+      streamice_density_firn = streamice_density  
       B_glen_isothermal = 9.461e-18   !  Pa (-1/3) a
       n_glen = 3.
       eps_glen_min = 1.0e-12
@@ -181,6 +196,13 @@ C--   Default values for STREAMICE
       streamice_cg_tol = 1e-6
       streamice_nonlin_tol = 1e-6
       streamice_nonlin_tol_fp = 1.e-14
+#if (defined (ALLOW_OPENAD) && defined (ALLOW_STREAMICE_OAD_FP))
+      streamice_nonlin_tol_adjoint = 1.e-14
+#ifdef ALLOW_PETSC
+      PETSC_PRECOND_OAD = 'MUMPS'
+      STREAMICE_OAD_petsc_reuse =.false.
+#endif
+#endif
       streamice_max_cg_iter = 2000
       streamice_max_nl_iter = 100
       streamice_maxcgiter_cpl = 0
@@ -201,7 +223,9 @@ C--   Default values for STREAMICE
       streamice_smooth_gl_width = 0.0
       streamice_adot_uniform = 0.0
       streamice_forcing_period = 0
-
+      streamice_firn_correction = 0.
+      STREAMICE_apply_firn_correction = .false.
+      
       STREAMICEthickInit = 'FILE'
       STREAMICEthickFile = ' '
       STREAMICEcalveMaskFile = ' '
@@ -225,6 +249,8 @@ C--   Default values for STREAMICE
       STREAMICEvNormalTimeDepFile = ' '
       STREAMICEuShearTimeDepFile = ' '
       STREAMICEvShearTimeDepFile = ' '
+      STREAMICEuFluxTimeDepFile = ' '
+      STREAMICEvFluxTimeDepFile = ' '
 
 #ifdef ALLOW_STREAMICE_2DTRACER
       STREAMICETrac2DBCxFile = ''
@@ -243,19 +269,20 @@ C--   Default values for STREAMICE
 #ifdef ALLOW_PETSC
       PETSC_PRECOND_TYPE = 'PCBJACOBI'
       PETSC_SOLVER_TYPE = 'KSPCG'
+      streamice_use_petsc = .true.
 #endif
       STREAMICE_ADV_SCHEME = ''
 
-#ifdef ALLOW_STREAMICE_FLUX_CONTROL
-      n_fluxes = 0
-      n_epochs = 0
-      DO iarr=1,n_fluxes_max
-       streamice_ctrl_flux_id(iarr) = 0
-       DO tarr=1,n_epochs_max
-        streamice_ctrl_flux_scaleVel(iarr,tarr) = 0. _d 0
-       ENDDO
-      ENDDO
-#endif
+!#ifdef ALLOW_STREAMICE_FLUX_CONTROL
+!      n_fluxes = 0
+!      n_epochs = 0
+!      DO iarr=1,n_fluxes_max
+!       streamice_ctrl_flux_id(iarr) = 0
+!       DO tarr=1,n_epochs_max
+!        streamice_ctrl_flux_scaleVel(iarr,tarr) = 0. _d 0
+!       ENDDO
+!      ENDDO
+!#endif
 
       STREAMICE_tave_mdsio = .TRUE.
       STREAMICE_dump_mdsio = .TRUE.
@@ -358,6 +385,14 @@ C     Read parameters from open data file
      &    SQUEEZE_RIGHT , 1)
 #endif
 
+#if (defined (ALLOW_OPENAD) && defined (ALLOW_STREAMICE_OAD_FP))
+      READ(UNIT=iUnit,NML=STREAMICE_PARMOAD)
+      WRITE(msgBuf,'(A)')
+     &    'STREAMICE_READPARMS: read oad parm block'
+      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &    SQUEEZE_RIGHT , 1)
+#endif
+
       READ(UNIT=iUnit,NML=STREAMICE_PARM03)
       WRITE(msgBuf,'(A)')
      &    'STREAMICE_READPARMS: read third param block'
@@ -365,20 +400,20 @@ C     Read parameters from open data file
      &    SQUEEZE_RIGHT , 1)
       CLOSE(iUnit)
 
-#ifdef ALLOW_STREAMICE_FLUX_CONTROL
-
-      CALL OPEN_COPY_DATA_FILE(
-     I                     'data.strmctrlflux', 'STREAMICE_READPARMS',
-     O                     iUnit,
-     I                     myThid )
-
-      READ(UNIT=iUnit,NML=STREAMICE_PARMFLUXCTRL)
-      WRITE(msgBuf,'(A)')
-     &    'STREAMICE_READPARMS: read flux_ctrl param block'
-      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
-     &    SQUEEZE_RIGHT , 1)
-      CLOSE(iUnit)
-#endif
+!#ifdef ALLOW_STREAMICE_FLUX_CONTROL
+!
+!      CALL OPEN_COPY_DATA_FILE(
+!     I                     'data.strmctrlflux', 'STREAMICE_READPARMS',
+!     O                     iUnit,
+!     I                     myThid )
+!
+!      READ(UNIT=iUnit,NML=STREAMICE_PARMFLUXCTRL)
+!      WRITE(msgBuf,'(A)')
+!     &    'STREAMICE_READPARMS: read flux_ctrl param block'
+!      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+!     &    SQUEEZE_RIGHT , 1)
+!      CLOSE(iUnit)
+!#endif
 
       streamice_nstep_velocity = NINT (streamice_vel_update / deltaT)
 

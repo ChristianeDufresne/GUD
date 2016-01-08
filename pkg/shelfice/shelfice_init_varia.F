@@ -3,7 +3,6 @@ C $Name$
 
 #include "SHELFICE_OPTIONS.h"
 
-
 CBOP
       SUBROUTINE SHELFICE_INIT_VARIA( myThid )
 C     *============================================================*
@@ -39,13 +38,13 @@ CEOP
        DO bi = myBxLo(myThid), myBxHi(myThid)
         DO j = 1-OLy, sNy+OLy
          DO i = 1-OLx, sNx+OLx
-c         shelficeLoadAnomaly   (i,j,bi,bj) = 0. _d 0
           shelficeForcingT      (i,j,bi,bj) = 0. _d 0
           shelficeForcingS      (i,j,bi,bj) = 0. _d 0
           shelficeHeatFlux      (i,j,bi,bj) = 0. _d 0
           shelficeFreshWaterFlux(i,j,bi,bj) = 0. _d 0
           shiTransCoeffT        (i,j,bi,bj) = 0. _d 0
           shiTransCoeffS        (i,j,bi,bj) = 0. _d 0
+          shelficeMass          (i,j,bi,bj) = 0. _d 0
          ENDDO
         ENDDO
        ENDDO
@@ -63,6 +62,28 @@ C     set coefficients to constant values
         ENDDO
        ENDDO
       ENDIF
+
+      DO bj = myByLo(myThid), myByHi(myThid)
+       DO bi = myBxLo(myThid), myBxHi(myThid)
+        DO j = 1-OLy, sNy+OLy
+         DO i = 1-OLx, sNx+OLx
+          shelficeMass(i,j,bi,bj) = shelficeMassInit(i,j,bi,bj)
+         ENDDO
+        ENDDO
+       ENDDO
+      ENDDO
+
+      IF (shelficeMassStepping) THEN
+
+      IF ( .NOT. ( startTime .EQ. baseTime .AND.  nIter0 .EQ. 0
+     &     .AND. pickupSuff .EQ. ' ') ) THEN
+
+          CALL SHELFICE_READ_PICKUP ( myThid )
+
+      ENDIF
+    
+      ENDIF
+
 
 #ifdef ALLOW_COST
       DO bj = myByLo(myThid), myByHi(myThid)
@@ -84,15 +105,6 @@ c--
        ENDDO
       ENDDO
 #endif /* ALLOW_COST */
-
-C    Might be a problem here in case we need shelficeLoadAnomaly in phi0surf
-C    for initial pressure calculation when useDynP_inEos_Zc,
-C    since ini_pressure is called before this S/R.
-c     IF ( SHELFICEloadAnomalyFile .NE. ' ' ) THEN
-c      CALL READ_FLD_XY_RS( SHELFICEloadAnomalyFile, ' ',
-c    &                      shelficeLoadAnomaly, 0, myThid )
-c      _EXCH_XY_RS( shelficeLoadAnomaly, myThid )
-c     ENDIF
 
 #endif /* ALLOW_SHELFICE */
 

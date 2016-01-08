@@ -61,9 +61,11 @@ C     !LOCAL VARIABLES:
 C     === Local variables ===
 C     i,j,bi,bj :: Loop counters
       INTEGER i, j, bi, bj
-      _RL PSTAR
       _RL phiSurf(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL  mask_uice, mask_vice
+#ifdef ALLOW_AUTODIFF_TAMC
+      _RL PSTAR
+#endif /* ALLOW_AUTODIFF_TAMC */
 
 # ifdef ALLOW_AUTODIFF_TAMC
 C Following re-initialisation breaks some "artificial" AD dependencies
@@ -74,7 +76,7 @@ C incured by IF (DIFFERENT_MULTIPLE ... statement
         DO j=1-OLy+1,sNy+OLy
          DO i=1-OLx+1,sNx+OLx
           PRESS0(i,j,bi,bj) = PSTAR*HEFF(i,j,bi,bj)
-     &         *EXP(-20.0 _d 0*(ONE-AREA(i,j,bi,bj)))
+     &         *EXP(-SEAICE_cStar*(ONE-AREA(i,j,bi,bj)))
           ZMAX(I,J,bi,bj)   = SEAICE_zetaMaxFac*PRESS0(I,J,bi,bj)
           ZMIN(i,j,bi,bj)   = SEAICE_zetaMin
           PRESS0(i,j,bi,bj) = PRESS0(i,j,bi,bj)*HEFFM(i,j,bi,bj)
@@ -105,9 +107,6 @@ CADJ STORE press0 = comlev1, key=ikey_dynamics, kind=isbyte
 CADJ STORE zmax   = comlev1, key=ikey_dynamics, kind=isbyte
 # endif
 # endif /* ALLOW_AUTODIFF_TAMC */
-
-C--   FIRST SET UP BASIC CONSTANTS
-      PSTAR  = SEAICE_strength
 
 C--   NOW SET UP MASS PER UNIT AREA AND CORIOLIS TERM
       DO bj=myByLo(myThid),myByHi(myThid)

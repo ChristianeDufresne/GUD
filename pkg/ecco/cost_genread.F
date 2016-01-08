@@ -10,6 +10,7 @@ C     !INTERFACE:
       subroutine cost_genread(
      I                           active_var_file,
      O                           active_var,
+     O                           active_tmp,
      I                           iRec,
      I                           nnzbar,
      I                           nrecloc,
@@ -40,6 +41,7 @@ c     == routine arguments ==
 C     myThid:          thread number for this instance
       CHARACTER*(*) active_var_file
       _RL     active_var(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nnzbar,nSx,nSy)
+      _RL     active_tmp(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nnzbar,nSx,nSy)
       INTEGER iRec
       INTEGER myThid
       INTEGER nnzbar, nrecloc
@@ -55,34 +57,29 @@ c     == local variables ==
 
       integer nyearsINT
       _RL     nyearsRL
-      _RL     fld1(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nnzbar,nSx,nSy)
-      _RL     fld2(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nnzbar,nSx,nSy)
       integer iyear, imon
 CEOP
 
-      if ( preproc(1) .EQ. ' ') then
-
-         call ecco_readbar( active_var_file, active_var,
-     &                      irec, nnzbar, dummy, mythid )
-
-      elseif ( preproc(1) .EQ. 'clim') then
+      if ( preproc(1) .EQ. 'clim') then
 
 c--   Loop over month
          nyearsINT=int((nrecloc-irec)/preproc_i(1))+1
          nyearsRL=float(nyearsINT)
 
-         call ecco_zero(fld1,nnzbar,zeroRL,myThid)
+         call ecco_zero(active_tmp,nnzbar,zeroRL,myThid)
 
          do iyear=1,nyearsINT
            imon=irec+(iyear-1)*preproc_i(1)
-           call ecco_readbar( active_var_file, fld2,
+           call ecco_readbar( active_var_file, active_var,
      &                      imon, nnzbar, dummy, mythid )
-           call ecco_add(fld2,nnzbar,fld1,nnzbar,myThid)
+           call ecco_add(active_var,nnzbar,active_tmp,nnzbar,myThid)
          enddo
 
-         call ecco_div(fld1,nnzbar,nyearsRL,myThid)
-         call ecco_cp(fld1,nnzbar,active_var,nnzbar,myThid)
-
+         call ecco_div(active_tmp,nnzbar,nyearsRL,myThid)
+         call ecco_cp(active_tmp,nnzbar,active_var,nnzbar,myThid)
+      else
+         call ecco_readbar( active_var_file, active_var,
+     &                      irec, nnzbar, dummy, mythid )
       endif
 
 #endif /* ALLOW_ECCO */

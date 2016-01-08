@@ -12,6 +12,9 @@ C     SEAICEuseDYNAMICS :: If false, do not use dynamics;
 C                          default is to use dynamics.
 C     SEAICEuseFREEDRIFT :: If True use free drift velocity instead of EVP
 C                           or LSR
+C     SEAICEuseStrImpCpl:: If true use strongly implicit coupling formulation
+C                          for LSR solver (Hutchings et al 2004, 
+C                          Ocean Modelling, eq.44)
 C     SEAICEuseEVP      :: If true use elastic viscous plastic solver
 C     SEAICEuseEVPstar  :: If true use modified elastic viscous plastic 
 C                          solver (EVP*) by Lemieux et al (2012)
@@ -89,7 +92,7 @@ C     SEAICE_tave_mnc   :: write TimeAverage output using MNC
 C     SEAICE_dump_mnc   :: write snap-shot output   using MNC
 C     SEAICE_mon_mnc    :: write monitor to netcdf file
       LOGICAL
-     &     SEAICEuseDYNAMICS, SEAICEuseFREEDRIFT,
+     &     SEAICEuseDYNAMICS, SEAICEuseFREEDRIFT, SEAICEuseStrImpCpl,
      &     SEAICEuseEVP, SEAICEuseEVPstar, SEAICEuseEVPrev,
      &     SEAICEuseEVPpickup,
      &     SEAICEuseMultiTileSolver,
@@ -110,7 +113,7 @@ C     SEAICE_mon_mnc    :: write monitor to netcdf file
      &     SEAICE_tave_mdsio, SEAICE_dump_mdsio, SEAICE_mon_stdio,
      &     SEAICE_tave_mnc,   SEAICE_dump_mnc,   SEAICE_mon_mnc
       COMMON /SEAICE_PARM_L/
-     &     SEAICEuseDYNAMICS, SEAICEuseFREEDRIFT,
+     &     SEAICEuseDYNAMICS, SEAICEuseFREEDRIFT, SEAICEuseStrImpCpl,
      &     SEAICEuseEVP, SEAICEuseEVPstar, SEAICEuseEVPrev,
      &     SEAICEuseEVPpickup,
      &     SEAICEuseMultiTileSolver,
@@ -332,6 +335,8 @@ C
 C     SEAICE_wetAlbTemp  :: Temp (deg.C) above which wet-albedo values are used
 C     SEAICE_waterAlbedo :: water albedo
 C     SEAICE_strength    :: sea-ice strength Pstar
+C     SEAICE_cStar       :: sea-ice strength paramter C* (def: 20)
+C     SEAICE_tensilFac   :: sea-ice tensile strength factor, values in [0,1]
 C     SEAICE_eccen       :: sea-ice eccentricity of the elliptical yield curve
 C     SEAICE_lhFusion    :: latent heat of fusion for ice and snow (J/kg)
 C     SEAICE_lhEvap      :: latent heat of evaporation for water (J/kg)
@@ -360,9 +365,11 @@ C                           anomalies (relative to the local freezing point)
 C                           may contribute as frazil over one time step.
 C     SEAICE_tempFrz0    :: sea water freezing point is
 C     SEAICE_dTempFrz_dS :: tempFrz = SEAICE_tempFrz0 + salt*SEAICE_dTempFrz_dS
+C     SEAICE_PDF         :: prescribed sea-ice distribution within grid box 
 C     SEAICEstressFactor :: factor by which ice affects wind stress (default=1)
 C     LSR_ERROR          :: sets accuracy of LSR solver
 C     DIFF1              :: parameter used in advect.F
+C     SEAICE_deltaMin    :: small number used to reduce singularities of Delta
 C     SEAICE_area_max    :: usually set to 1. Seeting areaMax below 1 specifies
 C                           the minimun amount of leads (1-areaMax) in the
 C                           ice pack.
@@ -405,7 +412,8 @@ C
       _RL SEAICE_dryIceAlb_south, SEAICE_wetIceAlb_south
       _RL SEAICE_drySnowAlb_south, SEAICE_wetSnowAlb_south, HO_south
       _RL SEAICE_wetAlbTemp, SEAICE_waterAlbedo
-      _RL SEAICE_strength, SEAICE_eccen
+      _RL SEAICE_strength, SEAICE_cStar
+      _RL SEAICE_tensilFac, SEAICE_eccen
       _RL SEAICE_lhFusion, SEAICE_lhEvap
       _RL SEAICE_dalton
       _RL SEAICE_iceConduct, SEAICE_snowConduct
@@ -417,10 +425,12 @@ C
       _RL SEAICE_frazilFrac, SEAICE_availHeatFrac
       _RL facOpenGrow, facOpenMelt
       _RL SEAICE_tempFrz0, SEAICE_dTempFrz_dS
+      _RL SEAICE_PDF(nITD)
       _RL OCEAN_drag, LSR_ERROR, DIFF1
       _RL JFNKgamma_nonlin, JFNKres_t, JFNKres_tFac
       _RL JFNKgamma_lin_min, JFNKgamma_lin_max, SEAICE_JFNKepsilon
       _RL SEAICE_JFNKphi, SEAICE_JFNKalpha
+      _RL SEAICE_deltaMin
       _RL SEAICE_area_reg, SEAICE_hice_reg
       _RL SEAICE_area_floor, SEAICE_area_max
       _RL SEAICE_airTurnAngle, SEAICE_waterTurnAngle
@@ -451,7 +461,7 @@ C
      &    SEAICE_dryIceAlb_south, SEAICE_wetIceAlb_south,
      &    SEAICE_drySnowAlb_south, SEAICE_wetSnowAlb_south, HO_south,
      &    SEAICE_wetAlbTemp, SEAICE_waterAlbedo,
-     &    SEAICE_strength, SEAICE_eccen,
+     &    SEAICE_strength, SEAICE_cStar, SEAICE_tensilFac, SEAICE_eccen,
      &    SEAICE_lhFusion, SEAICE_lhEvap,
      &    SEAICE_dalton, SEAICE_cpAir,
      &    SEAICE_iceConduct, SEAICE_snowConduct,
@@ -462,12 +472,12 @@ C
      &    SEAICE_mcPheeTaper, SEAICE_mcPheePiston,
      &    SEAICE_frazilFrac, SEAICE_availHeatFrac,
      &    facOpenGrow, facOpenMelt,
-     &    SEAICE_tempFrz0, SEAICE_dTempFrz_dS,
+     &    SEAICE_tempFrz0, SEAICE_dTempFrz_dS, SEAICE_PDF,
      &    OCEAN_drag, LSR_ERROR, DIFF1,
      &    JFNKgamma_nonlin, JFNKres_t, JFNKres_tFac,
      &    JFNKgamma_lin_min, JFNKgamma_lin_max, SEAICE_JFNKepsilon,
      &    SEAICE_JFNKphi, SEAICE_JFNKalpha,
-     &    SEAICE_area_reg, SEAICE_hice_reg,
+     &    SEAICE_deltaMin, SEAICE_area_reg, SEAICE_hice_reg,
      &    SEAICE_area_floor, SEAICE_area_max,
      &    SEAICEdiffKhArea, SEAICEdiffKhHeff, SEAICEdiffKhSnow,
      &    SEAICEdiffKhSalt, SEAICE_tauAreaObsRelax,
@@ -480,7 +490,7 @@ C--   COMMON /SEAICE_BOUND_RL/ Various bounding values
 C     MIN_ATEMP         :: minimum air temperature   (deg C)
 C     MIN_LWDOWN        :: minimum downward longwave (W/m^2)
 C     MIN_TICE          :: minimum ice temperature   (deg C)
-C     SEAICE_EPS        :: small number used to reduce derivative singularities
+C     SEAICE_EPS        :: small number
 C     SEAICE_EPS_SQ     :: small number square
 C
       _RL MIN_ATEMP, MIN_LWDOWN, MIN_TICE

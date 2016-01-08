@@ -55,6 +55,8 @@ C     === Global variables ===
 
       CHARACTER*(MAX_LEN_MBUF) msgBuf
 
+      CALL TIMER_START ('STREAMICE_ADVECT_THICKNESS',myThid)
+
       sec_per_year = 365.*86400.
 
       time_step_loc = time_step / sec_per_year
@@ -90,7 +92,7 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
             BCMASKX(i,j,bi,bj) = 3.0
             BCVALX(i,j,bi,bj) = uflux
             utrans(i,j,bi,bj) = 1.0
-           ELSEIF (STREAMICE_hmask(i+1,j,bi,bj).eq.1.0) THEN
+           ELSEIF (STREAMICE_hmask(i-1,j,bi,bj).eq.1.0) THEN
             uflux = u_flux_bdry_SI(i,j,bi,bj)
             BCMASKX(i,j,bi,bj) = 3.0
             BCVALX(i,j,bi,bj) = uflux
@@ -120,7 +122,7 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
             BCMASKY(i,j,bi,bj) = 3.0
             BCVALY(i,j,bi,bj) = vflux
             vtrans(i,j,bi,bj) = 1.0
-           ELSEIF (STREAMICE_hmask(i,j+1,bi,bj).eq.1.0) THEN
+           ELSEIF (STREAMICE_hmask(i,j-1,bi,bj).eq.1.0) THEN
             vflux = v_flux_bdry_SI(i,j,bi,bj)
             BCMASKY(i,j,bi,bj) = 3.0
             BCVALY(i,j,bi,bj) = vflux
@@ -363,6 +365,7 @@ CADJ STORE streamice_hmask  = comlev1, key=ikey_dynamics
       WRITE(msgBuf,'(A)') 'END STREAMICE_ADVECT_THICKNESS'
        CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &                     SQUEEZE_RIGHT , 1)
+      CALL TIMER_STOP ('STREAMICE_ADVECT_THICKNESS',myThid)
 
 #endif
       RETURN

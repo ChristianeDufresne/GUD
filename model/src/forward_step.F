@@ -10,6 +10,9 @@ C $Name$
 #ifdef ALLOW_GENERIC_ADVDIFF
 # include "GAD_OPTIONS.h"
 #endif
+#ifdef ALLOW_GGL90
+# include "GGL90_OPTIONS.h"
+#endif
 #ifdef ALLOW_GMREDI
 # include "GMREDI_OPTIONS.h"
 #endif
@@ -24,9 +27,6 @@ C $Name$
 #endif
 #ifdef ALLOW_PTRACERS
 # include "PTRACERS_OPTIONS.h"
-#endif
-#ifdef ALLOW_GGL90
-# include "GGL90_OPTIONS.h"
 #endif
 #ifdef ALLOW_EXF
 # include "EXF_OPTIONS.h"
@@ -153,13 +153,15 @@ C       |
 C       |-- THERMODYNAMICS
 C       |
 C       |-- LONGSTEP_AVERAGE
-C       |--_THERMODYNAMICS
+C       |-- LONGSTEP_THERMODYNAMICS
 C       |
 C       |-- DO_STAGGER_FIELDS_EXCHANGES
 C       |
 C       |-- DYNAMICS
 C       |
 C       |-- MNC_UPDATE_TIME
+C       |
+C       |-- OFFLINE_FIELDS_LOAD
 C       |
 C       |-- UPDATE_R_STAR
 C       |-- UPDATE_SIGMA
@@ -269,12 +271,25 @@ C     == Global variables ==
 # if (defined NONLIN_FRSURF) || (defined ALLOW_DEPTH_CONTROL)
 #  include "GRID.h"
 # endif
+# ifdef ALLOW_GMREDI
+#  include "GMREDI.h"
+# endif
 # ifdef ALLOW_EXF
 #  include "EXF_FIELDS.h"
 #  include "EXF_PARAM.h"
 #  ifdef ALLOW_BULKFORMULAE
 #   include "EXF_CONSTANTS.h"
 #  endif
+# endif
+# ifdef ALLOW_CD_CODE
+#  include "CD_CODE_VARS.h"
+# endif
+# ifdef ALLOW_GENERIC_ADVDIFF
+#  include "GAD.h"
+#  include "GAD_SOM_VARS.h"
+# endif
+# ifdef ALLOW_GGL90
+#  include "GGL90.h"
 # endif
 # ifdef ALLOW_PTRACERS
 #  include "PTRACERS_SIZE.h"
@@ -292,10 +307,6 @@ C     == Global variables ==
 #  include "DIC_ATMOS.h"
 #  include "DIC_COST.h"
 # endif
-# ifdef ALLOW_GENERIC_ADVDIFF
-#  include "GAD.h"
-#  include "GAD_SOM_VARS.h"
-# endif
 # ifdef ALLOW_OBCS
 #  include "OBCS_PARAMS.h"
 #  include "OBCS_FIELDS.h"
@@ -303,9 +314,6 @@ C     == Global variables ==
 #  ifdef ALLOW_PTRACERS
 #   include "OBCS_PTRACERS.h"
 #  endif
-# endif
-# ifdef ALLOW_CD_CODE
-#  include "CD_CODE_VARS.h"
 # endif
 # ifdef ALLOW_THSICE
 #  include "THSICE_PARAMS.h"
@@ -336,12 +344,6 @@ C     == Global variables ==
 # endif
 # ifdef ALLOW_KPP
 #  include "KPP.h"
-# endif
-# ifdef ALLOW_GGL90
-#  include "GGL90.h"
-# endif
-# ifdef ALLOW_GMREDI
-#  include "GMREDI.h"
 # endif
 # ifdef ALLOW_RBCS
 #  include "RBCS_SIZE.h"
@@ -825,6 +827,18 @@ C     Update MNC time information
          CALL MNC_UPDATE_TIME( myTime, myIter, myThid )
       ENDIF
 #endif /* ALLOW_MNC */
+
+#ifdef ALLOW_OFFLINE
+C     Load new Offline fields and update state-variable
+      IF ( useOffLine ) THEN
+#ifdef ALLOW_DEBUG
+        IF (debugMode) CALL DEBUG_CALL('OFFLINE_FIELDS_LOAD',myThid)
+#endif /* ALLOW_DEBUG */
+        CALL TIMER_START('OFFLINE_FLDS_LOAD   [FORWARD_STEP]',myThid)
+        CALL OFFLINE_FIELDS_LOAD( myTime, myIter, myThid )
+        CALL TIMER_STOP ('OFFLINE_FLDS_LOAD   [FORWARD_STEP]',myThid)
+      ENDIF
+#endif /* ALLOW_OFFLINE */
 
 C--   Update geometric factors:
 #ifdef NONLIN_FRSURF

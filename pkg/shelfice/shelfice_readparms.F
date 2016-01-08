@@ -44,6 +44,7 @@ CEOP
       NAMELIST /SHELFICE_PARM01/
      &     SHELFICEheatTransCoeff,
      &     SHELFICEsaltTransCoeff,
+     &     SHELFICEMassStepping,
      &     rhoShelfice, SHELFICEkappa,
      &     SHELFICElatentHeat, SHELFICEHeatCapacity_Cp,
      &     SHELFICEDragLinear, SHELFICEDragQuadratic,
@@ -57,6 +58,8 @@ CEOP
      &     SHELFICE_dump_mnc,
      &     SHELFICEtopoFile,
      &     SHELFICEmassFile, SHELFICEloadAnomalyFile,
+     &     SHELFICEMassDynTendFile,
+     &     SHELFICEDynMassOnly,
      &     SHELFICEadvDiffHeatFlux,
      &     SHELFICEuseGammaFrict,
      &     shiCdrag, shiZetaN, shiRc,
@@ -89,12 +92,14 @@ C Set defaults values for parameters in SHELFICE.h
       useISOMIPTD              = .FALSE.
       SHELFICEconserve         = .FALSE.
       SHELFICEboundaryLayer    = .FALSE.
+      SHELFICEMassStepping     = .FALSE.
+      SHELFICEDynMassOnly      = .FALSE.
       SHELFICEtopoFile         = ' '
       SHELFICEmassFile         = ' '
       SHELFICEloadAnomalyFile  = ' '
+      SHELFICEMassDynTendFile  = ' '
       SHELFICElatentHeat       =  334.0 _d 3
       SHELFICEHeatCapacity_Cp  = 2000.0 _d 0
-      recip_SHELFICElatentHeat =    0.0 _d 0
       rhoShelfIce              =  917.0 _d 0
       SHELFICEheatTransCoeff   =    1.0 _d -04
       SHELFICEsaltTransCoeff   = UNSET_RL
@@ -103,6 +108,7 @@ C Set defaults values for parameters in SHELFICE.h
       no_slip_shelfice         = no_slip_bottom
       SHELFICEDragLinear       = bottomDragLinear
       SHELFICEDragQuadratic    = UNSET_RL
+      SHELFICEselectDragQuadr  = -1
       SHELFICEwriteState       = .FALSE.
       SHELFICE_dumpFreq        = dumpFreq
       SHELFICE_taveFreq        = taveFreq
@@ -147,8 +153,6 @@ C Close the open data file
       CLOSE(iUnit)
 
 C Now set-up any remaining parameters that result from the input parameters
-      IF ( SHELFICElatentHeat .NE. 0. _d 0 )
-     &     recip_SHELFICElatentHeat = 1. _d 0/SHELFICElatentHeat
       IF ( SHELFICEsaltTransCoeff .EQ. UNSET_RL )
      &     SHELFICEsaltTransCoeff =
      &     5.05 _d -3 *SHELFICEheatTransCoeff
@@ -160,6 +164,11 @@ C Set quadratic bottom drag depending on choices:
        ELSE
         SHELFICEDragQuadratic = bottomDragQuadratic
        ENDIF
+      ENDIF
+      IF ( SHELFICEDragQuadratic.EQ.0. _d 0 ) THEN
+        SHELFICEselectDragQuadr = -1
+      ELSEIF ( SHELFICEselectDragQuadr.EQ.-1 ) THEN
+        SHELFICEselectDragQuadr = MAX( 0, selectBotDragQuadr )
       ENDIF
 
 C-    Set Output type flags :

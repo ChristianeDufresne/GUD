@@ -153,7 +153,7 @@ cHFLUXM_CONTROL
       namelist /ctrl_nml_genarr/
      &  xx_genarr2d_file, xx_genarr3d_file, xx_gentim2d_file,
      &  xx_genarr2d_weight, xx_genarr3d_weight, xx_gentim2d_weight,
-     &  xx_genarr2d_bounds, xx_genarr3d_bounds,
+     &  xx_genarr2d_bounds, xx_genarr3d_bounds, xx_gentim2d_bounds,
      &  genarr2dPrecond, genarr3dPrecond, gentim2dPrecond,
      &  mult_gentim2d,mult_genarr2d,mult_genarr3d,
      &  xx_genarr2d_preproc, xx_genarr2d_preproc_i,
@@ -224,12 +224,15 @@ c
 
 #if (defined (ALLOW_GENARR2D_CONTROL) || defined (ALLOW_GENARR3D_CONTROL) || defined (ALLOW_GENTIM2D_CONTROL))
         do iarr = 1, maxCtrlArr2D
+         write(xx_genarr2d_file(iarr)(1:MAX_LEN_FNAM),'(a)') ' '
+#ifdef ALLOW_OPENAD
          write(xx_genarr2d_file(iarr)(1:14),'(a,i2.2)')
      &        'xx_genarr2d_', iarr
          write(xx_genarr2d_file(iarr)(15:MAX_LEN_FNAM),'(a)') ' '
+#endif
          write(xx_genarr2d_weight(iarr)(1:MAX_LEN_FNAM),'(a)') ' '
          genarr2dPrecond(iarr) = 1. _d 0
-         mult_genarr2d(iarr)         = 0. _d 0
+         mult_genarr2d(iarr)   = 1. _d 0
          do jarr = 1, 5
            xx_genarr2d_bounds(jarr,iarr) = 0. _d 0
          enddo
@@ -242,12 +245,15 @@ c
         enddo
 c
         do iarr = 1, maxCtrlArr3D
+         write(xx_genarr3d_file(iarr)(1:MAX_LEN_FNAM),'(a)') ' '
+#ifdef ALLOW_OPENAD
          write(xx_genarr3d_file(iarr)(1:14),'(a,i2.2)')
      &        'xx_genarr3d_', iarr
          write(xx_genarr3d_file(iarr)(15:MAX_LEN_FNAM),'(a)') ' '
+#endif
          write(xx_genarr3d_weight(iarr)(1:MAX_LEN_FNAM),'(a)') ' '
          genarr3dPrecond(iarr) = 1. _d 0
-         mult_genarr3d(iarr)         = 0. _d 0
+         mult_genarr3d(iarr)   = 1. _d 0
          do jarr = 1, 5
            xx_genarr3d_bounds(jarr,iarr) = 0. _d 0
          enddo
@@ -260,9 +266,12 @@ c
         enddo
 c
         do iarr = 1, maxCtrlTim2D
+         write(xx_gentim2d_file(iarr)(1:MAX_LEN_FNAM),'(a)') ' '
+#ifdef ALLOW_OPENAD
          write(xx_gentim2d_file(iarr)(1:14),'(a,i2.2)')
      &        'xx_gentim2d_', iarr
          write(xx_gentim2d_file(iarr)(15:MAX_LEN_FNAM),'(a)') ' '
+#endif
          write(xx_gentim2d_weight(iarr)(1:MAX_LEN_FNAM),'(a)') ' '
          xx_gentim2d_startdate1(iarr) = 0
          xx_gentim2d_startdate2(iarr) = 0
@@ -275,8 +284,11 @@ c
           xx_gentim2d_preproc_i(jarr,iarr) = 0
           xx_gentim2d_preproc_r(jarr,iarr) = 0. _d 0
          enddo
-         mult_gentim2d(iarr)          = 0. _d 0
+         mult_gentim2d(iarr)          = 1. _d 0
          gentim2dPrecond(iarr)        = 1. _d 0
+         do jarr = 1, 5
+           xx_gentim2d_bounds(jarr,iarr) = 0. _d 0
+         enddo
         enddo
 #endif
 c

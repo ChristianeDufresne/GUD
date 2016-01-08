@@ -42,6 +42,8 @@ usage()
     echo "  (-bash|-b) STRING        preferred location of a \"bash\" or \"sh\" shell"
     echo "                             (DEF=\"\" for \"bash\")"
     echo "  (-ef) STRING             used as genmake2 \"-extra_flag\" argument"
+    echo "  (-ncad)                  use genmake2 option \"-nocat4ad\" (-ncad)"
+    echo "  (-small_f)               make target small_f before making target all"
     echo "  (-makedepend|-md) STRING command to use for \"makedepend\""
     echo "  (-make|-m) STRING        command to use for \"make\""
     echo "                             (DEF=\"make\")"
@@ -130,7 +132,7 @@ testoutput_var()
 	echo testoutput_var: grep "$2" $1/$4/$OUTPUTFILE 1>&2
     fi
     if [ -r $1/$4/$OUTPUTFILE ]; then
-	grep "$2" $1/$4/$OUTPUTFILE | sed 's/.*=//' | cat -n > ${TMP}a.txt
+	grep "$2" $1/$4/$OUTPUTFILE | sed 's/.*=//' | nl > ${TMP}a.txt
 	lncntA=`wc -l ${TMP}a.txt | awk '{print $1}' `
 	if [ $lncntA -lt 2 ]; then
 	    if [ $verbose -gt 0 ]; then
@@ -145,7 +147,7 @@ testoutput_var()
     if [ $debug -gt 0 ]; then
 	echo testoutput_var: grep "$2" $1/$5 1>&2
     fi
-    grep "$2" $1/$5 | sed 's/.*=//' | cat -n > ${TMP}b.txt
+    grep "$2" $1/$5 | sed 's/.*=//' | nl > ${TMP}b.txt
     lncntB=`wc -l ${TMP}b.txt | awk '{print $1}' `
     if [ $lncntB -lt 2 ]; then
 	if [ $verbose -gt 0 ]; then
@@ -402,6 +404,9 @@ genmakemodel()
 	    if test "x$EXTRFLG" != x ; then
 		command="$command -extra_flag $EXTRFLG"
 	    fi
+	    if test "x$NOCATAD" = xt ; then
+		command="$command -nocat4ad"
+	    fi
 	    if test "x$TS" = xt ; then
 		command="$command -ts"
 	    fi
@@ -523,12 +528,23 @@ makemodel()
     else
 	cd $1;
 	if test -r Makefile ; then
-	    printf 'make ... '
-	    if test "x$REPLMAKE" = x ; then
-		$MAKE $TARG >> make.tr_log 2>&1
-	    else
-		$REPLMAKE $TARG >> make.tr_log 2>&1
+	    if test "x$MKSMALLF" = xt ; then
+		printf 'make small_f ... '
+		$MAKE_CMD small_f >> make.tr_log 2>&1
+		RETVAL=$?
+		if test "x$RETVAL" != x0 ; then
+		    tail make.tr_log
+		    echo failed
+		    cp genmake.log genmake.tr_log $CDIR
+		    tail -$NBLINES_MKLOG make.tr_log > $CDIR"/make.tr_log_tail"
+		    rm -f $EXECUTABLE
+		    mk_fail=1
+		else
+		    echo successful
+		fi
 	    fi
+	    printf 'make ... '
+	    $MAKE_CMD $TARG >> make.tr_log 2>&1
 	    RETVAL=$?
 	    if test "x$RETVAL" != x0 ; then
 		tail make.tr_log
@@ -776,7 +792,7 @@ runmodel()
 	if test "x$MPI" != x0 ; then
 	    #- adjust the MPI run command with the right number of Procs
 	    #echo '' ; echo "  COMMAND='$COMMAND'"
-	    COMMAND=`echo $COMMAND | sed "s/ TR_NPROC / $LOC_NPROC /"`
+	    COMMAND=`echo $COMMAND | sed "s/ TR_NPROC/ $LOC_NPROC/"`
 	    if test "x$MPI_MFILE" != x ; then
 	      COMMAND=`echo $COMMAND | sed "s/ TR_MFILE / ..\/..\/$LOC_MFILE /"`
 	    fi
@@ -842,8 +858,15 @@ runmodel()
 	if test -f $OUTPUTFILE ; then
 	  grep '(PID\.TID 0000\.0001)      n.. =' $OUTPUTFILE \
 		| sed 's/(PID.TID 0000.0001)   //' >> $CDIR"/summary.txt"
-	  grep -A3 'Seconds in section "ALL' $OUTPUTFILE \
-		| sed 's/(PID.TID 0000.0001)   //' >> $CDIR"/summary.txt"
+#	  grep -A3 'Seconds in section "ALL' $OUTPUTFILE \
+#		| sed 's/(PID.TID 0000.0001)   //' >> $CDIR"/summary.txt"
+#         some implementations of grep cannot do contextual searches so we
+#         replace the above with a sed command
+	  cat $OUTPUTFILE | sed -n '/Seconds in section "ALL/{N
+	  N
+	  N
+	  p
+	  }' | sed 's/(PID.TID 0000.0001)   //' >> $CDIR"/summary.txt"
 	fi
 	if test -s STDERR.0000 ; then cp STDERR.0000 $CDIR"/STDERR.0000" ; fi
 	if [ $RETVAL -eq 0 -a $ENDVAL -gt 0 ] ; then
@@ -1044,7 +1067,7 @@ MKDEPEND=
 if test "x$MAKE" = x ; then
     MAKE=make
 fi
-REPLMAKE=
+MAKE_CMD=
 if test "x$CC" = x ; then
     CC=cc
 fi
@@ -1057,6 +1080,8 @@ OUTDIR=
 DELDIR=
 USE_R4=
 EXTRFLG=
+NOCATAD=
+MKSMALLF=
 
 #- type of testing (KIND):
 #   KIND=0 : forward (= default) ;  KIND=1 : Tangent Linear with TAF ;
@@ -1116,8 +1141,8 @@ for ac_option ; do
 	-make | --make | -m | --m) ac_prev=MAKE ;;
 	-make=* | --make=* | -m=* | --m=*) MAKE=$ac_optarg ;;
 
-	-repl_mk | --repl_mk ) ac_prev=REPLMAKE ;;
-	-repl_mk=* | --repl_mk=*) REPLMAKE=$ac_optarg ;;
+	-repl_mk | --repl_mk ) ac_prev=MAKE_CMD ;;
+	-repl_mk=* | --repl_mk=*) MAKE_CMD=$ac_optarg ;;
 
 	-odir | --odir) ac_prev=OUTDIR ;;
 	-odir=* | --odir=*) OUTDIR=$ac_optarg ;;
@@ -1165,6 +1190,8 @@ for ac_option ; do
 	-oad) if test $KIND = 0 ; then KIND=4 ; NODEPEND=t ; else
 		echo "Error: '-tlm', '-adm' and '-oad' are exclusive" ; usage
 	      fi ;;
+	-ncad) NOCATAD=t ;;
+	-small_f) MKSMALLF=t ;;
 
 	-ieee)   echo "Warning: ignore option '-ieee' (already the default)"
 		 printf " ... " ;;
@@ -1184,7 +1211,7 @@ for ac_option ; do
 
 	-ts) TS=t;;
 	-papis) PAPIS=t;;
-	-pcls) PCL=t;;
+	-pcls) PCLS=t;;
 
 	-*) echo "Error: unrecognized option: "$ac_option
 	    usage ;;
@@ -1200,6 +1227,7 @@ if test "x$QUICK" = xt ; then
     NOCLEAN=t
     NODEPEND=t
 fi
+if test "x$MAKE_CMD" = x ; then MAKE_CMD=$MAKE ; fi
 
 #- check length of MPI machine file:
 if test "x$MPI" != x0 -a "x$MPI_MFILE" != x ; then
@@ -1238,12 +1266,12 @@ elif test $KIND = 4 ; then
     ref_outp="output_oadm.txt"
     EXECUTABLE="mitgcmuv_ad"
 else
-    if test "x$JOBS" != x ; then TARG="-j $JOBS $TARG" ; fi
     code_dir=code
     inputdir=input
     ref_outp="output.txt"
     EXECUTABLE="mitgcmuv"
 fi
+if test "x$JOBS" != x ; then TARG="-j $JOBS $TARG" ; fi
 
 xx=`echo $TESTDIRS | awk '{print $1}'`
 if test "x$TESTDIRS" = x ; then
@@ -1306,17 +1334,17 @@ fi
 
 echo "OK (COMMAND='$COMMAND')"
 
-TMP=./tr_$$
+#TMP=./tr_$$
 #- try to put temporary files in system-local /tmp dir
-#TMP=/tmp/tr_$$
-#touch $TMP ; retVal=$?
-#if [ $retVal -eq 0 ] ; then
-#  if test ! -r $TMP ; then TMP=./tr_$$ ; fi
-#else
-#  TMP=./tr_$$
-#fi
-#rm -f $TMP
-#if [ $verbose -gt 1 ]; then echo " temp files: $TMP" ; fi
+TMP=/tmp/tr_${USER}_$$
+touch $TMP ; retVal=$?
+if [ $retVal -eq 0 ] ; then
+  if test ! -r $TMP ; then TMP=./tr_$$ ; fi
+else
+  TMP=./tr_$$
+fi
+rm -f $TMP
+if [ $verbose -gt 1 ]; then echo " temp files: $TMP" ; fi
 
 # set the Default List of output variables to be checked:
 #  (use default or load experiment-specific list from file "tr_checklist")
@@ -1370,8 +1398,9 @@ BASE="tr_"$MACH"_"$DATE"_"
 if test "x$OUTDIR" != x ; then
     BASE="tr_"$OUTDIR"_"$DATE"_"
 else
-   #short_name=`hostname | sed 's/\..*$//'`
-    short_name=`hostname -s | tr '[:upper:]' '[:lower:]'`
+   #short_name=`hostname -s | tr '[:upper:]' '[:lower:]'`
+   # hostname -s is not universal (does work on AIX system)
+    short_name=`hostname | sed 's/\..*$//' | tr '[:upper:]' '[:lower:]'`
     BASE="tr_"$short_name"_"$DATE"_"
 fi
 DNUM=0
@@ -1677,12 +1706,20 @@ for dir in $TESTDIRS ; do
 	if test -f $dir/$builddir/Makefile ; then
 	    mkOpt=`grep '^# OPTFILE=' $dir/$builddir/Makefile 2>/dev/null | head -1 | sed 's/^# //'`
 	    echo "from '$dir/$builddir/Makefile', extract:" > $DRESULTS/genmake_state
-	    sed -n '/^# executed by:/,+1 p' $dir/$builddir/Makefile >> $DRESULTS/genmake_state
+#	    sed -n '/^# executed by:/,+1 p' $dir/$builddir/Makefile >> $DRESULTS/genmake_state
+# bsd-sed cannot do the above code
+	    cat $dir/$builddir/Makefile | \
+		sed -n '/^# executed by:/{N
+                                          p
+                                          }' >> $DRESULTS/genmake_state
 	    echo " $mkOpt" >> $DRESULTS/genmake_state
 	    if test "x$OPTFILE" = xNONE ; then
 		eval $mkOpt
-		sed "/^No \"OPTFILE\" was specified ; genmake2/a\  OPTFILE=${OPTFILE}"\
-			$SUMMARY > tmp.tr_log
+#		sed "/^No \"OPTFILE\" was specified ; genmake2/a\  OPTFILE=${OPTFILE}"\
+#			$SUMMARY > tmp.tr_log
+# bsd-sed requires a newline after "a\":
+		sed "/^No \"OPTFILE\" was specified ; genmake2/a\\
+                         OPTFILE=${OPTFILE}" $SUMMARY > tmp.tr_log
 		RETVAL=$?
 		if test "x$RETVAL" = x0 ; then
 		    cp -f tmp.tr_log $SUMMARY

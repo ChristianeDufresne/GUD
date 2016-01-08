@@ -64,6 +64,7 @@ C     data.pkg namelists
      &          useBulkForce,
      &          useEBM,
      &          useCheapAML,
+     &          useAUTODIFF,
      &          useGrdchk,
      &          useSMOOTH,
      &          usePROFILES,
@@ -127,19 +128,12 @@ c     useGAD          =.FALSE.
       useBulkForce    =.FALSE.
       useEBM          =.FALSE.
       useCheapAML     =.FALSE.
+      useAUTODIFF     =.FALSE.
       useGrdchk       =.FALSE.
       useSMOOTH       =.FALSE.
       usePROFILES     =.FALSE.
-#ifdef ALLOW_ECCO
-      useECCO         =.TRUE.
-#else
       useECCO         =.FALSE.
-#endif
-#ifdef ALLOW_CTRL
-      useCTRL         =.TRUE.
-#else
       useCTRL         =.FALSE.
-#endif
       useSBO          =.FALSE.
       useFLT          =.FALSE.
       usePTRACERS     =.FALSE.
@@ -167,6 +161,17 @@ c     useGAD          =.FALSE.
       useRunClock     =.FALSE.
       useEMBED_FILES  =.FALSE.
       useMYPACKAGE    =.FALSE.
+
+C-    Adjust default to account for pkgs without run-time On/Off switch
+#ifdef ALLOW_AUTODIFF
+      useAUTODIFF     =.TRUE.
+# ifdef ALLOW_ECCO
+      useECCO         =.TRUE.
+# endif
+# ifdef ALLOW_CTRL
+      useCTRL         =.TRUE.
+# endif
+#endif /* ALLOW_AUTODIFF */
 
 C--   Read parameters from open data file
       READ(UNIT=iUnit,NML=PACKAGES)
@@ -275,6 +280,9 @@ C----- pkgs with a standard "usePKG" On/Off switch in "data.pkg":
 #endif
 #ifdef ALLOW_CHEAPAML
       CALL PACKAGES_PRINT_MSG( useCheapAML,   'CheapAML',    ' ' )
+#endif
+#ifdef ALLOW_AUTODIFF
+      CALL PACKAGES_PRINT_MSG( useAUTODIFF,   'AUTODIFF',    ' ' )
 #endif
 #ifdef ALLOW_GRDCHK
       CALL PACKAGES_PRINT_MSG( useGrdchk,     'Grdchk',      ' ' )

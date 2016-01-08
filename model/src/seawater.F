@@ -5,6 +5,7 @@ C $Name$
 
 C--  File seawater.F: routines that compute quantities related to seawater.
 C--   Contents
+C     Seawater (SW) librabry routines
 C--   o SW_PTMP: function to compute potential temperature
 C--   o SW_TEMP: function to compute in-situ temperature from pot. temp.
 C--   o SW_ADTG: function to compute adiabatic temperature gradient
@@ -33,6 +34,7 @@ C     S  :: salinity    [psu      (PSS-78) ]
 C     T  :: temperature [degree C (IPTS-68)]
 C     P  :: pressure    [db]
 C     PR :: Reference pressure  [db]
+C     \ev
 
 C     !USES:
       IMPLICIT NONE
@@ -95,6 +97,7 @@ C     Bryden, H. 1973.
 C     New Polynomials for thermal expansion, adiabatic temperature gradient
 C     and potential temperature of sea water.
 C     DEEP-SEA RES., 1973, Vol20,401-408.
+C     \ev
 
 C     !USES:
       IMPLICIT NONE
@@ -110,35 +113,10 @@ C     PR     :: reference pressure
 CEOP
 
 C     !FUNCTIONS:
-      _RL sw_adtg
-      EXTERNAL sw_adtg
+      _RL sw_ptmp
+      EXTERNAL sw_ptmp
 
-C     !LOCAL VARIABLES:
-      _RL del_P ,del_th, th, q
-      _RL onehalf, two, three
-      PARAMETER ( onehalf = 0.5 _d 0, two = 2. _d 0, three = 3. _d 0 )
-
-C theta1
-C--   here we swap P and PR in order to get in-situ temperature
-C     del_P  = PR - P ! to get potential from in-situ temperature
-      del_P  = P - PR ! to get in-situ from potential temperature
-      del_th = del_P*sw_adtg(S,T,P)
-      th     = T + onehalf*del_th
-      q      = del_th
-C theta2
-      del_th = del_P*sw_adtg(S,th,P+onehalf*del_P)
-
-      th     = th + (1 - 1/sqrt(two))*(del_th - q)
-      q      = (two-sqrt(two))*del_th + (-two+three/sqrt(two))*q
-
-C theta3
-      del_th = del_P*sw_adtg(S,th,P+onehalf*del_P)
-      th     = th + (1 + 1/sqrt(two))*(del_th - q)
-      q      = (two + sqrt(two))*del_th + (-two-three/sqrt(two))*q
-
-C theta4
-      del_th = del_P*sw_adtg(S,th,P+del_P)
-      SW_temp= th + (del_th - two*q)/(two*three)
+      SW_temp = SW_PTMP (S,T,PR,P)
 
       RETURN
       END
@@ -158,6 +136,7 @@ C     *=============================================================*
 C
 C     started:
 C              Armin Koehl akoehl@ucsd.edu
+C     \ev
 
 C     !USES:
       IMPLICIT NONE

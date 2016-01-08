@@ -1,5 +1,4 @@
 
-
       subroutine simul(
      I                  indic,
      I                  nn,

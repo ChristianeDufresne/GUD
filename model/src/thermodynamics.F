@@ -41,6 +41,7 @@ C     == Global variables ===
 #include "DYNVARS.h"
 #include "GRID.h"
 #include "SURFACE.h"
+#include "FFIELDS.h"
 #ifdef ALLOW_GENERIC_ADVDIFF
 # include "GAD.h"
 #endif
@@ -53,7 +54,6 @@ C     == Global variables ===
 #ifdef ALLOW_AUTODIFF
 # include "tamc.h"
 # include "tamc_keys.h"
-# include "FFIELDS.h"
 # include "EOS.h"
 # ifdef ALLOW_KPP
 #  include "KPP.h"
@@ -127,6 +127,13 @@ CADJ STORE theta,salt,wvel = comlev1, key = ikey_dynamics, byte=isbyte
        CALL CALC_WSURF_TR( theta, salt, wVel,
      &                     myTime, myIter, myThid )
       ENDIF
+#ifdef ALLOW_LAYERS
+       IF ( useLayers ) THEN
+          CALL LAYERS_WSURF_TR( theta, salt, wVel,
+     &                     myTime, myIter, myThid )
+       ENDIF
+#endif /* ALLOW_LAYERS */
+
 
 #ifdef DO_PTRACERS_HERE
       IF ( PTRACERS_calcSurfCor ) THEN
@@ -302,7 +309,7 @@ C       Also apply open boundary conditions for each passive tracer
 #ifdef ALLOW_DEBUG
           IF (debugMode) CALL DEBUG_CALL('PTRACERS_INTEGRATE',myThid)
 #endif
-           CALL PTRACERS_INTEGRATE(
+          CALL PTRACERS_INTEGRATE(
      I          bi, bj, recip_hFacNew,
      I          uFld, vFld, wFld,
      U          kappaRk,
@@ -313,9 +320,28 @@ C       Also apply open boundary conditions for each passive tracer
 #ifdef   ALLOW_OBCS
 C--   Apply open boundary conditions
         IF ( useOBCS ) THEN
-           CALL OBCS_APPLY_TS( bi, bj, 0, theta, salt, myThid )
+          CALL OBCS_APPLY_TS( bi, bj, 0, theta, salt, myThid )
         ENDIF
 #endif   /* ALLOW_OBCS */
+
+#ifdef ALLOW_FRICTION_HEATING
+#ifdef ALLOW_DIAGNOSTICS
+        IF ( addFrictionHeating .AND. useDiagnostics ) THEN
+          CALL DIAGNOSTICS_FILL_RS( frictionHeating, 'HeatDiss',
+     &                              0, Nr, 1, bi, bj, myThid )
+        ENDIF
+#endif /* ALLOW_DIAGNOSTICS */
+C-    Reset frictionHeating to zero
+        IF ( addFrictionHeating .AND. .NOT.staggerTimeStep ) THEN
+          DO k=1,Nr
+           DO j=1-OLy,sNy+OLy
+            DO i=1-OLx,sNx+OLx
+              frictionHeating(i,j,k,bi,bj) = 0. _d 0
+            ENDDO
+           ENDDO
+          ENDDO
+        ENDIF
+#endif /* ALLOW_FRICTION_HEATING */
 
 C--   end bi,bj loops.
        ENDDO

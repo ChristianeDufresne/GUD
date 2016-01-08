@@ -39,7 +39,6 @@ c     == routine arguments ==
       integer mythid
 
 #ifdef ALLOW_PROFILES
-#ifdef ALLOW_COST
 
 C     ========= Local variables =======================
       integer K,num_file,num_var,prof_num
@@ -58,6 +57,11 @@ C     ========= Local variables =======================
       character*(80) profilesfile, fnameequinc
       integer IL, JL, err
 
+      _RL  objf_prof_tile (nSx,nSy)
+      _RL  objf_prof_glo
+      _RL  num_prof_tile (nSx,nSy)
+      _RL  num_prof_glo
+
 C     !FUNCTIONS
       INTEGER  ILNBLNK
       EXTERNAL ILNBLNK
@@ -67,6 +71,13 @@ c     == end of interface ==
 #ifndef ALLOW_CTRL
       optimcycle = 0
 #endif
+
+      write(msgbuf,'(a)') ' '
+      call print_message( msgbuf,
+     &  standardmessageunit,SQUEEZE_RIGHT , mythid)
+      write(msgbuf,'(a)') '== cost_profiles: begin =='
+      call print_message( msgbuf,
+     &  standardmessageunit,SQUEEZE_RIGHT , mythid)
 
         _BEGIN_MASTER( mythid )
 
@@ -143,18 +154,6 @@ cgf for ssh anomalies, prof_traj1D_mean is the model time average, to be removed
              endif
 #endif
 
-#ifdef ALLOW_PROFILES_ANOM_COST
-c the following does not currently work, since prof_theta_mean and
-c prof_salt_mean are never filled. SO I put a stop here.
-             STOP 'ABNORMAL END: S/R COST_PROFILES'
-             if (num_var .le. 2) then
-              call profiles_interp_mean(prof_traj1D_mean,
-     &         prof_lon(num_file,prof_num,bi,bj),
-     &         prof_lat(num_file,prof_num,bi,bj),
-     &         num_var,num_file,mytime,bi,bj,myThid)
-             endif
-#endif
-
              call active_read_profile(num_file,
      &           ProfDepthNo(num_file,bi,bj),prof_traj1D,num_var,
      &           prof_num,.false.,optimcycle,bi,bj,mythid,
@@ -195,7 +194,8 @@ c prof_salt_mean are never filled. SO I put a stop here.
      &      ProfNo(num_file,bi,bj),num_var
            call print_message(
      &      msgbuf, standardmessageunit, SQUEEZE_RIGHT , mythid)
-           write(msgbuf,'(a,D22.15,D22.15)') prof_names(num_var),
+           write(msgbuf,'(a,D22.15,D22.15)') 
+     &      prof_names(num_file,num_var),
      &      objf_profiles(num_file,num_var,bi,bj),
      &      num_profiles(num_file,num_var,bi,bj)
           enddo !do num_var...
@@ -209,9 +209,41 @@ c prof_salt_mean are never filled. SO I put a stop here.
 
       _END_MASTER( mythid )
 
+c print cost function values
+      do num_file=1,NFILESPROFMAX
+      do num_var=1,NVARMAX
+c
+      do bj = mybylo(mythid),mybyhi(mythid)
+        do bi = mybxlo(mythid),mybxhi(mythid)
+          objf_prof_tile(bi,bj) =
+     &             objf_profiles(num_file,num_var,bi,bj)
+          num_prof_tile(bi,bj) =
+     &             num_profiles(num_file,num_var,bi,bj)
+       enddo
+      enddo
+c
+      CALL GLOBAL_SUM_TILE_RL( objf_prof_tile, objf_prof_glo, myThid )
+      CALL GLOBAL_SUM_TILE_RL( num_prof_tile, num_prof_glo, myThid )
+c
+      write(msgbuf,'(a,I2,a,I2,a,2D12.5)')
+     &  ' cost_profiles(',num_file,',',num_var,')= ',
+     &  objf_prof_glo,num_prof_glo
+
+      IF ( num_prof_glo .GT. 0. ) call print_message( msgbuf,
+     &  standardmessageunit,SQUEEZE_RIGHT , mythid)
+c
+      enddo
+      enddo
+
+      write(msgbuf,'(a)') '== cost_profiles: end   =='
+      call print_message( msgbuf,
+     &  standardmessageunit,SQUEEZE_RIGHT , mythid)
+      write(msgbuf,'(a)') ' '
+      call print_message( msgbuf,
+     &  standardmessageunit,SQUEEZE_RIGHT , mythid)
+
 C===========================================================
 
-#endif
 #endif
 
       RETURN
