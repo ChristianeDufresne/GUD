@@ -128,6 +128,9 @@ C     intermediate time level centered (C) between n and n-1
 C     auxillary fields
       _RL uTmp (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL vTmp (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+C     fractional area at velocity points
+      _RL areaW(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL areaS(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
 #ifdef ALLOW_AUTODIFF_TAMC
       INTEGER itmpkey, itmpkey2, itmpkey3
 #endif
@@ -179,6 +182,28 @@ cph break artificial dependencies
        ENDDO
       ENDDO
 #endif
+
+C     initialise fractional areas at velocity points
+      DO bj=myByLo(myThid),myByHi(myThid)
+       DO bi=myBxLo(myThid),myBxHi(myThid)
+        DO j=1-OLy,sNy+OLy
+         DO i=1-OLx,sNx+OLx
+          areaW(I,J,bi,bj) = 1. _d 0
+          areaS(I,J,bi,bj) = 1. _d 0
+         ENDDO
+        ENDDO
+        IF ( SEAICEscaleSurfStress ) THEN
+         DO J=jMin,jMax
+          DO I=iMin,iMax
+           areaW(I,J,bi,bj) =
+     &          0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I-1,J,bi,bj))
+           areaS(I,J,bi,bj) =
+     &          0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I,J-J,bi,bj))
+          ENDDO
+         ENDDO
+        ENDIF
+       ENDDO
+      ENDDO
 
       ipass0 = 2
 C     modify time stepping a little if more than the default 
@@ -236,10 +261,10 @@ C NOW DO PREDICTOR TIME STEP
         DO bi=myBxLo(myThid),myBxHi(myThid)
          DO j=1-OLy,sNy+OLy
           DO i=1-OLx,sNx+OLx
-           uIceNm1(i,j,bi,bj)=uIce(I,J,bi,bj)
-           vIceNm1(i,j,bi,bj)=vIce(I,J,bi,bj)
-           uIceC(I,J,bi,bj)=uIce(I,J,bi,bj)
-           vIceC(I,J,bi,bj)=vIce(I,J,bi,bj)
+           uIceNm1(I,J,bi,bj) = uIce(I,J,bi,bj)
+           vIceNm1(I,J,bi,bj) = vIce(I,J,bi,bj)
+           uIceC  (I,J,bi,bj) = uIce(I,J,bi,bj)
+           vIceC  (I,J,bi,bj) = vIce(I,J,bi,bj)
           ENDDO
          ENDDO
         ENDDO
@@ -250,8 +275,8 @@ C NOW DO MODIFIED EULER STEP
         DO bi=myBxLo(myThid),myBxHi(myThid)
          DO j=1-OLy,sNy+OLy
           DO i=1-OLx,sNx+OLx
-           uIce(I,J,bi,bj)=HALF*(uIce(I,J,bi,bj)+uIceNm1(i,j,bi,bj))
-           vIce(I,J,bi,bj)=HALF*(vIce(I,J,bi,bj)+vIceNm1(i,j,bi,bj))
+           uIce (I,J,bi,bj)=HALF*(uIce(I,J,bi,bj)+uIceNm1(i,j,bi,bj))
+           vIce (I,J,bi,bj)=HALF*(vIce(I,J,bi,bj)+vIceNm1(i,j,bi,bj))
            uIceC(I,J,bi,bj)=uIce(I,J,bi,bj)
            vIceC(I,J,bi,bj)=vIce(I,J,bi,bj)
           ENDDO
@@ -288,7 +313,7 @@ CADJ STORE vice = comlev1_dynsol, kind=isbyte, key = itmpkey
      I     ipass, myTime, myIter, myThid )
 
       CALL SEAICE_CALC_VISCOSITIES(
-     I     e11, e22, e12, zMin, zMax, hEffM, press0,
+     I     e11, e22, e12, zMin, zMax, hEffM, press0, tensileStrength,
      O     eta, etaZ, zeta, zetaZ, press, deltaC,
      I     ipass, myTime, myIter, myThid )
 
@@ -320,7 +345,7 @@ C
 C     set up anti symmetric drag force and add in current force
 C     ( remember to average to correct velocity points )
           FORCEX(I,J,bi,bj)=FORCEX0(I,J,bi,bj)+
-     &         0.5 _d 0 * ( DWATN(I,J,bi,bj)+DWATN(I-1,J,bi,bj) ) *
+     &         ( 0.5 _d 0 * ( DWATN(I,J,bi,bj)+DWATN(I-1,J,bi,bj) ) *
      &         COSWAT * uVel(I,J,kSrf,bi,bj)
      &         - SIGN(SINWAT, _fCori(I,J,bi,bj))* 0.5 _d 0 *
      &         ( DWATN(I  ,J,bi,bj) * 0.5 _d 0 *
@@ -329,9 +354,9 @@ C     ( remember to average to correct velocity points )
      &         + DWATN(I-1,J,bi,bj) * 0.5 _d 0 *
      &          (vVel(I-1,J  ,kSrf,bi,bj)-vIceC(I-1,J  ,bi,bj)
      &          +vVel(I-1,J+1,kSrf,bi,bj)-vIceC(I-1,J+1,bi,bj))
-     &         )
+     &         ) ) * areaW(I,J,bi,bj)
           FORCEY(I,J,bi,bj)=FORCEY0(I,J,bi,bj)+
-     &         0.5 _d 0 * ( DWATN(I,J,bi,bj)+DWATN(I,J-1,bi,bj) ) *
+     &         ( 0.5 _d 0 * ( DWATN(I,J,bi,bj)+DWATN(I,J-1,bi,bj) ) *
      &         COSWAT * vVel(I,J,kSrf,bi,bj)
      &         + SIGN(SINWAT, _fCori(I,J,bi,bj)) * 0.5 _d 0 *
      &         ( DWATN(I,J  ,bi,bj) * 0.5 _d 0 *
@@ -340,7 +365,7 @@ C     ( remember to average to correct velocity points )
      &         + DWATN(I,J-1,bi,bj) * 0.5 _d 0 *
      &          (uVel(I  ,J-1,kSrf,bi,bj)-uIceC(I  ,J-1,bi,bj)
      &          +uVel(I+1,J-1,kSrf,bi,bj)-uIceC(I+1,J-1,bi,bj))
-     &         )
+     &         ) ) * areaS(I,J,bi,bj)
          ENDDO
         ENDDO
         DO j=jMin,jMax
@@ -473,11 +498,13 @@ C--   Calculate initial residual of the linearised system
      &         / ( 1. _d 0 - seaiceMaskU(i,j,bi,bj)
      &           + seaiceMassU(i,j,bi,bj)/SEAICE_deltaTdyn
      &           + HALF*( DWATN(i,j,bi,bj) + DWATN(i-1,j,bi,bj) )*COSWAT
+     &                 * areaW(i,j,bi,bj)
      &           )
             vIce_fd(i,j,bi,bj) = FORCEY(i,j,bi,bj)
      &         / ( 1. _d 0 - seaiceMaskV(i,j,bi,bj)
      &           + seaiceMassV(i,j,bi,bj)/SEAICE_deltaTdyn
      &           + HALF*( DWATN(i,j,bi,bj) + DWATN(i,j-1,bi,bj) )*COSWAT
+     &                 * areaS(i,j,bi,bj)
      &           )
            ENDDO
           ENDDO
@@ -1161,6 +1188,9 @@ C     backward difference extrapolation factor
 C     strongly implicit coupling factor
       _RL strImpCplFac
 
+C     fractional area at velocity points
+      _RL areaW(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL areaS(1-OLx:sNx+OLx,1-OLy:sNy+OLy)
 C     coefficients of ice velocities in coefficient matrix
 C     for both U and V-equation
 C     XX: double derivative in X
@@ -1195,6 +1225,21 @@ C     backward difference extrapolation factor
 
       DO bj=myByLo(myThid),myByHi(myThid)
        DO bi=myBxLo(myThid),myBxHi(myThid)
+        IF ( SEAICEscaleSurfStress ) THEN
+         DO J=jMin,jMax
+          DO I=iMin,iMax
+           areaW(I,J) = 0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I-1,J,bi,bj))
+           areaS(I,J) = 0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I,J-J,bi,bj))
+          ENDDO
+         ENDDO
+        ELSE
+         DO J=jMin,jMax
+          DO I=iMin,iMax
+           areaW(I,J) = 1. _d 0
+           areaS(I,J) = 1. _d 0
+          ENDDO
+         ENDDO
+        ENDIF
 C
 C     coefficients of uIce(I,J) and vIce(I,J) belonging to ...
 C
@@ -1296,7 +1341,7 @@ C     and the symmetric drag term; must be done after normalizing
      &         + seaiceMaskU(I,J,bi,bj) *
      &         ( bdfAlpha*seaiceMassU(I,J,bi,bj)/SEAICE_deltaTdyn
      &         + 0.5 _d 0 * ( dwatnLoc(I,  J,bi,bj) 
-     &                      + dwatnLoc(I-1,J,bi,bj) )
+     &                      + dwatnLoc(I-1,J,bi,bj) )*areaW(I,J)
      &         * COSWAT )
           uRt1(I,J,bi,bj) = uRt1(I,J,bi,bj) * recip_rAw(I,J,bi,bj)
           uRt2(I,J,bi,bj) = uRt2(I,J,bi,bj) * recip_rAw(I,J,bi,bj)
@@ -1358,19 +1403,22 @@ C     and the symmetric drag term; must be done after normalizing
      &         + seaiceMaskV(I,J,bi,bj) *
      &         ( bdfAlpha*seaiceMassV(I,J,bi,bj)/SEAICE_deltaTdyn
      &         + 0.5 _d 0 * ( dwatnLoc(I,J,  bi,bj) 
-     &                      + dwatnLoc(I,J-1,bi,bj) )
+     &                      + dwatnLoc(I,J-1,bi,bj) )*areaS(I,J)
      &         * COSWAT )
           vRt1(I,J,bi,bj) = vRt1(I,J,bi,bj) * recip_rAs(I,J,bi,bj)
           vRt2(I,J,bi,bj) = vRt2(I,J,bi,bj) * recip_rAs(I,J,bi,bj)
          ENDDO
         ENDDO
 
-        IF ( useCubedSphereExchange .AND.
-     &       (SEAICE_OLx.GT.0 .OR. SEAICE_OLy.GT.0) ) THEN
+        IF ( ( useCubedSphereExchange .AND.
+     &       (SEAICE_OLx.GT.0 .OR. SEAICE_OLy.GT.0) ) .OR.
+     &       SEAICEscaleSurfStress ) THEN
 C     this is clearly a hack: make sure that diagonals BU/BV are non-zero.
 C     In my experience we only need to catch the case of SEAICE_OLx/y=OLx/y-2,
 C     but for safety lets call this routine whenever SEAICE_OLx/y > 0
 C     &       (SEAICE_OLx.EQ.OLx-2 .OR. SEAICE_OLy.EQ.OLy-2) ) THEN
+C     When scaling the surface ice-ocean stress by AREA, then there will
+C     be many cases of zero diagonal entries.
          DO J=jMin,jMax
           DO I=iMin,iMax
            IF (BU(I,J,bi,bj).EQ.0 _d 0) BU(I,J,bi,bj) = 1. _d 0

@@ -2,6 +2,9 @@ C $Header$
 C $Name$
 
 #include "PROFILES_OPTIONS.h"
+#ifdef ALLOW_ECCO
+# include "ECCO_OPTIONS.h"
+#endif
 
 C     o==========================================================o
 C     | subroutine profiles_interp                               |
@@ -33,13 +36,14 @@ C ==================== Global Variables ===========================
 #include "DYNVARS.h"
 #include "PARAMS.h"
 #ifdef ALLOW_CAL
-#include "cal.h"
+# include "cal.h"
+#endif
+#ifdef ALLOW_ECCO
+# include "ecco.h"
 #endif
 #ifdef ALLOW_PROFILES
+# include "PROFILES_SIZE.h"
 # include "profiles.h"
-#else
-      integer NLEVELMAX
-      parameter (NLEVELMAX=1)
 #endif
 #ifdef ALLOW_PTRACERS
 #include "PTRACERS_SIZE.h"
@@ -50,12 +54,15 @@ C ==================== Routine Variables ==========================
       integer mythid
       integer file_cur, itr_cur
       character*(8) var_cur
+#ifndef ALLOW_PROFILES
+      _RL  traj_cur_out, weights_cur
+      integer  i_cur, j_cur
+#else
       _RL  traj_cur_out(NLEVELMAX)
       _RL  weights_cur(NUM_INTERP_POINTS)
       integer  i_cur(NUM_INTERP_POINTS)
       integer  j_cur(NUM_INTERP_POINTS)
-
-#ifdef ALLOW_PROFILES
+#endif
 
 C ==================== Local Variables ==========================
       _RL tab_coeffs1(NUM_INTERP_POINTS)
@@ -86,8 +93,14 @@ c horizontal interpolation:
 #else
                tab_coeffs1(q)=0. _d 0
 #endif
-        elseif (var_cur.EQ.'etaN') then
-               tab_coeffs1(q)=etaN(i_cur(q),j_cur(q),bi,bj)
+#ifdef ALLOW_ECCO
+        elseif (var_cur.EQ.'eta') then
+               tab_coeffs1(q)=m_eta(i_cur(q),j_cur(q),bi,bj)
+        elseif (var_cur.EQ.'UE') then
+               tab_coeffs1(q)=m_UE(i_cur(q),j_cur(q),k,bi,bj)
+        elseif (var_cur.EQ.'VN') then
+               tab_coeffs1(q)=m_VN(i_cur(q),j_cur(q),k,bi,bj)
+#endif
         else
                tab_coeffs1(q)=0. _d 0
         endif
@@ -116,14 +129,14 @@ c vertical interpolation:
          prof_mask1D_cur(kk,bi,bj)=0
       enddo
       do kk=1,ProfDepthNo(file_cur,bi,bj)
-c case 1: above first grid center=> first grid center value 
+c case 1: above first grid center=> first grid center value
         if (prof_depth(file_cur,kk,bi,bj).LT.-rC(1)) then
           traj_cur_out(kk)=traj_cur(1)
           prof_mask1D_cur(kk,bi,bj)=mask_cur(1)
 c case 2: just below last grid center=> last cell value
         elseif (prof_depth(file_cur,kk,bi,bj).GE.-rC(nr)) then
-          if ( prof_depth(file_cur,kk,bi,bj) .LT. 
-     &    (-rC(nr)+drC(nr)/2) ) then  
+          if ( prof_depth(file_cur,kk,bi,bj) .LT.
+     &    (-rC(nr)+drC(nr)/2) ) then
             traj_cur_out(kk)=traj_cur(nr)
             prof_mask1D_cur(kk,bi,bj)=mask_cur(nr)
           endif
@@ -161,8 +174,5 @@ c  subcase 2: only 1 wet point just above=>upper cell value
         endif
       enddo
 
-
-#endif
-
-      end
-
+      RETURN
+      END

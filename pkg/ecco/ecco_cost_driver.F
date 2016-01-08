@@ -25,21 +25,19 @@ c     == global variables ==
 #ifdef ALLOW_ECCO
 # include "ecco.h"
 #endif
+#ifdef ALLOW_AUTODIFF_TAMC
+# ifdef ALLOW_SSH_COST_CONTRIBUTION
+#  ifdef ALLOW_PROFILES
+#   include "PROFILES_SIZE.h"
+#   include "profiles.h"
+#  endif
+# endif
+#endif
 
 c     == routine arguments ==
       integer myThid
       integer myIter
       _RL     myTime
-
-#ifdef ALLOW_ECCO_EVOLUTION
-
-#ifdef ALLOW_AUTODIFF_TAMC
-# ifdef ALLOW_SSH_COST_CONTRIBUTION
-#  ifdef ALLOW_PROFILES
-#   include "profiles.h"
-#  endif
-# endif
-#endif
 
 #ifdef ECCO_CTRL_DEPRECATED
 
@@ -224,8 +222,6 @@ c--   Compute user defined cost function contributions (elaborate)
       call timer_stop ('ctrl_cost_driver [ECCO SPIN-DOWN]', myThid)
       ENDIF
 #endif
-
-#endif /* ALLOW_ECCO_EVOLUTION */
 
       return
       end

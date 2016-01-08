@@ -35,6 +35,8 @@ C     === Global variables ===
 
       _RL u_streamice_diag(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL v_streamice_diag(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL u_surf_diag(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+      _RL v_surf_diag(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL h_streamice_diag(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL area_diag(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL float_frac_diag(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
@@ -55,8 +57,10 @@ C     === Global variables ===
            v_streamice_diag(i,j,bi,bj) = v_streamice(i,j,bi,bj)%v
            h_streamice_diag(i,j,bi,bj) = H_streamice(i,j,bi,bj)%v
            area_diag(i,j,bi,bj) = area_shelf_streamice(i,j,bi,bj)%v
+#ifdef STREAMICE_SMOOTH_FLOATATION
            float_frac_diag(i,j,bi,bj) = 
      &         float_frac_streamice(i,j,bi,bj)%v
+#endif
            surf_diag(i,j,bi,bj) =
      &         surf_el_streamice(i,j,bi,bj)%v       
 #ifdef STREAMICE_HYBRID_STRESS
@@ -64,6 +68,8 @@ C     === Global variables ===
      $         streamice_taubx(i,j,bi,bj)%v
            streamice_tauby_diag(i,j,bi,bj) =
      $         streamice_tauby(i,j,bi,bj)%v
+           u_surf_diag(i,j,bi,bj) = streamice_u_surf(i,j,bi,bj)%v
+           v_surf_diag(i,j,bi,bj) = streamice_v_surf(i,j,bi,bj)%v
 #endif
 #ifdef ALLOW_STREAMICE_2DTRACER
            trac2d_diag(i,j,bi,bj)=trac2d(i,j,bi,bj)%v
@@ -91,8 +97,6 @@ C     === Global variables ===
      &      0,1,0,1,1,myThid)
        CALL DIAGNOSTICS_FILL(area_diag,'SI_area ',
      &      0,1,0,1,1,myThid)
-       CALL DIAGNOSTICS_FILL(float_frac_diag,'SI_float',
-     &      0,1,0,1,1,myThid)
        CALL DIAGNOSTICS_FILL(surf_diag,'SI_selev',
      &      0,1,0,1,1,myThid)
 
@@ -113,13 +117,20 @@ C     === Global variables ===
 
 #endif
 
+#ifdef ALLOW_OPENAD
+#ifdef STREAMICE_SMOOTH_FLOATATION
+       CALL DIAGNOSTICS_FILL(float_frac_diag,'SI_float',
+     &      0,1,0,1,1,myThid)
+#else
+       CALL DIAGNOSTICS_FILL(float_frac_streamice,'SI_float',
+     &      0,1,0,1,1,myThid)
+#endif
+#endif
+
+
        CALL DIAGNOSTICS_FILL_RS(STREAMICE_hmask,'SI_hmask',
      &      0,1,0,1,1,myThid)
 #ifdef STREAMICE_HYBRID_STRESS
-       CALL DIAGNOSTICS_FILL(streamice_u_surf,'SI_usurf',
-     &      0,1,0,1,1,myThid)
-       CALL DIAGNOSTICS_FILL(STREAMICE_v_surf,'SI_vsurf',
-     &      0,1,0,1,1,myThid)
        CALL DIAGNOSTICS_FILL(streamice_u_bed,'SI_ubase',
      &      0,1,0,1,1,myThid)
        CALL DIAGNOSTICS_FILL(STREAMICE_v_bed,'SI_vbase',
@@ -130,10 +141,18 @@ C     === Global variables ===
      &      0,1,0,1,1,myThid)
        CALL DIAGNOSTICS_FILL(STREAMICE_tauby_diag,'SI_tauby',
      &      0,1,0,1,1,myThid)
+       CALL DIAGNOSTICS_FILL(u_surf_diag,'SI_usurf',
+     &      0,1,0,1,1,myThid)
+       CALL DIAGNOSTICS_FILL(v_surf_diag,'SI_vsurf',
+     &      0,1,0,1,1,myThid)
 #else
        CALL DIAGNOSTICS_FILL(streamice_taubx,'SI_taubx',
      &      0,1,0,1,1,myThid)
        CALL DIAGNOSTICS_FILL(STREAMICE_tauby,'SI_tauby',
+     &      0,1,0,1,1,myThid)
+       CALL DIAGNOSTICS_FILL(streamice_u_surf,'SI_usurf',
+     &      0,1,0,1,1,myThid)
+       CALL DIAGNOSTICS_FILL(streamice_v_surf,'SI_vsurf',
      &      0,1,0,1,1,myThid)
 #endif
 

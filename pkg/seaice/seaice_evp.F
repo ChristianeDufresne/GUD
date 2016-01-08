@@ -99,21 +99,25 @@ C     sig11, sig22   :: sum and difference of diagonal terms of stress tensor
       _RL seaice_shear  (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL sig11         (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL sig22         (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+C     fractional area at velocity points
+      _RL areaW         (1:sNx,1:sNy,nSx,nSy)
+      _RL areaS         (1:sNx,1:sNy,nSx,nSy)
 C     auxilliary variables
       _RL ep            (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL em            (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
+      _RL e12Csq        (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL pressC        (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL zetaC         (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
       _RL deltaZ        (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
 C     _RL zetaZ         (1-OLx:sNx+OLx,1-OLy:sNy+OLy)
-      _RL deltaCreg, deltaZreg, pressZ
+      _RL deltaCreg, deltaZreg, deltaSq, deltaMinSq, pressZ, tmp
 #ifdef SEAICE_ALLOW_TEM
-      _RL etaDenC, zetaMaxC, etaDenZ, zetaMaxZ, deltaMinSq
+      _RL etaDenC, zetaMaxC, etaDenZ, zetaMaxZ
 #endif /* SEAICE_ALLOW_TEM */
 #ifdef SEAICE_ALLOW_CLIPZETA
       _RL zMaxZ, zMinZ, fac
 #endif /* SEAICE_ALLOW_CLIPZETA */
-      _RL denom1, denom2, facZ
+      _RL denom1, denom2, facZ, denomU, denomV
       _RL locMaskU, locMaskV
 
 C     surface level
@@ -126,9 +130,7 @@ C     abbreviation eccentricity squared
       ecc2=SEAICE_eccen**2
       recip_ecc2 = 0. _d 0
       IF ( ecc2 .NE. 0. _d 0 ) recip_ecc2=ONE/ecc2
-#ifdef SEAICE_ALLOW_TEM
       deltaMinSq = SEAICE_deltaMin**2
-#endif /* SEAICE_ALLOW_TEM */
 C     determine number of internal time steps
       nEVPstep = INT(SEAICE_deltaTdyn/SEAICE_deltaTevp)
       IF ( SEAICEnEVPstarSteps.NE.UNSET_I ) nEVPstep=SEAICEnEVPstarSteps
@@ -145,8 +147,8 @@ C     SEAICE_evpAlpha = 2. * SEAICE_evpTauRelax/SEAICE_deltaTevp
       recip_evpRevFac = 1. _d 0
       IF ( SEAICEuseEVPstar ) evpStarFac = 1. _d 0
       IF ( SEAICEuseEVPrev  ) THEN
-C     the Bouillon discretization in time is less stable, because there are
-C     more explicit terms
+C     the Bouillon et al. (2013) discretization in time has  more 
+C     explicit terms
        evpRevFac       = 1. _d 0
        evpStarFac      = 1. _d 0
        recip_evpRevFac = recip_ecc2
@@ -173,6 +175,24 @@ C     initialise strain rates
           e12  (I,J,bi,bj)   = 0. _d 0
          ENDDO
         ENDDO
+C     initialise fractional areas at velocity points
+        IF ( SEAICEscaleSurfStress ) THEN
+         DO J=1,sNy
+          DO I=1,sNx
+           areaW(I,J,bi,bj) = 
+     &          0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I-1,J,bi,bj))
+           areaS(I,J,bi,bj) = 
+     &          0.5 _d 0*(AREA(I,J,bi,bj)+AREA(I,J-J,bi,bj))
+          ENDDO
+         ENDDO
+        ELSE
+         DO J=1,sNy
+          DO I=1,sNx
+           areaW(I,J,bi,bj) = 1. _d 0
+           areaS(I,J,bi,bj) = 1. _d 0
+          ENDDO
+         ENDDO
+        ENDIF
        ENDDO
       ENDDO
 #ifdef SEAICE_ALLOW_CLIPZETA
@@ -234,6 +254,7 @@ CADJ STORE e22  = comlev1_evp,key = ikeyloc, byte = isbyte
             seaice_tension(I,J) = 0. _d 0
             seaice_shear  (I,J) = 0. _d 0
             pressC        (I,J) = 0. _d 0
+            e12Csq        (I,J) = 0. _d 0
             zetaC         (I,J) = 0. _d 0
             deltaZ        (I,J) = 0. _d 0
             zetaZ   (I,J,bi,bj) = 0. _d 0
@@ -246,23 +267,70 @@ CADJ STORE e22  = comlev1_evp,key = ikeyloc, byte = isbyte
             em(i,j) = e11(i,j,bi,bj) - e22(i,j,bi,bj)
            ENDDO
           ENDDO
+C     need to do this beforehand for easier vectorization after
+C     TAFization
+C     average strain rates to C points
+          IF ( SEAICEetaZmethod .EQ. 0 ) THEN
+           DO j=1-OLy+1,sNy+OLy-1
+            DO i=1-OLx+1,sNx+OLx-1
+             tmp = 0.25 *
+     &            ( e12(I,J  ,bi,bj) + e12(I+1,J  ,bi,bj)
+     &            + e12(I,J+1,bi,bj) + e12(I+1,J+1,bi,bj) )
+             e12Csq(i,j) = tmp*tmp
+            ENDDO
+           ENDDO
+          ELSEIF ( SEAICEetaZmethod .EQ. 3 ) THEN
+           DO j=1-OLy+1,sNy+OLy-1
+            DO i=1-OLx+1,sNx+OLx-1
+C     area weighted average of the squares of e12 is more accurate
+C     (and energy conserving)
+             e12Csq(i,j) = 0.25 _d 0 * recip_rA(I,J,bi,bj) *
+     &            ( rAz(I  ,J  ,bi,bj)*e12(I  ,J  ,bi,bj)**2
+     &            + rAz(I+1,J  ,bi,bj)*e12(I+1,J  ,bi,bj)**2
+     &            + rAz(I  ,J+1,bi,bj)*e12(I  ,J+1,bi,bj)**2
+     &            + rAz(I+1,J+1,bi,bj)*e12(I+1,J+1,bi,bj)**2 )
+            ENDDO
+           ENDDO
+          ENDIF
           DO j=0,sNy+1
            DO i=0,sNx+1
-C     average strain rates to Z and C points
+            deltaSq = ep(I,J)**2 + recip_ecc2 * em(I,J)**2 
+     &           + recip_ecc2 * e12Csq(I,J)
+#ifdef ALLOW_AUTODIFF_TAMC
+C     avoid sqrt of 0
+            deltaC(I,J,bi,bj) = 0. _d 0
+            IF ( deltaSq .GT. 0. _d 0 )
+     &           deltaC(I,J,bi,bj) = SQRT(deltaSq)
+#else
+            deltaC(I,J,bi,bj) = SQRT(deltaSq)
+#endif /* ALLOW_AUTODIFF_TAMC */
+#ifdef SEAICE_DELTA_SMOOTHREG
+C     smooth regularization (without max-function) of delta for
+C     better differentiability
+            deltaCreg  = SQRT(deltaSq + deltaMinSq)
+CML            deltaCreg  = deltaC(I,J,bi,bj) + SEAICE_deltaMin
+#else
+            deltaCreg  = MAX(deltaC(I,J,bi,bj),SEAICE_deltaMin)
+#endif /* SEAICE_DELTA_SMOOTHREG */
+            zetaC(I,J) = HALF*( press0(I,J,bi,bj) 
+     &           + tensileStrength(I,J,bi,bj) 
+     &           )/deltaCreg
+           ENDDO
+          ENDDO
+          IF (.TRUE.) THEN
+C     compute deltaZ and zetaZ separately
+          DO j=1,sNy+1
+           DO i=1,sNx+1
             facZ = 0.25 _d 0
 CML            facZ = 1.0 _d 0
 CML     &           / MAX(1.D0,maskC(I,  J,  kSrf,bi,bj)
 CML     &           +          maskC(I-1,J,  kSrf,bi,bj)
 CML     &           +          maskC(I,  J-1,kSrf,bi,bj)
 CML     &           +          maskC(I-1,J-1,kSrf,bi,bj) )
+C     average strain rates to Z points
 C     Averaging the squares gives more accurate viscous-plastic behavior
 C     than squaring the averages
-            deltaC(I,J,bi,bj) =
-     &           ep(I,J)**2 + recip_ecc2*em(I,J)**2
-     &           + recip_ecc2*
-     &               ( e12(I,  J,bi,bj)**2 + e12(I+1,J+1,bi,bj)**2
-     &               + e12(I+1,J,bi,bj)**2 + e12(I,  J+1,bi,bj)**2 )
-            deltaZ(I,J) = facZ *
+            deltaSq = facZ *
      &           ( ep(I,J  )**2 + ep(I-1,J  )**2
      &           + ep(I,J-1)**2 + ep(I-1,J-1)**2
      &           +(em(I,J  )**2 + em(I-1,J  )**2
@@ -271,24 +339,40 @@ C     than squaring the averages
      &           + 4. _d 0*recip_ecc2*e12(I,J,bi,bj)**2
 #ifdef ALLOW_AUTODIFF_TAMC
 C     avoid sqrt of 0
-            IF ( deltaC(I,J,bi,bj) .GT. 0. _d 0 )
-     &           deltaC(I,J,bi,bj) = SQRT(deltaC(I,J,bi,bj))
-            IF ( deltaZ(I,J) .GT. 0. _d 0 )
-     &           deltaZ(I,J) = SQRT(deltaZ(I,J))
+            IF ( deltaSq .GT. 0. _d 0 )
+     &           deltaZ(I,J) = SQRT(deltaSq)
 #else
-            deltaC(I,J,bi,bj) = SQRT(deltaC(I,J,bi,bj))
-            deltaZ(I,J)       = SQRT(deltaZ(I,J))
+            deltaZ(I,J)       = SQRT(deltaSq)
 #endif /* ALLOW_AUTODIFF_TAMC */
-            deltaCreg   = MAX(deltaC(I,J,bi,bj),SEAICE_deltaMin)
+#ifdef SEAICE_DELTA_SMOOTHREG
+C     smooth regularization (without max-function) of delta for
+C     better differentiability
+            deltaZreg  = SQRT(deltaSq + deltaMinSq)
+CML            deltaZreg  = deltaZ(I,J,bi,bj) + SEAICE_deltaMin
+#else
             deltaZreg   = MAX(deltaZ(I,J),SEAICE_deltaMin)
-C     modify pressure (copied from seaice_calc_viscosities)
-            zetaC(I,J)  = HALF*press0(I,J,bi,bj)/deltaCreg
+#endif /* SEAICE_DELTA_SMOOTHREG */
+C     modify pressure
             pressZ      = (deltaZ(I,J)/deltaZreg) * facZ
      &         * ( PRESS0(I,J  ,bi,bj) + PRESS0(I-1,J  ,bi,bj)
      &           + PRESS0(I,J-1,bi,bj) + PRESS0(I-1,J-1,bi,bj) )
             zetaZ(I,J,bi,bj) = HALF/deltaZreg * pressZ
            ENDDO
           ENDDO
+          ELSE
+C     compute zetaZ and deltaZ by simple averaging (following 
+C     Bouillon et al., 2013)
+          DO J=1,sNy+1
+           DO I=1,sNx+1
+            zetaZ(I,J,bi,bj) = 0.25 _d 0 * 
+     &           ( zetaC(I,  J) + zetaC(I-1,J-1)
+     &           + zetaC(I-1,J) + zetaC(I,  J-1) )
+            deltaZ(I,J) = 0.25 _d 0 * 
+     &           ( deltaC(I,  J,bi,bj) + deltaC(I-1,J-1,bi,bj)
+     &           + deltaC(I-1,J,bi,bj) + deltaC(I,  J-1,bi,bj) )
+           ENDDO
+          ENDDO
+          ENDIF
 #ifdef SEAICE_ALLOW_CLIPZETA
 #ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE zetac            = comlev1_evp, key = ikeyloc, byte = isbyte
@@ -317,6 +401,7 @@ C     recompute pressure
           DO j=0,sNy+1
            DO i=0,sNx+1
             pressC(I,J) = TWO*zetaC(I,J)*deltaC(I,J,bi,bj)
+     &           - 2. _d 0 * tensileStrength(I,J,bi,bj)
            ENDDO
           ENDDO
 #ifdef ALLOW_DIAGNOSTICS
@@ -338,31 +423,12 @@ C     P * ( D_t/Delta     ) = 2*zeta*D_t
 C     P * ( D_s/Delta     ) = 2*zeta*D_s
 #ifdef SEAICE_ALLOW_TEM
           IF ( SEAICEuseTEM ) THEN
-           DO j=0,sNy+1
-            DO i=0,sNx+1
-             facZ = 0.25 _d 0
-CML            facZ = 1.0 _d 0
-CML     &           / MAX(1.D0,maskC(I,  J,  kSrf,bi,bj)
-CML     &           +          maskC(I-1,J,  kSrf,bi,bj)
-CML     &           +          maskC(I,  J-1,kSrf,bi,bj)
-CML     &           +          maskC(I-1,J-1,kSrf,bi,bj) )
-C     Averaging the squares gives more accurate viscous-plastic behavior
-C     than squaring the averages
-             etaDenC   = em(I,J)**2 +
-     &            ( e12(I,  J,bi,bj)**2 + e12(I+1,J+1,bi,bj)**2
-     &            + e12(I+1,J,bi,bj)**2 + e12(I,  J+1,bi,bj)**2 )
+           DO j=0,sNy
+            DO i=0,sNx
+             etaDenC   = em(I,J)**2 + e12Csq(I,J)
              etaDenC  = SQRT(MAX(deltaMinSq,etaDenC))
              zetaMaxC = ecc2*zetaC(I,J)
      &            *(deltaC(I,J,bi,bj)-ep(I,J))/etaDenC
-             etaDenZ  =
-     &            facZ * ( em(I,  J  )**2 + em(I-1,J-1)**2
-     &                   + em(I-1,J  )**2 + em(I,  J-1)**2 )
-     &            + 4. _d 0*e12(I,J,bi,bj)**2
-             etaDenZ  = SQRT(MAX(deltaMinSq,etaDenZ))
-             zetaMaxZ = ecc2*zetaZ(I,J,bi,bj) * ( deltaZ(I,J)
-     &            - facZ * ( ep(I,J  ) + ep(I-1,J  )
-     &                     + ep(I,J-1) + ep(I-1,J-1) )
-     &            )/etaDenZ
 #ifdef ALLOW_DIAGNOSTICS
 C     save new eta for diagnostics
              eta(I,J,bi,bj) = MIN(zetaC(I,J),zetaMaxC)*recip_ecc2
@@ -372,6 +438,30 @@ C     save new eta for diagnostics
      &            ) * hEffM(I,J,bi,bj)
              seaice_tension(I,J) = 2. _d 0*MIN(zetaC(I,J),zetaMaxC)
      &            * em(I,J) * hEffM(I,J,bi,bj)
+            ENDDO
+           ENDDO
+           DO j=1,sNy+1
+            DO i=1,sNx+1
+             facZ = 0.25 _d 0
+CML            facZ = 1.0 _d 0
+CML     &           / MAX(1.D0,maskC(I,  J,  kSrf,bi,bj)
+CML     &           +          maskC(I-1,J,  kSrf,bi,bj)
+CML     &           +          maskC(I,  J-1,kSrf,bi,bj)
+CML     &           +          maskC(I-1,J-1,kSrf,bi,bj) )
+C     Averaging the squares gives more accurate viscous-plastic behavior
+C     than squaring the averages
+             etaDenZ  =
+     &            facZ * recip_rAz(I,J,bi,bj) *
+     &                    ( _rA(I  ,J  ,bi,bj) * em(I,  J  )**2 
+     &                    + _rA(I-1,J-1,bi,bj) * em(I-1,J-1)**2
+     &                    + _rA(I-1,J  ,bi,bj) * em(I-1,J  )**2 
+     &                    + _rA(I  ,J-1,bi,bj) * em(I,  J-1)**2 )
+     &                    + 4. _d 0*e12(I,J,bi,bj)**2
+             etaDenZ  = SQRT(MAX(deltaMinSq,etaDenZ))
+             zetaMaxZ = ecc2*zetaZ(I,J,bi,bj) * ( deltaZ(I,J)
+     &            - facZ * ( ep(I,J  ) + ep(I-1,J  )
+     &                     + ep(I,J-1) + ep(I-1,J-1) )
+     &            )/etaDenZ
              seaice_shear  (I,J) = 
      &            2. _d 0*MIN(zetaZ(I,J,bi,bj),zetaMaxZ)
      &            * 2. _d 0*e12(I,J,bi,bj)
@@ -381,13 +471,17 @@ C     save new eta for diagnostics
 #else
           IF (.TRUE. ) THEN
 #endif /* SEAICE_ALLOW_TEM */
-           DO j=0,sNy+1
-            DO i=0,sNx+1
+           DO J=0,sNy
+            DO I=0,sNx
              seaice_div    (I,J) =
      &            ( 2. _d 0 *zetaC(I,J)*ep(I,J) - pressC(I,J)
      &            ) * hEffM(I,J,bi,bj)
              seaice_tension(I,J) = 2. _d 0*zetaC(I,J)
      &            * em(I,J) * hEffM(I,J,bi,bj)
+            ENDDO
+           ENDDO
+           DO J=1,sNy+1
+            DO I=1,sNx+1
              seaice_shear  (I,J) =
      &            2. _d 0*zetaZ(I,J,bi,bj)*e12(I,J,bi,bj)
             ENDDO
@@ -498,7 +592,7 @@ C     the staggering of uIce and vIce can cause stripes in the open ocean
 C     solution when the turning angle is non-zero (SINWAT.NE.0); 
 C     we mask this term here in order to avoid the stripes and because
 C     over open ocean, u/vIce do not advect anything, so that the associated
-C     error is small and most likely only confinded to the ice edge but may
+C     error is small and most likely only confined to the ice edge but may
 C     propagate into the ice covered regions.
             locMaskU = seaiceMassU(I,J,bi,bj)
             locMaskV = seaiceMassV(I,J,bi,bj)
@@ -510,7 +604,7 @@ C           locMaskV = 1. _d 0
 C     set up anti symmetric drag force and add in ice ocean stress
 C     ( remember to average to correct velocity points )
             FORCEX(I,J,bi,bj)=FORCEX0(I,J,bi,bj)+
-     &           0.5 _d 0 * ( DWATN(I,J,bi,bj)+DWATN(I-1,J,bi,bj) ) *
+     &           ( 0.5 _d 0 * ( DWATN(I,J,bi,bj)+DWATN(I-1,J,bi,bj) ) *
      &           COSWAT * uVel(I,J,kSrf,bi,bj)
      &           - SIGN(SINWAT, _fCori(I,J,bi,bj))* 0.5 _d 0 *
      &           ( DWATN(I  ,J,bi,bj) * 0.5 _d 0 *
@@ -519,9 +613,9 @@ C     ( remember to average to correct velocity points )
      &           + DWATN(I-1,J,bi,bj) * 0.5 _d 0 *
      &            (vVel(I-1,J  ,kSrf,bi,bj)-vIce(I-1,J  ,bi,bj)
      &            +vVel(I-1,J+1,kSrf,bi,bj)-vIce(I-1,J+1,bi,bj))
-     &           )*locMaskU
+     &           )*locMaskU ) * areaW(I,J,bi,bj)
             FORCEY(I,J,bi,bj)=FORCEY0(I,J,bi,bj)+
-     &           0.5 _d 0 * ( DWATN(I,J,bi,bj)+DWATN(I,J-1,bi,bj) ) *
+     &           ( 0.5 _d 0 * ( DWATN(I,J,bi,bj)+DWATN(I,J-1,bi,bj) ) *
      &           COSWAT * vVel(I,J,kSrf,bi,bj)
      &           + SIGN(SINWAT, _fCori(I,J,bi,bj)) * 0.5 _d 0 *
      &           ( DWATN(I,J  ,bi,bj) * 0.5 _d 0 *
@@ -530,7 +624,7 @@ C     ( remember to average to correct velocity points )
      &           + DWATN(I,J-1,bi,bj) * 0.5 _d 0 *
      &            (uVel(I  ,J-1,kSrf,bi,bj)-uIce(I  ,J-1,bi,bj)
      &            +uVel(I+1,J-1,kSrf,bi,bj)-uIce(I+1,J-1,bi,bj))
-     &           )*locMaskV
+     &           )*locMaskV ) * areaS(I,J,bi,bj)
 C     coriols terms
             FORCEX(I,J,bi,bj)=FORCEX(I,J,bi,bj) + 0.5 _d 0*(
      &             seaiceMassC(I  ,J,bi,bj) * _fCori(I  ,J,bi,bj)
@@ -551,28 +645,28 @@ C     step momentum equations with ice-ocean stress term treated implicitly
 C
           DO J=1,sNy
            DO I=1,sNx
+            denomU = seaiceMassU(I,J,bi,bj)*betaFacP1
+     &           + 0.5 _d 0*( DWATN(I,J,bi,bj) + DWATN(I-1,J,bi,bj) )
+     &           * COSWAT * areaW(I,J,bi,bj)
+            denomV = seaiceMassV(I,J,bi,bj)*betaFacP1
+     &           + 0.5 _d 0*( DWATN(I,J,bi,bj) + DWATN(I,J-1,bi,bj) )
+     &           * COSWAT * areaS(I,J,bi,bj)
+            IF ( denomU .EQ. 0. _d 0 ) denomU = 1. _d 0
+            IF ( denomV .EQ. 0. _d 0 ) denomV = 1. _d 0
             uIce(I,J,bi,bj) = seaiceMaskU(I,J,bi,bj) *
      &           ( seaiceMassU(I,J,bi,bj)*betaFac
      &           * uIce(I,J,bi,bj)
      &           + seaiceMassU(I,J,bi,bj)*recip_deltaT*evpStarFac
      &           * uIceNm1(I,J,bi,bj)
      &           + FORCEX(I,J,bi,bj)
-     &           + stressDivergenceX(I,J,bi,bj) )
-     &           /( 1. _d 0 - seaiceMaskU(I,J,bi,bj)
-     &           + seaiceMassU(I,J,bi,bj)*betaFacP1
-     &           + 0.5 _d 0*( DWATN(I,J,bi,bj) + DWATN(I-1,J,bi,bj) )
-     &           * COSWAT )
+     &           + stressDivergenceX(I,J,bi,bj) ) / denomU
             vIce(I,J,bi,bj) = seaiceMaskV(I,J,bi,bj) *
      &           ( seaiceMassV(I,J,bi,bj)*betaFac
      &           * vIce(I,J,bi,bj)
      &           + seaiceMassV(I,J,bi,bj)*recip_deltaT*evpStarFac
      &           * vIceNm1(I,J,bi,bj)
      &           + FORCEY(I,J,bi,bj)
-     &           + stressDivergenceY(I,J,bi,bj) )
-     &           /( 1. _d 0 - seaiceMaskV(I,J,bi,bj)
-     &           + seaiceMassV(I,J,bi,bj)*betaFacP1
-     &           + 0.5 _d 0*( DWATN(I,J,bi,bj) + DWATN(I,J-1,bi,bj) )
-     &           * COSWAT )
+     &           + stressDivergenceY(I,J,bi,bj) ) / denomV
 C--   to change results  of lab_sea.hb87 test exp. (only preserve 2 digits for cg2d)
 c           uIce(i,j,bi,bj) = uIceNm1(i,j,bi,bj)
 c    &                       +( uIce(i,j,bi,bj) - uIceNm1(i,j,bi,bj) )

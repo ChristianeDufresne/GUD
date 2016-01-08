@@ -48,6 +48,9 @@ C     useHibler79IceStrength :: if true original ice strength parameterization
 C                          other use Rothrock (1975) parameterization based
 C                          on energetics and an ice thickness distribution
 C                          (default = .true.)
+C     SEAICEscaleSurfStress :: if TRUE, scale ice-ocean and ice-atmosphere
+C                          stress on ice by concenration (AREA) following
+C                          Connolley et al. (2004), JPO. (default = .false.)
 C     SEAICEsimpleRidging :: use Hibler(1979) ridging (default=.true.)
 C - advection:
 C     SEAICEuseFluxForm :: use flux form for advection and diffusion
@@ -99,7 +102,7 @@ C     SEAICE_mon_mnc    :: write monitor to netcdf file
      &     SEAICEuseJFNK, SEAICEuseIMEX, SEAICEuseBDF2,
      &     useHibler79IceStrength, SEAICEsimpleRidging,
      &     SEAICEuseTEM, SEAICEuseTilt, SEAICEuseMetricTerms,
-     &     SEAICE_no_slip, SEAICE_maskRHS,
+     &     SEAICE_no_slip, SEAICE_maskRHS, SEAICEscaleSurfStress,
      &     SEAICE_clipVelocities, useHB87stressCoupling,
      &     SEAICEuseFluxForm, SEAICEadvHeff, SEAICEadvArea,
      &     SEAICEadvSnow, SEAICEadvSalt,
@@ -120,7 +123,7 @@ C     SEAICE_mon_mnc    :: write monitor to netcdf file
      &     SEAICEuseJFNK, SEAICEuseIMEX, SEAICEuseBDF2, 
      &     useHibler79IceStrength, SEAICEsimpleRidging,
      &     SEAICEuseTEM, SEAICEuseTilt, SEAICEuseMetricTerms,
-     &     SEAICE_no_slip, SEAICE_maskRHS,
+     &     SEAICE_no_slip, SEAICE_maskRHS, SEAICEscaleSurfStress,
      &     SEAICE_clipVelocities, useHB87stressCoupling,
      &     SEAICEuseFluxForm, SEAICEadvHeff, SEAICEadvArea,
      &     SEAICEadvSnow, SEAICEadvSalt,
@@ -337,6 +340,7 @@ C     SEAICE_waterAlbedo :: water albedo
 C     SEAICE_strength    :: sea-ice strength Pstar
 C     SEAICE_cStar       :: sea-ice strength paramter C* (def: 20)
 C     SEAICE_tensilFac   :: sea-ice tensile strength factor, values in [0,1]
+C     SEAICE_tensilDepth :: crtical depth for sea-ice tensile strength (def 0.)
 C     SEAICE_eccen       :: sea-ice eccentricity of the elliptical yield curve
 C     SEAICE_lhFusion    :: latent heat of fusion for ice and snow (J/kg)
 C     SEAICE_lhEvap      :: latent heat of evaporation for water (J/kg)
@@ -413,7 +417,7 @@ C
       _RL SEAICE_drySnowAlb_south, SEAICE_wetSnowAlb_south, HO_south
       _RL SEAICE_wetAlbTemp, SEAICE_waterAlbedo
       _RL SEAICE_strength, SEAICE_cStar
-      _RL SEAICE_tensilFac, SEAICE_eccen
+      _RL SEAICE_tensilFac, SEAICE_tensilDepth, SEAICE_eccen
       _RL SEAICE_lhFusion, SEAICE_lhEvap
       _RL SEAICE_dalton
       _RL SEAICE_iceConduct, SEAICE_snowConduct
@@ -461,7 +465,8 @@ C
      &    SEAICE_dryIceAlb_south, SEAICE_wetIceAlb_south,
      &    SEAICE_drySnowAlb_south, SEAICE_wetSnowAlb_south, HO_south,
      &    SEAICE_wetAlbTemp, SEAICE_waterAlbedo,
-     &    SEAICE_strength, SEAICE_cStar, SEAICE_tensilFac, SEAICE_eccen,
+     &    SEAICE_strength, SEAICE_cStar, SEAICE_eccen,
+     &    SEAICE_tensilFac, SEAICE_tensilDepth, 
      &    SEAICE_lhFusion, SEAICE_lhEvap,
      &    SEAICE_dalton, SEAICE_cpAir,
      &    SEAICE_iceConduct, SEAICE_snowConduct,

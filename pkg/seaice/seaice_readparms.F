@@ -125,14 +125,15 @@ C--   SEAICE parameters
      & SEAICE_areaGainFormula, SEAICE_areaLossFormula,
      & SEAICE_doOpenWaterGrowth, SEAICE_doOpenWaterMelt,
      & SEAICE_rhoAir, SEAICE_rhoIce, SEAICE_rhoSnow, ICE2WATR,
-     & SEAICE_cpAir,
+     & SEAICE_cpAir, SEAICEscaleSurfStress,
      & SEAICE_drag, SEAICE_waterDrag, SEAICE_dryIceAlb,
      & SEAICE_wetIceAlb, SEAICE_drySnowAlb, SEAICE_wetSnowAlb, HO,
      & SEAICE_drag_south, SEAICE_waterDrag_south,
      & SEAICE_dryIceAlb_south, SEAICE_wetIceAlb_south,
      & SEAICE_drySnowAlb_south, SEAICE_wetSnowAlb_south, HO_south,
      & SEAICE_wetAlbTemp, SEAICE_waterAlbedo,
-     & SEAICE_strength, SEAICE_cStar, SEAICE_tensilFac, SEAICE_eccen,
+     & SEAICE_strength, SEAICE_cStar, SEAICE_eccen,
+     & SEAICE_tensilFac, SEAICE_tensilDepth, 
      & SEAICE_lhFusion, SEAICE_lhEvap, SEAICE_dalton,
      & SEAICE_sensHeat, SEAICE_latentWater, SEAICE_latentIce,
      & SEAICE_salinity, SIsalFRAC, SIsal0,
@@ -219,6 +220,7 @@ C--   set default sea ice parameters
       SEAICE_salinityTracer = .FALSE.
       SEAICE_ageTracer      = .FALSE.
       useHB87stressCoupling = .FALSE.
+      SEAICEscaleSurfStress = .FALSE.
       usePW79thermodynamics = .TRUE.
 C     start of ridging parameters
       useHibler79IceStrength= .TRUE.
@@ -359,6 +361,7 @@ C        c1=1.5/N, c2=42*c1, c3=3.3
       SEAICE_cStar       = 20.    _d 0
       SEAICE_eccen       = 2.     _d 0
       SEAICE_tensilFac   = 0.     _d 0
+      SEAICE_tensilDepth = 0.     _d 0
 C     coefficients for flux computations/bulk formulae
       SEAICE_dalton      = 1.75   _d -03
 #ifdef ALLOW_EXF
