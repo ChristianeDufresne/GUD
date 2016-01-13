@@ -39,12 +39,6 @@ C  myThid             :: my Thread Id number
 
 #ifdef ALLOW_DIC
 
-#ifdef USE_ATMOSCO2
-C if coupled to atmsopheric model, use the
-C CO2 value passed from the coupler
-
-#else /* USE_ATMOSCO2 */
-
 C !FUNCTIONS:       ====================================================
       LOGICAL  DIFFERENT_MULTIPLE
       EXTERNAL DIFFERENT_MULTIPLE
@@ -107,6 +101,13 @@ C for 278ppmv we need total_atmos_carbon=4.9206e+16
         DO bi=myBxLo(myThid),myBxHi(myThid)
          tile_flux(bi,bj)   = 0.
          tile_carbon(bi,bj) = 0.
+         DO j=1,sNy
+           DO i=1,sNx
+             tile_flux(bi,bj) = tile_flux(bi,bj)
+     &                        + fluxCO2(i,j,bi,bj)*rA(i,j,bi,bj)
+     &                         *maskC(i,j,1,bi,bj)*dTtracerLev(1)
+           ENDDO
+         ENDDO
          DO k=1,Nr
           DO j=1,sNy
            DO i=1,sNx
@@ -189,7 +190,7 @@ C if end of forcing cycle, find total change in ocean carbon
       ENDIF
 
 #ifndef ALLOW_AUTODIFF
-      IF ( dic_int1.EQ.0 .OR. dic_int1.EQ.1 ) THEN
+      IF ( dic_int1.EQ.2 .OR. dic_int1.EQ.3 ) THEN
 #endif
 C--    Set AtmospCO2 for next iteration:
        DO bj=myByLo(myThid),myByHi(myThid)
@@ -204,8 +205,6 @@ C--    Set AtmospCO2 for next iteration:
 #ifndef ALLOW_AUTODIFF
       ENDIF
 #endif
-
-#endif /* ndef USE_ATMOSCO2 */
 
 #endif /* ALLOW_DIC */
 

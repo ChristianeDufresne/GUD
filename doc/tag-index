@@ -4,6 +4,70 @@ $Name$
     Notes on tags used in MITgcmUV
     ==============================
 
+checkpoint65s (2016/01/13)
+o eesupp & genmake2:
+   - first check for Function ETIME and, if it fails, then check for subroutine
+     ETIME and consistent output; use the appropriate version in timers.F
+o model/src:
+  - to check restart test, add option to apply EXCH to U,V earlier, just before
+    integr_continuity; turned off by default.
+o pkg/dic:
+  - remove CPP option USE_ATMOSCO2 (not needed)
+o tools/tst_2+2:
+  - try to ignore difference between +0 and -0 in binary file, causing test
+    to fail for no good reason.
+o eesupp & genmake2:
+  - put back modif from Jinxuan Zhu - change etime fct call to S/R call -
+    but also check (in genmake2) that test runs and returns meaningful results.
+o coupler pkgs:
+  Finish implementation of optionally-exchanged variable switches (started on
+   Nov 12) with addition of few more exchanged fields, including 2-way exchange
+   of pkg/thsice vars to allow to use seaice dynamics (from pkg/seaice) & seaice
+   advection in OCN component; this requires sequential coupling.
+  coupler (pkg/atm_ocn_coupler):
+  - add argument msgUnit and iter number to CPL_SEND/RECV_ATM/OCN_FIELDS
+    routines (useful for debug).
+  - only export/import optionally exchanged fields (RunOff, seaice, Salt-Plume
+     flux, DIC fields) if corresponding switch is ON.
+  - add option to export RunOff to OCN (to use for DIC river input)
+  - add 2-way thSIce vars exchange; check for consistent cpl_sequential setting.
+  components (pkg/atm_ & ocn_compon_interf):
+  - to save memory space in ATM & OCN comp: add some #ifdef ALLOW_${PKG} around
+    optionally exchanged fields; add a check & stop in cpl_readparms.F.
+    ATMCPL.h: ALLOW_LAND for RunOff, ALLOW_THSICE for seaice, ALLOW_AIM for CO2;
+    OCNCPL.h: ALLOW_SALT_PLUME, ALLOW_DIC for DIC, ALLOW_THSICE for 2-W thsice.
+  - rename:   fracIce     -> sIceFrac_cpl (<- match coupler var name)
+    + in ATM: fracIceTime -> sIceFracTime ; seaIceTime -> sIceMassTime.
+  - add 2-way thSIce vars exchange ; add Salt-Plume flux ; add RunOff in OCN.
+  - hold in common block coupler optionally-exchanged variable switch
+    and set default "useImportXXX" accordingly; + check & stop if inconsistent.
+  - add diagnostics for all imported fields from coupler (in both OCN & ATM);
+    this is intended to replace the OCN cplFldtave.* output files (not updated
+    to contain new additional exchanged fields).
+o pkg/dic:
+  - fix an other bug (also from 2014/08/30) in dic_atmos.F, in dic_int1=3 code.
+o pkg/thsice:
+  - when coupled to ATM (useCoupler) with thSIce_skipThermo=T, skip reading
+    and writing of thsice pickup files.
+o pkg/atm_compon_interf:
+  - move all field individual export-call out of cpl_export_import_data.F
+    into new S/R ATM_EXPORT_FIELDS
+o pkg/atm_compon_interf:
+  - store state variables (for now, only thSIce fields) just before beeing
+    exported (in cpl_export_import_data.F, like on ocean side) instead of from
+    atm_store_my_data.F like all exported fluxes.
+  - new version of pickup_cpl: write field names into meta file and read meta
+    file to find field postion in pickup. Also only write/read fields meeded for
+    restart (same logic as main pickup file ; also using pickupStrictlyMatch)
+o pkg/dic:
+  - fix bug (added on 2014/08/30) in dic_atmos.F for the case dic_int1= 2 or 3.
+o pkg/seaice: add new parameter SEAICEpressReplFac to choose between
+    pressure replacement method (=1., default) or original Hibler (1979) (=0.)
+    value can be from domain [0,1] to average between the two methods
+o pkg/atm_phys:
+  - allow to provide 2-d map of albedo and mixed-layer depth from files (but
+    hold fixed in time).
+
 checkpoint65r (2015/12/21)
 o pkg/seaice:
     fix bug in tridiagonal solvers for SEAICE_OLx/y>0, this affects the JFNK

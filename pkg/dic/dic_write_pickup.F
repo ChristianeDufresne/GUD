@@ -41,11 +41,9 @@ C     !LOCAL VARIABLES:
 C     == Local variables ==
       CHARACTER*(MAX_LEN_FNAM) fn
       INTEGER prec
-#ifndef USE_ATMOSCO2
       INTEGER ioUnit
       _RL tmpFld(2)
       _RS dummyRS(1)
-#endif
 #ifdef DIC_BIOTIC
       LOGICAL glf
       _RL     timList(1)
@@ -59,18 +57,16 @@ C     == Local variables ==
 c     IF ( DIC_pickup_write_mdsio ) THEN
         prec = precFloat64
 
-#ifndef USE_ATMOSCO2
         IF ( dic_int1.EQ.3 ) THEN
           WRITE(fn,'(A,A)') 'pickup_dic_co2atm.',suff
           ioUnit = 0
-c#ifdef ALLOW_OPENAD
-C-  keep it (commented out) in case these 2 vars become again active
-c         tmpFld(1) = total_atmos_carbon%v
-c         tmpFld(2) = atpco2%v
-c#else /* ALLOW_OPENAD */
+#ifdef ALLOW_OPENAD
+          tmpFld(1) = total_atmos_carbon%v
+          tmpFld(2) = atpco2%v
+#else /* ALLOW_OPENAD */
           tmpFld(1) = total_atmos_carbon
           tmpFld(2) = atpco2
-c#endif /* ALLOW_OPENAD */
+#endif /* ALLOW_OPENAD */
 #ifdef ALLOW_MDSIO
           CALL MDS_WRITEVEC_LOC(
      I                         fn, prec, ioUnit,
@@ -78,7 +74,6 @@ c#endif /* ALLOW_OPENAD */
      I                         0, 0, 1, myIter, myThid )
 #endif
         ENDIF
-#endif /* ndef USE_ATMOSCO2 */
 
 #ifdef DIC_BIOTIC
         WRITE(fn,'(A,A)') 'pickup_dic.',suff

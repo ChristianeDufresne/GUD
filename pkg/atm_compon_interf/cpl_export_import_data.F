@@ -27,9 +27,8 @@ C     !USES:
 C     == Global variables ==
 #include "SIZE.h"
 #include "EEPARAMS.h"
+#include "PARAMS.h"
 #include "CPL_PARAMS.h"
-#include "ATMCPL.h"
-#include "ATMIDS.h"
 
 C     !INPUT/OUTPUT PARAMETERS:
 C     == Routine arguments ==
@@ -44,14 +43,16 @@ CEOP
 #ifdef COMPONENT_MODULE
 C     !LOCAL VARIABLES:
 C     == Local variables ==
+C     bi, bj  :: Tile indices
 C     msgBuf  :: Informational/error message buffer
+      INTEGER bi, bj
       CHARACTER*(MAX_LEN_MBUF) msgBuf
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C     Note MIT Coupler checkpoint1 does not allow asynchronous posting of
 C     data, so ordering has to be consistent with coupling layer ordering.
 C--------------------------------------------------------------------------
-C     Send data to coupling layer
+C-    Send data to coupling layer
 
       IF ( MOD(myIter,cplSendFrq_iter).EQ.0 ) THEN
        _BEGIN_MASTER( myThid )
@@ -64,54 +65,23 @@ C     Send data to coupling layer
         ENDIF
        _END_MASTER( myThid )
 
-C-    export Sea-Level pressure:
-        CALL ATM_EXPORT_FLD( atmSLPrName,
-     U                       atmSLPr, atmSLPrTime, myThid )
-C-    export Net surface heat flux:
-        CALL ATM_EXPORT_FLD( atmHeatFluxName,
-     U                       heatFlux, HeatFluxTime, myThid )
-C-    export Net Short-Wave surface heat flux:
-        CALL ATM_EXPORT_FLD( atmQshortWaveName,
-     U                       qShortWave, qShortWaveTime, myThid )
-C-    export surface wind stress, Zonal & Meridional components:
-        CALL ATM_EXPORT_FLD( atmTauXName,
-     U                       tauX, tauXTime, myThid )
-        CALL ATM_EXPORT_FLD( atmTauYName,
-     U                       tauY, tauYTime, myThid )
-C-    export Net fresh water flux (Evap - Precip):
-        CALL ATM_EXPORT_FLD( atmEvMPrName,
-     U                       EvMPrFlux, EvMPrTime, myThid )
-C-    export Run Off fresh water flux:
-        CALL ATM_EXPORT_FLD( atmRunOffName,
-     U                       RunOffFlux, RunOffTime, myThid )
-C-    export Energy flux associated with Run Off:
-        CALL ATM_EXPORT_FLD( atmROEnFxName,
-     U                       RunOffEnFx, ROEnFxTime, myThid )
-C-    export Salt flux (related to sea-ice melting/freezing):
-        CALL ATM_EXPORT_FLD( atmSaltFxName,
-     U                       iceSaltFlx, saltFxTime, myThid )
-C-    export Sea-Ice Mass:
-        CALL ATM_EXPORT_FLD( atmSIceMassName,
-     U                       seaIceMass, seaIceTime, myThid )
+C-    Store state variables (without averaging over cplSendFrq_iter time-steps)
+        DO bj=myByLo(myThid),myByHi(myThid)
+         DO bi=myBxLo(myThid),myBxHi(myThid)
+c          CALL ATM_STORE_DYNVARS( bi, bj, myTime, myIter, myThid )
+           IF ( useThSIce ) THEN
+            CALL ATM_STORE_THSICE( bi, bj, myTime, myIter, myThid )
+           ENDIF
+         ENDDO
+        ENDDO
 
-        IF ( atm_cplExch_DIC ) THEN
-C-    export atmospheric CO2:
-         CALL ATM_EXPORT_FLD( atmAirCO2Name,
-     U                        airCO2, airCO2Time, myThid )
-
-C-    export surface wind speed:
-         CALL ATM_EXPORT_FLD( atmWindSpdName,
-     U                        sWSpeed, sWSpeedTime, myThid )
-
-C-    export seaice fraction:
-         CALL ATM_EXPORT_FLD( atmSIceFracName,
-     U                        fracIce, fracIceTime, myThid )
-        ENDIF
+C-    Send data to coupler
+        CALL ATM_EXPORT_FIELDS( myIter, myThid )
 
       ENDIF
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
-C     Fetch data from coupling layer.
+C-    Fetch data from coupling layer.
 
       IF ( MOD(myIter,cplSendFrq_iter).EQ.0 ) THEN
        _BEGIN_MASTER( myThid )
@@ -124,7 +94,10 @@ C     Fetch data from coupling layer.
         ENDIF
        _END_MASTER( myThid )
 
-        CALL ATM_IMPORT_FIELDS( myThid )
+        CALL ATM_IMPORT_FIELDS( myIter, myThid )
+
+C     Fill diagnostics with updated coupling fields just received from Coupler
+        CALL CPL_DIAGNOSTICS_FILL( myTime, myIter, myThid )
 
       ENDIF
 
