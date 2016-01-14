@@ -29,6 +29,7 @@ CCOG[[[end]]] (checksum: d41d8cd98f00b204e9800998ecf8427e)
 
       INTEGER jp
       INTEGER jp2
+      INTEGER jz
       INTEGER l
       INTEGER iopt
 
@@ -280,6 +281,80 @@ CCOG[[[end]]] (checksum: d41d8cd98f00b204e9800998ecf8427e)
        ENDIF
       ENDDO
 #endif
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! checks
+
+      ! check types are within type ranges
+      DO jp=1,nplank
+       IF (isPhoto(jp) .NE. 0) THEN
+        IF (jp.LT.iMinPhoto .OR. jp.GT.iMaxPhoto) THEN
+          WRITE(msgBuf,'(2A,I4)') 'GUD_READTRAITS: ERROR: ',
+     &    'isPhoto set for type outside of photo range: ', jp
+          CALL PRINT_ERROR( msgBuf , 1)
+          STOP 'ABNORMAL END: S/R GUD_READTRAITS'
+        ENDIF
+#ifdef GUD_ALLOW_CHLQUOTA
+        IF (jp.GT.nChl) THEN
+          WRITE(msgBuf,'(2A,I4)') 'GUD_READTRAITS: ERROR: ',
+     &    'isPhoto set for type outside of Chl range: ', jp
+          CALL PRINT_ERROR( msgBuf , 1)
+          STOP 'ABNORMAL END: S/R GUD_READTRAITS'
+        ENDIF
+#endif
+       ELSE
+        PCmax(jp) = 0 _d 0
+        Vmax_PO4(jp) = 0 _d 0
+        Vmax_NO3(jp) = 0 _d 0
+        Vmax_NO2(jp) = 0 _d 0
+        Vmax_NH4(jp) = 0 _d 0
+        Vmax_FeT(jp) = 0 _d 0
+        Vmax_SiO2(jp) = 0 _d 0
+       ENDIF
+
+       IF (bactType(jp) .NE. 0) THEN
+        IF (jp.LT.iMinBact .OR. jp.GT.iMaxBact) THEN
+          WRITE(msgBuf,'(2A,I4)') 'GUD_READTRAITS: ERROR: ',
+     &    'bactType set for type outside of bacteria range: ', jp
+          CALL PRINT_ERROR( msgBuf , 1)
+          STOP 'ABNORMAL END: S/R GUD_READTRAITS'
+        ENDIF
+        IF (isAerobic(jp).NE.0 .AND. isDenit(jp).NE.0) THEN
+          WRITE(msgBuf,'(2A,I4)') 'GUD_READTRAITS: ERROR: ',
+     &    'isAerobic and isDenit both set: ', jp
+          CALL PRINT_ERROR( msgBuf , 1)
+          STOP 'ABNORMAL END: S/R GUD_READTRAITS'
+        ENDIF
+       ELSE
+        IF (isAerobic(jp).NE.0) THEN
+          WRITE(msgBuf,'(2A,I4)') 'GUD_READTRAITS: ERROR: ',
+     &    'isAerobic set for non-bacteria type: ', jp
+          CALL PRINT_ERROR( msgBuf , 1)
+          STOP 'ABNORMAL END: S/R GUD_READTRAITS'
+        ENDIF
+        IF (isDenit(jp).NE.0) THEN
+          WRITE(msgBuf,'(2A,I4)') 'GUD_READTRAITS: ERROR: ',
+     &    'isDenit set for non-bacteria type: ', jp
+          CALL PRINT_ERROR( msgBuf , 1)
+          STOP 'ABNORMAL END: S/R GUD_READTRAITS'
+        ENDIF
+       ENDIF
+
+       DO jz=1,nplank
+        IF (palat(jp,jz) .NE. 0.) THEN
+         IF (jp.LT.iMinPrey .OR. jp.GT.iMaxPrey) THEN
+          WRITE(msgBuf,'(2A,I4)') 'GUD_READTRAITS: WARNING: ',
+     &    'palat set for type outside of prey range: ', jp
+          CALL PRINT_ERROR( msgBuf , 1)
+         ENDIF
+         IF (jz.LT.iMinPred .OR. jz.GT.iMaxPred) THEN
+          WRITE(msgBuf,'(2A,I4)') 'GUD_READTRAITS: WARNING: ',
+     &    'palat set for type outside of predator range: ', jz
+          CALL PRINT_ERROR( msgBuf , 1)
+         ENDIF
+        ENDIF
+       ENDDO
+      ENDDO
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! zero out unused trait entries, so they do not mess up the traits file
