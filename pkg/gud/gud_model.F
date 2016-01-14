@@ -236,10 +236,13 @@ C==== make all bio fields non-negative and compute quotas ==============
         diags(l) = 0.0
       ENDDO
 
+C=======================================================================
+C==== phytoplankton ====================================================
+
+      DO j = iMinPhoto, iMaxPhoto
 C fixed carbon quota, for now 1.0 (may change later)
 C other elements: get quota from corresponding ptracer or set to fixed
 c ratio if not variable.
-      DO j = iMinPhoto, iMaxPhoto
         X = MAX(0.0, Ptr(ic+j-1))
         Qc = 1.0
 
@@ -252,44 +255,44 @@ C       or R_PC=0 (if not)
 C       the result will be limitp = 1, uptakePO4 = 0
 
 c phosphorus
-         limitp = PO4/(PO4 + ksatPO4(j))
+        limitp = PO4/(PO4 + ksatPO4(j))
 #ifdef GUD_ALLOW_PQUOTA
-         Qp  = MAX(EPS*R_PC(j), Ptr(ip+j-1)) / MAX(EPS, X)
-         regQ = MAX(0., MIN(1., (Qpmax(j)-Qp)/
-     &                          (Qpmax(j)-Qpmin(j)) ))
-         uptakePO4 = Vmax_PO4(j) * limitp * regQ *
-     &                        uptakeTempFunc * X
-c        normalized Droop limitation
-         limitp = MAX(0., MIN(1., (1.0-Qpmin(j)/Qp)/
+        Qp  = MAX(EPS*R_PC(j), Ptr(ip+j-1)) / MAX(EPS, X)
+        regQ = MAX(0., MIN(1., (Qpmax(j)-Qp)/
+     &                         (Qpmax(j)-Qpmin(j)) ))
+        uptakePO4 = Vmax_PO4(j) * limitp * regQ *
+     &                       uptakeTempFunc * X
+c       normalized Droop limitation
+        limitp = MAX(0., MIN(1., (1.0-Qpmin(j)/Qp)/
      &                            (1.0-Qpmin(j)/Qpmax(j))))
 #endif
 
 c silica
-         limitsi = SiO2/(SiO2 + ksatSiO2(j))
+        limitsi = SiO2/(SiO2 + ksatSiO2(j))
 #ifdef GUD_ALLOW_SIQUOTA
-         Qsi = MAX(EPS*R_SiC(j), Ptr(isi+j-1)) / MAX(EPS, X)
-         regQ = MAX(0., MIN(1., (Qsimax(j) - Qsi)/
-     &                          (Qsimax(j) - Qsimin(j)) ))
-         uptakeSiO2 = Vmax_SiO2(j) * limitsi * regQ *
-     &                                  uptakeTempFunc * X
+        Qsi = MAX(EPS*R_SiC(j), Ptr(isi+j-1)) / MAX(EPS, X)
+        regQ = MAX(0., MIN(1., (Qsimax(j) - Qsi)/
+     &                         (Qsimax(j) - Qsimin(j)) ))
+        uptakeSiO2 = Vmax_SiO2(j) * limitsi * regQ *
+     &                                 uptakeTempFunc * X
 
-c        linear limitation
-         limitsi = MAX(0., MIN(1., (Qsi - Qsimin(j))/
-     &                          (Qsimax(j) - Qsimin(j)) ))
+c       linear limitation
+        limitsi = MAX(0., MIN(1., (Qsi - Qsimin(j))/
+     &                         (Qsimax(j) - Qsimin(j)) ))
 #endif
 
 c iron
-         limitfe = FeT/(FeT + ksatFeT(j))
+        limitfe = FeT/(FeT + ksatFeT(j))
 #ifdef GUD_ALLOW_FEQUOTA
-         Qfe = MAX(EPS*R_FeC(j), Ptr(ife+j-1)) / MAX(EPS, X)
-         regQ = MAX(0., MIN(1., (Qfemax(j)-Qfe)/
-     &                          (Qfemax(j)-Qfemin(j)) ))
-         uptakeFeT = Vmax_FeT(j) * limitfe * regQ *
-     &                        uptakeTempFunc * X
+        Qfe = MAX(EPS*R_FeC(j), Ptr(ife+j-1)) / MAX(EPS, X)
+        regQ = MAX(0., MIN(1., (Qfemax(j)-Qfe)/
+     &                         (Qfemax(j)-Qfemin(j)) ))
+        uptakeFeT = Vmax_FeT(j) * limitfe * regQ *
+     &                       uptakeTempFunc * X
 
-c        normalized Droop limitation
-         limitfe = MAX(0., MIN(1., (1.0-Qfemin(j)/Qfe)/
-     &                             (1.0-Qfemin(j)/Qfemax(j))))
+c       normalized Droop limitation
+        limitfe = MAX(0., MIN(1., (1.0-Qfemin(j)/Qfe)/
+     &                            (1.0-Qfemin(j)/Qfemax(j))))
 #endif
 
 c nitrogen
@@ -351,20 +354,9 @@ C==== growth ===========================================================
         alpha_I = 0 _d 0
         DO l = 1, nlam
           alpha_I = alpha_I + alphachl(j,l)*PAR(l)
-#ifdef GUD_DEBUG
-      if (ig.eq.iDEBUG.and.jg.eq.jDEBUG) then
-       print*,'alphaI',myiter,k,j,l,alpha_I,alphachl(j,l),
-     &       PAR(l)
-      ENDIF
-#endif
         ENDDO
 C       NB: for quota, PCmax(j) = Vmax_c(j)
         PCm = PCmax(j)*limitnut*photoTempFunc(j)*limitpCO2
-#ifdef GUD_DEBUG
-      IF (iG.eq.iDEBUG.and.jG.eq.jDEBUG)
-     & print*,'pcm',myiter,k,j,PCmax(j),limitnut,phototempfunc(j),
-     &      limitpco2
-#endif
 
         IF (PCm .GT. 0.0) THEN
           acclim = MAX(chl2cmin(j), MIN(chl2cmax(j),
@@ -377,12 +369,6 @@ C       NB: for quota, PCmax(j) = Vmax_c(j)
         QChl=MAX(EPS*R_ChlC(j),Ptr(ichl+j-iMinPhoto))/MAX(EPS,X)
 C       quotas are already relative to carbon
         chl2c = QChl
-#ifdef GUD_DEBUG
-      IF (iG.eq.iDEBUG.and.jG.eq.jDEBUG)
-     & print*,'chl2c',myiter,k,j,chl2c,EPS,R_ChlC(j),
-     &     Ptr(ichl+j-iMinPhoto),X
-
-#endif
 #else
         chl2c = acclim
 #endif
@@ -400,10 +386,6 @@ C       PC = PCm*(1-EXP(-alpha_I_growth*chl2c/MAX(EPS, PCm)))
         ELSE
           PC = 0.0 _d 0
         ENDIF
-#ifdef GUD_DEBUG
-      IF (iG.eq.iDEBUG.and.jG.eq.jDEBUG)
-     & print*,'pc',myiter,k,j,PCm,alpha_I_growth,chl2c,PC
-#endif
 
         IF (inhibcoef_geid(j) .GT. 0.0) THEN
 C         "total" PAR:
@@ -435,70 +417,62 @@ C         only 1 waveband without GUD_ALLOW_GEIDER
 
 C non-quota elements are taken up with fixed stoichiometry
 #ifndef GUD_ALLOW_NQUOTA
-          uptakeN = growth*R_NC(j)
-          uptakeNH4 = uptakeN*fracNH4
-          uptakeNO2 = uptakeN*fracNO2
-          uptakeNO3 = uptakeN*fracNO3
+        uptakeN = growth*R_NC(j)
+        uptakeNH4 = uptakeN*fracNH4
+        uptakeNO2 = uptakeN*fracNO2
+        uptakeNO3 = uptakeN*fracNO3
 #endif
 #ifndef GUD_ALLOW_PQUOTA
-         uptakePO4 = growth*R_PC(j)
+        uptakePO4 = growth*R_PC(j)
 #endif
 #ifndef GUD_ALLOW_SIQUOTA
-         uptakeSiO2 = growth*R_SiC(j)
+        uptakeSiO2 = growth*R_SiC(j)
 #endif
 #ifndef GUD_ALLOW_FEQUOTA
-         uptakeFeT = growth*R_FeC(j)
+        uptakeFeT = growth*R_FeC(j)
 #endif
 
 C==== chlorophyll ======================================================
 #ifdef GUD_ALLOW_GEIDER
 #ifdef GUD_ALLOW_CHLQUOTA
 #ifdef GUD_ALLOW_NQUOTA
-C         Geider 1998
-          IF (alpha_I*chl2c .GT. 0.0 _d 0) THEN
-C            rhochl = Chl2Nmax/(alpha_I*chl2c)*ngrow ???
-            rhochl = Chl2Nmax*PC*ngrow/(alpha_I*chl2c)
-          ELSE
-            rhochl = Chl2Nmax
-          ENDIF
-          uptakeDIC = uptakeDIC - synthcost*uptakeN
-          synthChl = rhochl*uptakeN
+C       Geider 1998
+        IF (alpha_I*chl2c .GT. 0.0 _d 0) THEN
+C          rhochl = Chl2Nmax/(alpha_I*chl2c)*ngrow ???
+          rhochl = Chl2Nmax*PC*ngrow/(alpha_I*chl2c)
+        ELSE
+          rhochl = Chl2Nmax
+        ENDIF
+        uptakeDIC = uptakeDIC - synthcost*uptakeN
+        synthChl = rhochl*uptakeN
 #else
 #ifdef GUD_GEIDER_RHO_SYNTH
-          IF (alpha_I .GT. 0.0 _d 0 .AND. acclim .GT. 0.0 _d 0) THEN
-            rhochl = Chl2Cmax(j)*PC*ngrow/(alpha_I*acclim)
-          ELSE
-            rhochl = 0.0 _d 0    ! should be Chl2Cmax(j) ?????
-          ENDIF
-          synthChl = rhochl*growth +
-     &                        acclimtimescl(j)*(acclim-chl2c)*X
+        IF (alpha_I .GT. 0.0 _d 0 .AND. acclim .GT. 0.0 _d 0) THEN
+          rhochl = Chl2Cmax(j)*PC*ngrow/(alpha_I*acclim)
+        ELSE
+          rhochl = 0.0 _d 0    ! should be Chl2Cmax(j) ?????
+        ENDIF
+        synthChl = rhochl*growth +
+     &                      acclimtimescl(j)*(acclim-chl2c)*X
 #else
-          synthChl = acclim*growth +
-     &                        acclimtimescl(j)*(acclim-chl2c)*X
-#endif
-#ifdef GUD_DEBUG
-      IF (iG.eq.iDEBUG.and.jG.eq.jDEBUG) THEN
-       print*,'rhochl',myiter,k,j,rhochl,chl2cmax(j),pc,alpha_I,
-     &      acclim,ngrow
-       print*,'synth',myiter,k,j,synthchl,rhochl,growth,
-     &       acclimtimescl(j),acclim,chl2c,X
-      ENDIF
+        synthChl = acclim*growth +
+     &                      acclimtimescl(j)*(acclim-chl2c)*X
 #endif
 #endif /* GUD_ALLOW_NQUOTA */
 #else /* GUD_ALLOW_CHLQUOTA */
-         chlout(j-iMinPhoto+1) = X*Qc*chl2c
-         synthChl = 0.0
+        chlout(j-iMinPhoto+1) = X*Qc*chl2c
+        synthChl = 0.0
 #endif /* GUD_ALLOW_CHLQUOTA */
 #endif /* GUD_ALLOW_GEIDER */
 C=======================================================================
         consumDIC_PIC = consumDIC_PIC + uptakeDIC*R_PICPOC(j)
-        consumDIC  = consumDIC  + uptakeDIC 
-        consumNH4  = consumNH4  + uptakeNH4 
-        consumNO2  = consumNO2  + uptakeNO2 
-        consumNO3  = consumNO3  + uptakeNO3 
-        consumPO4  = consumPO4  + uptakePO4 
+        consumDIC  = consumDIC  + uptakeDIC
+        consumNH4  = consumNH4  + uptakeNH4
+        consumNO2  = consumNO2  + uptakeNO2
+        consumNO3  = consumNO3  + uptakeNO3
+        consumPO4  = consumPO4  + uptakePO4
         consumSiO2 = consumSiO2 + uptakeSiO2
-        consumFeT  = consumFeT  + uptakeFeT 
+        consumFeT  = consumFeT  + uptakeFeT
 
         diags(iPP) = diags(iPP) + growth
         IF (j .LE. nPPplank) THEN
@@ -508,35 +482,28 @@ C=======================================================================
          diags(iNfix)=diags(iNfix)+uptakeN-uptakeNH4-uptakeNO2-uptakeNO3
         ENDIF
 
-#ifdef GUD_DEBUG
-      IF (iG.eq.iDEBUG.and.jG.eq.jDEBUG.and.k.eq.kDEBUG) THEN
-       print*,'uptakeNO3',myiter,j,X,NO3,uptakeNO3*dT,uptakeN*dT,
-     &       fracNO3,limitn,limitNH4,limitNO2,limitNO3,
-     &  useNO3(j),combNO(j),NO2,ksatNO3(j),inhibNH4
-      ENDIF
-#endif
 C=======================================================================
 
-       gTr(ic+j-1)=gTr(ic+j-1)  + uptakeDIC
+        gTr(ic+j-1)=gTr(ic+j-1)  + uptakeDIC
 #ifdef GUD_ALLOW_NQUOTA
-       gTr(in+j-1)=gTr(in+j-1)  + uptakeN
+        gTr(in+j-1)=gTr(in+j-1)  + uptakeN
 #endif
 #ifdef GUD_ALLOW_PQUOTA
-       gTr(ip+j-1)=gTr(ip+j-1)  + uptakePO4
+        gTr(ip+j-1)=gTr(ip+j-1)  + uptakePO4
 #endif
 #ifdef GUD_ALLOW_SIQUOTA
-       gTr(isi+j-1)=gTr(isi+j-1) + uptakeSiO2
+        gTr(isi+j-1)=gTr(isi+j-1) + uptakeSiO2
 #endif
 #ifdef GUD_ALLOW_FEQUOTA
-       gTr(ife+j-1)=gTr(ife+j-1) + uptakeFeT
+        gTr(ife+j-1)=gTr(ife+j-1) + uptakeFeT
 #endif
 #ifdef GUD_ALLOW_CHLQUOTA
-       gTr(iChl+j-iMinPhoto)=gTr(iChl+j-iMinPhoto) + synthChl
+        gTr(iChl+j-iMinPhoto)=gTr(iChl+j-iMinPhoto) + synthChl
 #endif
 
 #ifdef GUD_DEBUG
-      IF (iG.eq.iDEBUG.and.jG.eq.jDEBUG) THEN
-       print*,'uptake',myiter,k,j,
+        IF (iG.eq.iDEBUG.and.jG.eq.jDEBUG) THEN
+         print*,'uptake',myiter,k,j,
      &     uptakeDIC,
      &     uptakeNH4,
      &     uptakeNO2,
@@ -545,8 +512,9 @@ C=======================================================================
      &     uptakePO4,
      &     uptakeSiO2,
      &     uptakeFeT
-      ENDIF
+        ENDIF
 #endif
+
 C     j
       ENDDO
 
@@ -574,7 +542,6 @@ c NH4 -> NO2 -> NO3 by bacterial action
       prodNO2 = knita*NH4
       prodNO3 = knitb*NO2
       IF (PAR_oxi .NE. 0.0 _d 0) THEN
-c        print*,'prod',prodNO2,PARtot,PAR_oxi
         prodNO2 = prodNO2*MAX(0.0, 1.0 - PARtot/PAR_oxi)
         prodNO3 = prodNO3*MAX(0.0, 1.0 - PARtot/PAR_oxi)
       ENDIF
@@ -654,15 +621,6 @@ c loss of O2 by remineralization
         diags(iDenitN) = denitNH4 + denit_NO3/denit_np*denit
       ENDIF
 #endif /* GUD_ALLOW_DENIT */
-#ifdef GUD_DEBUG
-      IF (iG.eq.iDEBUG.and.jG.eq.jDEBUG.and.k.eq.kDEBUG) THEN
-       print*,'consumNO3',myiter,k,NO3,consumNO3*10800
-#ifdef GUD_ALLOW_DENIT
-       IF (O2 .LT. O2crit)
-     &       print*,'denitNO3',denit_NO3/denit_np*denit*10800
-#endif
-      ENDIF
-#endif
 
       gTr(iPO4 )=gTr(iPO4 ) + reminDOP
       gTr(iFeT )=gTr(iFeT ) + reminDOFe
