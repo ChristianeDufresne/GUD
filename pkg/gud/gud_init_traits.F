@@ -31,6 +31,10 @@ CCOG[[[cog
 CCOGfor name,lines in uninits.items():
 CCOG    cog.out('\n'.join(lines) + '\n\n')
 CCOG]]]
+      isPhoto = UNINIT_I
+      bactType = UNINIT_I
+      isAerobic = UNINIT_I
+      isDenit = UNINIT_I
       hasSi = UNINIT_I
       hasPIC = UNINIT_I
       diazo = UNINIT_I
@@ -102,6 +106,17 @@ CCOG]]]
       palat = UNINIT_RL
       asseff = UNINIT_RL
       ExportFracPreyPred = UNINIT_RL
+      yield = UNINIT_RL
+      yieldO2 = UNINIT_RL
+      yieldNO3 = UNINIT_RL
+      ksatPON = UNINIT_RL
+      ksatPOC = UNINIT_RL
+      ksatPOP = UNINIT_RL
+      ksatPOFe = UNINIT_RL
+      ksatDON = UNINIT_RL
+      ksatDOC = UNINIT_RL
+      ksatDOP = UNINIT_RL
+      ksatDOFe = UNINIT_RL
 
 #ifdef GUD_ALLOW_RADTRANS
       aphy_chl = UNINIT_RL
@@ -110,7 +125,7 @@ CCOG]]]
       bbphy_chl = UNINIT_RL
 #endif
 
-CCOG[[[end]]] (checksum: 5008f812e96620894e27bc0644897bc4)
+CCOG[[[end]]] (checksum: 67265ea73cb06a2e63b054579b3f70e6)
 
       _END_MASTER(myThid)
       _BARRIER

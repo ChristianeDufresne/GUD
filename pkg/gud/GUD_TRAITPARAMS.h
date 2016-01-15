@@ -248,6 +248,9 @@ CCOG]]]
      &    logvol0ind,
      &    grp_nplank,
      &    grp_photo,
+     &    grp_bacttype,
+     &    grp_aerobic,
+     &    grp_denit,
      &    grp_pred,
      &    grp_prey,
      &    grp_hasSi,
@@ -263,6 +266,9 @@ CCOG]]]
       INTEGER logvol0ind(nGroup)
       INTEGER grp_nplank(nGroup)
       INTEGER grp_photo(nGroup)
+      INTEGER grp_bacttype(nGroup)
+      INTEGER grp_aerobic(nGroup)
+      INTEGER grp_denit(nGroup)
       INTEGER grp_pred(nGroup)
       INTEGER grp_prey(nGroup)
       INTEGER grp_hasSi(nGroup)
@@ -541,7 +547,7 @@ CCOG]]]
       _RL grp_ExportFracPreyPred(nGroup,nGroup)
       _RL grp_ass_eff(nGroup,nGroup)
 
-CCOG[[[end]]] (checksum: 3d3a7736611fb8d7d3438bd305a1d6b8)
+CCOG[[[end]]] (checksum: 5ae5b0ef212b10ea7e084cab2cf862be)
 
 #endif /* ALLOW_GUD */
 

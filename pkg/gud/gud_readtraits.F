@@ -16,6 +16,7 @@ CCOG[[[end]]] (checksum: d41d8cd98f00b204e9800998ecf8427e)
 #include "EEPARAMS.h"
 #include "PARAMS.h"
 #include "GUD_SIZE.h"
+#include "GUD_INDICES.h"
 #include "GUD_PARAMS.h"
 #include "GUD_GENPARAMS.h"
 #include "GUD_TRAITPARAMS.h"
@@ -46,6 +47,10 @@ CCOG    cog.out(conde)
 CCOG    cog.out('\n')
 CCOG]]]
       NAMELIST/GUD_TRAITS/
+     &    isPhoto,
+     &    bactType,
+     &    isAerobic,
+     &    isDenit,
      &    hasSi,
      &    hasPIC,
      &    diazo,
@@ -116,7 +121,18 @@ CCOG]]]
      &    kgrazesat,
      &    palat,
      &    asseff,
-     &    ExportFracPreyPred
+     &    ExportFracPreyPred,
+     &    yield,
+     &    yieldO2,
+     &    yieldNO3,
+     &    ksatPON,
+     &    ksatPOC,
+     &    ksatPOP,
+     &    ksatPOFe,
+     &    ksatDON,
+     &    ksatDOC,
+     &    ksatDOP,
+     &    ksatDOFe
 
 #ifdef GUD_ALLOW_RADTRANS
       NAMELIST/GUD_RADTRANS_TRAITS/
@@ -146,7 +162,7 @@ CCOG]]]
      &    mortTempFuncMin,
      &    mort2TempFuncMin
 
-CCOG[[[end]]] (checksum: 0181dcbce109316d3f342932c38e897f)
+CCOG[[[end]]] (checksum: d956a6b85c3ab9632c2d3d1f00d7277a)
 
 CCOG[[[cog
 CCOGfor name,(lines,conds,conde) in code.items():

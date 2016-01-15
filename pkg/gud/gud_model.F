@@ -1,13 +1,5 @@
 C $Header$
 C $Name$
-C TODO:
-C - carbon
-C - cdom
-C - conservation of Chl?
-C - PIC: grazers must have R_PICPOC = 0!
-C   need to set all R_PICPOC to zero to emulate monod without carbon
-C   (maybe not)
-C   with carbon???
 
 #include "GUD_OPTIONS.h"
 
@@ -120,6 +112,17 @@ c !LOCAL VARIABLES: ====================================================
       _RL limitI
       _RL ngrow
 
+      _RL muPON
+      _RL muPOC
+      _RL muPOP
+      _RL muPOFe
+      _RL muDON
+      _RL muDOC
+      _RL muDOP
+      _RL muDOFe
+      _RL muO
+      _RL mu
+
       _RL uptakeDIC
       _RL uptakeNH4
       _RL uptakeNO2
@@ -136,6 +139,46 @@ c !LOCAL VARIABLES: ====================================================
       _RL consumPO4
       _RL consumSiO2
       _RL consumFeT
+
+      _RL uptakePON
+      _RL uptakePOP
+      _RL uptakePOC
+      _RL uptakePOFe
+      _RL uptakeDON
+      _RL uptakeDOP
+      _RL uptakeDOC
+      _RL uptakeDOFe
+      _RL uptakeO2
+
+      _RL respPON
+      _RL respPOP
+      _RL respPOC
+      _RL respPOFe
+      _RL respPOSi
+      _RL respDON
+      _RL respDOP
+      _RL respDOC
+      _RL respDOFe
+
+      _RL hydrolPON
+      _RL hydrolPOP
+      _RL hydrolPOC
+      _RL hydrolPOFe
+      _RL solubilPON
+      _RL solubilPOP
+      _RL solubilPOC
+      _RL solubilPOFe
+
+      _RL consumPON
+      _RL consumPOP
+      _RL consumPOC
+      _RL consumPOFe
+      _RL consumPOSi
+      _RL consumDON
+      _RL consumDOP
+      _RL consumDOC
+      _RL consumDOFe
+      _RL consumO2
 
       _RL inhibNH4
 
@@ -187,6 +230,7 @@ c !LOCAL VARIABLES: ====================================================
 #endif
 
       _RL EPS
+
       PARAMETER (EPS=1D-38)
 
 C==== precompute a few things ==========================================
@@ -231,6 +275,31 @@ C==== make all bio fields non-negative and compute quotas ==============
       consumPO4  = 0.0
       consumSiO2 = 0.0
       consumFeT  = 0.0
+      consumPON  = 0.0
+      consumPOP  = 0.0
+      consumPOC = 0.0
+      consumPOFe  = 0.0
+      consumPOSi  = 0.0
+      consumDON  = 0.0
+      consumDOP  = 0.0
+      consumDOC = 0.0
+      consumDOFe  = 0.0
+      consumO2 = 0.0
+      reminPON  = 0.0
+      reminPOP  = 0.0
+      reminPOC = 0.0
+      reminPOFe  = 0.0
+      reminPOSi  = 0.0
+      reminDON  = 0.0
+      reminDOP  = 0.0
+      reminDOC = 0.0
+      reminDOFe  = 0.0
+      solubilPON  = 0.0
+      solubilPOP  = 0.0
+      solubilPOC = 0.0
+      solubilPOFe  = 0.0
+      prodNO2 = 0.0
+      prodNO3 = 0.0
 
       DO l=1,gud_nDiag
         diags(l) = 0.0
@@ -518,6 +587,147 @@ C=======================================================================
 C     j
       ENDDO
 
+C=======================================================================
+C==== bacteria =========================================================
+
+      DO j = iMinBact, iMaxBact
+       IF (bactType(j) .NE. 0) THEN
+
+        X = MAX(0.0, Ptr(ic+j-1))
+
+        uptakeO2  = 0. _d 0
+        uptakeNO3 = 0. _d 0
+        uptakePOC = 0. _d 0
+        uptakePON = 0. _d 0
+        uptakePOP = 0. _d 0
+        uptakePOFe = 0. _d 0
+        uptakeDOC = 0. _d 0
+        uptakeDON = 0. _d 0
+        uptakeDOP = 0. _d 0
+        uptakeDOFe = 0. _d 0
+        hydrolPOC = 0. _d 0
+        hydrolPON = 0. _d 0
+        hydrolPOP = 0. _d 0
+        hydrolPOFe = 0. _d 0
+        respPOC = 0. _d 0
+        respPON = 0. _d 0
+        respPOP = 0. _d 0
+        respPOFe = 0. _d 0
+        respDOC = 0. _d 0
+        respDON = 0. _d 0
+        respDOP = 0. _d 0
+        respDOFe = 0. _d 0
+        growth = 0. _d 0
+
+        IF (isAerobic(j) .NE. 0) THEN
+          muO = yieldO2(j)*pcoefO2*O2
+        ELSEIF (isDenit(j) .NE. 0) THEN
+          muO = yieldNO3(j)*pmaxDIN*NO3/(NO3 + ksatDIN)*reminTempFunc
+        ENDIF
+
+C       POM-consuming (particle-associated)
+        IF (bactType(j) .EQ. 1) THEN
+
+          PCm = yield(j)*pmaxPON*reminTempFunc
+          muPON  = PCm*PON/(PON + ksatPON(j))
+          muPOC  = PCm*POC/(POC + ksatPOC(j))
+          muPOP  = PCm*POP/(POP + ksatPOP(j))
+          muPOFe = PCm*POFe/(POFe + ksatPOFe(j))
+          mu = MIN(muPON, muPOC, muPOP, muPOFe, muO)
+
+          growth = mu*X
+
+          uptakePOC = alpha_hydrol*growth/yield(j)
+          uptakePON  = uptakePOC*R_NC(j)
+          uptakePOP  = uptakePOC*R_PC(j)
+          uptakePOFe = uptakePOC*R_FeC(j)
+C         O2/NO3 is only used for the part of POC that is metabolized:
+          uptakeO2 = isAerobic(j)*growth/yieldO2(j)
+          uptakeNO3 = isDenit(j)*growth/yieldNO3(j)
+
+C         This is the part of POM that is hydrolized into DOM:
+          hydrolPOC = (alpha_hydrol-1)*growth/yield(j)
+          hydrolPON  = hydrolPOC*R_NC(j)
+          hydrolPOP  = hydrolPOC*R_PC(j)
+          hydrolPOFe = hydrolPOC*R_FeC(j)
+
+C         These are the bacteria products for remineralization of POM:
+          respPOC = growth*(1/yield(j)-1)
+          respPON  = respPOC*R_NC(j)
+          respPOP  = respPOC*R_PC(j)
+          respPOFe = respPOC*R_FeC(j)
+
+C       DOM-consuming (free-living):
+        ELSEIF (bactType(j) .EQ. 2) THEN
+
+          PCm = yield(j)*pmaxDON*reminTempFunc
+          muDON  = PCm*DON/(DON + ksatDON(j))
+          muDOC  = PCm*DOC/(DOC + ksatDOC(j))
+          muDOP  = PCm*DOP/(DOP + ksatDOP(j))
+          muDOFe = PCm*DOFe/(DOFe + ksatDOFe(j))
+          mu = MIN(muDON, muDOC, muDOP, muDOFe, muO)
+
+          growth = mu*X
+
+          uptakeDOC = growth/yield(j)
+          uptakeDON  = uptakeDOC*R_NC(j)
+          uptakeDOP  = uptakeDOC*R_PC(j)
+          uptakeDOFe = uptakeDOC*R_FeC(j)
+          uptakeO2 = isAerobic(j)*growth/yieldO2(j)
+          uptakeNO3 = isDenit(j)*growth/yieldNO3(j)
+
+C         DOC respired to DIC
+          respDOC = growth*(1/yield(j)-1)
+          respDON  = respDOC*R_NC(j)
+          respDOP  = respDOC*R_PC(j)
+          respDOFe = respDOC*R_FeC(j)
+
+        ENDIF
+
+        IF (j .LE. nPPplank) THEN
+          diags(iPPplank+j-1) = diags(iPPplank+j-1) + growth
+        ENDIF
+
+        gTr(ic+j-1)=gTr(ic+j-1) + growth
+
+C==== Cumulative consum, remin, and prod ===============================
+        consumNO3  = consumNO3  + uptakeNO3
+
+C       add B consum and accumulating remin, and prod:
+        consumO2 = consumO2 + uptakeO2
+
+        consumDOC = consumDOC + uptakeDOC
+        consumDON = consumDON + uptakeDON
+        consumDOP = consumDOP + uptakeDOP
+        consumDOFe = consumDOFe + uptakeDOFe
+
+        consumPOC = consumPOC + uptakePOC
+        consumPON = consumPON + uptakePON
+        consumPOP = consumPOP + uptakePOP
+        consumPOFe = consumPOFe + uptakePOFe
+
+        reminPOC = reminPOC + respPOC
+        reminPON = reminPON + respPON
+        reminPOP = reminPOP + respPOP
+        reminPOFe = reminPOFe + respPOFe
+
+        solubilPOC = solubilPOC + hydrolPOC
+        solubilPON = solubilPON + hydrolPON
+        solubilPOP = solubilPOP + hydrolPOP
+        solubilPOFe = solubilPOFe + hydrolPOFe
+
+        reminDOC = reminDOC + respDOC
+        reminDON = reminDON + respDON
+        reminDOP = reminDOP + respDOP
+        reminDOFe = reminDOFe + respDOFe
+
+       ENDIF
+C     j loop end
+      ENDDO
+
+C=======================================================================
+C=======================================================================
+
       gTr(iDIC )=gTr(iDIC ) - consumDIC - consumDIC_PIC
       gTr(iNH4 )=gTr(iNH4 ) - consumNH4
       gTr(iNO2 )=gTr(iNO2 ) - consumNO2
@@ -526,19 +736,49 @@ C     j
       gTr(iSiO2)=gTr(iSiO2) - consumSiO2
       gTr(iFeT )=gTr(iFeT ) - consumFeT
 
-      reminDOC  = reminTempFunc*KDOC *DOC
-      reminDON  = reminTempFunc*KDON *DON
-      reminDOP  = reminTempFunc*KDOP *DOP
-      reminDOFe = reminTempFunc*KDOFe*DOFe
-      reminPOC  = reminTempFunc*KPOC *POC
-      reminPON  = reminTempFunc*KPON *PON
-      reminPOP  = reminTempFunc*KPOP *POP
-      reminPOSi = reminTempFunc*KPOSi*POSi
-      reminPOFe = reminTempFunc*KPOFe*POFe
+C parameterized remineralization; want to set all K except KPOSi to zero
+C if running with bacteria
+      respDOC  = reminTempFunc*KDOC *DOC
+      respDON  = reminTempFunc*KDON *DON
+      respDOP  = reminTempFunc*KDOP *DOP
+      respDOFe = reminTempFunc*KDOFe*DOFe
+      respPOC  = reminTempFunc*KPOC *POC
+      respPON  = reminTempFunc*KPON *PON
+      respPOP  = reminTempFunc*KPOP *POP
+      respPOSi = reminTempFunc*KPOSi*POSi
+      respPOFe = reminTempFunc*KPOFe*POFe
+
+      consumDOC  = consumDOC  + respDOC
+      consumDON  = consumDON  + respDON
+      consumDOP  = consumDOP  + respDOP
+      consumDOFe = consumDOFe + respDOFe
+      consumPOC  = consumPOC  + respPOC
+      consumPON  = consumPON  + respPON
+      consumPOP  = consumPOP  + respPOP
+      consumPOSi = consumPOSi + respPOSi
+      consumPOFe = consumPOFe + respPOFe
+
+      reminDOC  = reminDOC  + respDOC
+      reminDON  = reminDON  + respDON
+      reminDOP  = reminDOP  + respDOP
+      reminDOFe = reminDOFe + respDOFe
+      reminPOC  = reminPOC  + respPOC
+      reminPON  = reminPON  + respPON
+      reminPOP  = reminPOP  + respPOP
+      reminPOSi = reminPOSi + respPOSi
+      reminPOFe = reminPOFe + respPOFe
+
+#ifdef GUD_ALLOW_CARBON
+      consumO2  = consumO2  + respDOP*R_OP
+#ifndef GUD_ALLOW_CDOM
+      consumO2  = consumO2  + respPOP*R_OP
+#endif
+#endif
+
       disscPIC = Kdissc*PIC
 
 c nitrogen chemistry
-c NH4 -> NO2 -> NO3 by bacterial action
+c NH4 -> NO2 -> NO3 by bacterial action, parameterized
       prodNO2 = knita*NH4
       prodNO3 = knitb*NO2
       IF (PAR_oxi .NE. 0.0 _d 0) THEN
@@ -561,7 +801,6 @@ c degradation of  CDOM - high when bleached by light
 
 #ifdef GUD_ALLOW_DENIT
       IF (O2 .LT. O2crit .AND. NO3 .LT. NO3crit) THEN
-c no remineralization for N, P, Fe (not Si?)
         reminDOC = 0. _d 0
         reminDOP  = 0. _d 0
         reminDON  = 0. _d 0
@@ -584,17 +823,14 @@ c no remineralization for N, P, Fe (not Si?)
       ENDIF
 #endif /* GUD_ALLOW_DENIT */
 
-C==== tendencies =======================================================
+C==== apply tendencies =================================================
 
 #ifdef GUD_ALLOW_CARBON
 c production of O2 by photosynthesis
       gTr(iO2  )=gTr(iO2  ) + R_OP*consumPO4
 c loss of O2 by remineralization
       IF (O2 .GT. O2crit) THEN
-        gTr(iO2)=gTr(iO2) - R_OP*reminDOP
-#ifndef GUD_ALLOW_CDOM
-        gTr(iO2)=gTr(iO2) - R_OP*reminPOP
-#endif
+        gTr(iO2)=gTr(iO2) - consumO2
       ENDIF
 
       gTr(iALK)=gTr(iALK) - (prodNO3 - consumNO3)
@@ -604,7 +840,7 @@ c loss of O2 by remineralization
       gTr(iDIC )=gTr(iDIC ) + reminDOC + disscPIC
       gTr(iNH4 )=gTr(iNH4 ) + reminDON - prodNO2
       gTr(iNO2 )=gTr(iNO2 ) + prodNO2 - prodNO3
-      gTr(iNO3 )=gTr(iNO3 )           + prodNO3
+      gTr(iNO3 )=gTr(iNO3 ) + prodNO3
       diags(iDenitN) = 0.0
 #ifdef GUD_ALLOW_DENIT
       IF (O2 .LT. O2crit) THEN
@@ -626,17 +862,19 @@ c loss of O2 by remineralization
       gTr(iFeT )=gTr(iFeT ) + reminDOFe
       gTr(iSiO2)=gTr(iSiO2)             + reminPOSi
 
-      gTr(iDOC )=gTr(iDOC ) - reminDOC
-      gTr(iDON )=gTr(iDON ) - reminDON
-      gTr(iDOP )=gTr(iDOP ) - reminDOP
-      gTr(iDOFe)=gTr(iDOFe) - reminDOFe
+C     DOC is created by #4 PA-assoc solubilization and consumed by #5
+      gTr(iDOC )=gTr(iDOC ) + solubilPOC - consumDOC
+      gTr(iDON )=gTr(iDON ) + solubilPON - consumDON
+      gTr(iDOP )=gTr(iDOP ) + solubilPOP - consumDOP
+      gTr(iDOFe)=gTr(iDOFe) + solubilPOFe - consumDOFe
 
       gTr(iPIC )=gTr(iPIC ) - disscPIC
-      gTr(iPOC )=gTr(iPOC ) - reminPOC
-      gTr(iPON )=gTr(iPON ) - reminPON
-      gTr(iPOP )=gTr(iPOP ) - reminPOP
-      gTr(iPOSi)=gTr(iPOSi) - reminPOSi
-      gTr(iPOFe)=gTr(iPOFe) - reminPOFe
+      gTr(iPOC )=gTr(iPOC ) - consumPOC
+      gTr(iPON )=gTr(iPON ) - consumPON
+      gTr(iPOP )=gTr(iPOP ) - consumPOP
+      gTr(iPOFe)=gTr(iPOFe) - consumPOFe
+      gTr(iPOSi)=gTr(iPOSi) - consumPOSi
+
 #ifdef GUD_ALLOW_CDOM
       gTr(iDOC )=gTr(iDOC ) + reminPOC  - reminPOC_CDOM  + degrCDOM_DOC
       gTr(iDON )=gTr(iDON ) + reminPON  - reminPON_CDOM  + degrCDOM_DON

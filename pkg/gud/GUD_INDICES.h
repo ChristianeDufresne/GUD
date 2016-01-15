@@ -11,6 +11,11 @@ C #include GUD_INDICES.h
 C    !DESCRIPTION:
 C Contains indices into ptracer array
 
+C these cannot be modified for now
+
+      INTEGER iMinPhoto, iMaxPhoto
+      PARAMETER(iMinPhoto=1, iMaxPhoto=nPhoto)
+
       INTEGER nNQuota, nPQuota, nSiQuota, nFeQuota
 #ifdef GUD_ALLOW_NQUOTA
       PARAMETER(nNQuota=nplank)

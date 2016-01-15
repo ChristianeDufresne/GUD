@@ -188,6 +188,28 @@ _RL hollexp = 1.0 _d 0                    ! grazing exponential 1= holling 2, 2=
 _RL phygrazmin = 120 _d -10               ! minimum total prey conc
 
 
+! for bacteria
+
+_RL pmaxPON = 5/pday
+_RL pmaxDON = 5/pday
+_RL pcoefO2 = 290.820D0/pday
+_RL pmaxDIN = 20/pday
+_RL ksatPOM = 1 _d 0          ! mmol N m^-3
+_RL ksatDOM = 1 _d 0          ! mmol N m^-3
+_RL ksatDIN = 0.01 _d 0
+_RL alpha_hydrol = 2.0 _d 0
+_RL yod     = 0.2 _d 0
+_RL yoe     = yod/467*4/(1-yod)*106 _d 0
+_RL ynd     = 0.16 _d 0
+_RL yne     = ynd/467*5/(1-ynd)*106 _d 0
+_RL fnh4    = 0.1 _d 0
+_RL ynh4    = 1/(16+467/6/fnh4)*106 _d 0
+_RL yonh4   = fnh4/467*4/(1-fnh4)*106 _d 0
+_RL fno2    = 0.1 _d 0
+_RL yno2    = 1/(16+563/2/fno2)*106 _d 0
+_RL yono2   = fno2/563*4/(1-fno2)*106 _d 0
+
+
 ! TO BE IMPLEMENTED
 
 _RL depthdenit = 185.0 _d 0               ! depth for denitrification relaxation to start

@@ -3,13 +3,17 @@
 
 ! per-plankton traits (generated, maybe overwritten by data.traits)
 
-INTEGER(nplank)  hasSi    ! 1
-INTEGER(nplank)  hasPIC   ! 1
-INTEGER(nplank)  diazo    ! 1
-INTEGER(nplank)  useNH4   ! 1
-INTEGER(nplank)  useNO2   ! 1
-INTEGER(nplank)  useNO3   ! 1
-INTEGER(nplank)  combNO   ! 1
+INTEGER(nplank)  isPhoto
+INTEGER(nplank)  bactType
+INTEGER(nplank)  isAerobic
+INTEGER(nplank)  isDenit
+INTEGER(nplank)  hasSi
+INTEGER(nplank)  hasPIC
+INTEGER(nplank)  diazo
+INTEGER(nplank)  useNH4
+INTEGER(nplank)  useNO2
+INTEGER(nplank)  useNO3
+INTEGER(nplank)  combNO
 
 _RL(nplank)      Xmin              ! mmol C m^-3
 _RL(nplank)      amminhib          ! (mmol N m^-3)^-1
@@ -88,6 +92,20 @@ _RL(nplank)      kgrazesat         ! mmol C m^-3
 _RL(nplank,nplank)  palat               ! 1
 _RL(nplank,nplank)  asseff              ! 1
 _RL(nplank,nplank)  ExportFracPreyPred  ! 1
+
+! bacteria
+
+_RL(nplank)  yield     ! bacterial growth yield for all organic matter
+_RL(nplank)  yieldO2   ! bacterial growth yield for oxygen
+_RL(nplank)  yieldNO3  ! bacterial growth yield for nitrate
+_RL(nplank)  ksatPON   ! mmol N m^-3   ! half-saturation of PON for bacterial growth
+_RL(nplank)  ksatPOC   ! mmol C m^-3   ! half-saturation of POC for bacterial growth
+_RL(nplank)  ksatPOP   ! mmol P m^-3   ! half-saturation of POP for bacterial growth
+_RL(nplank)  ksatPOFe  ! mmol Fe m^-3  ! half-saturation of POFe for bacterial growth
+_RL(nplank)  ksatDON   ! mmol N m^-3   ! half-saturation of DON for bacterial growth
+_RL(nplank)  ksatDOC   ! mmol C m^-3   ! half-saturation of DOC for bacterial growth
+_RL(nplank)  ksatDOP   ! mmol P m^-3   ! half-saturation of DOP for bacterial growth
+_RL(nplank)  ksatDOFe  ! mmol Fe m^-3  ! half-saturation of DOFe for bacterial growth
 
 
 

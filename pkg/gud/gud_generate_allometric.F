@@ -16,6 +16,7 @@ C !USES: ===============================================================
       IMPLICIT NONE
 #include "EEPARAMS.h"
 #include "GUD_SIZE.h"
+#include "GUD_INDICES.h"
 #include "GUD_PARAMS.h"
 #include "GUD_GENPARAMS.h"
 #include "GUD_TRAITPARAMS.h"
@@ -187,6 +188,7 @@ C compute traits from trait parameters
 C ----------------------------------------------------------------------
 C non-allometric traits (same within group)
 
+        isPhoto(jp)    = grp_photo(g)
         hasSi(jp)      = grp_hasSi(g)
         hasPIC(jp)     = grp_hasPIC(g)
         diazo(jp)      = grp_diazo(g)
@@ -247,13 +249,13 @@ C parameters relating to inorganic nutrients
 
         Qnmin(jp)     = a_qmin_n(g)  * biovol(jp)**b_qmin_n(g)
         Qnmax(jp)     = a_qmax_n(g)  * biovol(jp)**b_qmax_n(g)
-                      
+
         Qpmin(jp)     = a_qmin_p(g)  * biovol(jp)**b_qmin_p(g)
         Qpmax(jp)     = a_qmax_p(g)  * biovol(jp)**b_qmax_p(g)
-                      
+
         Qsimin(jp)    = a_qmin_si(g) * biovol(jp)**b_qmin_si(g)
         Qsimax(jp)    = a_qmax_si(g) * biovol(jp)**b_qmax_si(g)
-                      
+
         Qfemin(jp)    = a_qmin_fe(g) * biovol(jp)**b_qmin_fe(g)
         Qfemax(jp)    = a_qmax_fe(g) * biovol(jp)**b_qmax_fe(g)
 
@@ -293,6 +295,31 @@ C we compute it for NO3 and scale for others
          ksatFeT(jp) = kappa/R_NC(jp)*R_FeC(jp)
 #endif
         ENDIF
+
+C parameters for bacteria
+
+        bactType(jp)  = grp_bacttype(g)
+        isAerobic(jp) = grp_aerobic(g)
+        isDenit(jp)   = grp_denit(g)
+
+        yieldO2(jp) = 1.0
+        yieldNO3(jp) = 1.0
+        IF (isAerobic(jp) .NE. 0) THEN
+          yield(jp) = yod
+          yieldO2(jp) = yoe
+        ELSEIF (isDenit(jp) .NE. 0) THEN
+          yield(jp) = ynd
+          yieldNO3(jp) = yne
+        ENDIF
+
+        ksatPON(jp)  = ksatPOM
+        ksatDON(jp)  = ksatDOM
+        ksatPOC(jp)  = ksatPON(jp)/R_NC(jp)
+        ksatPOP(jp)  = ksatPON(jp)/R_NC(jp)*R_PC(jp)
+        ksatPOFe(jp) = ksatPON(jp)/R_NC(jp)*R_FeC(jp)
+        ksatDOC(jp)  = ksatDON(jp)/R_NC(jp)
+        ksatDOP(jp)  = ksatDON(jp)/R_NC(jp)*R_PC(jp)
+        ksatDOFe(jp) = ksatDON(jp)/R_NC(jp)*R_FeC(jp)
 
 #ifdef GUD_ALLOW_GEIDER
         mQyield(jp) = grp_mQyield(g)

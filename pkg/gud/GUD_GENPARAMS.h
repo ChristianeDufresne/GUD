@@ -189,6 +189,24 @@ CCOG]]]
      &    hillnum,
      &    hollexp,
      &    phygrazmin,
+     &    pmaxPON,
+     &    pmaxDON,
+     &    pcoefO2,
+     &    pmaxDIN,
+     &    ksatPOM,
+     &    ksatDOM,
+     &    ksatDIN,
+     &    alpha_hydrol,
+     &    yod,
+     &    yoe,
+     &    ynd,
+     &    yne,
+     &    fnh4,
+     &    ynh4,
+     &    yonh4,
+     &    fno2,
+     &    yno2,
+     &    yono2,
      &    depthdenit
       _RL phymin
       _RL katten_w
@@ -277,6 +295,24 @@ CCOG]]]
       _RL hillnum
       _RL hollexp
       _RL phygrazmin
+      _RL pmaxPON
+      _RL pmaxDON
+      _RL pcoefO2
+      _RL pmaxDIN
+      _RL ksatPOM
+      _RL ksatDOM
+      _RL ksatDIN
+      _RL alpha_hydrol
+      _RL yod
+      _RL yoe
+      _RL ynd
+      _RL yne
+      _RL fnh4
+      _RL ynh4
+      _RL yonh4
+      _RL fno2
+      _RL yno2
+      _RL yono2
       _RL depthdenit
 
 #ifdef GUD_ALLOW_RADTRANS
@@ -344,7 +380,7 @@ CCOG]]]
       INTEGER kMinFeSed
       INTEGER kMaxFeSed
 
-CCOG[[[end]]] (checksum: 2e1a6f2a841d16ad62df8ae50dbeb1b7)
+CCOG[[[end]]] (checksum: 6245d114c8c4550eb569fd79c0bebd43)
 
 #endif /* ALLOW_GUD */
 

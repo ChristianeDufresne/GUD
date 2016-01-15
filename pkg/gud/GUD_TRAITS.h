@@ -44,6 +44,10 @@ CCOG    cog.out(conde)
 CCOG    cog.out('\n')
 CCOG]]]
       COMMON /GUD_TRAITS_i/
+     &    isPhoto,
+     &    bactType,
+     &    isAerobic,
+     &    isDenit,
      &    hasSi,
      &    hasPIC,
      &    diazo,
@@ -53,6 +57,10 @@ CCOG]]]
      &    combNO,
      &    tempMort,
      &    tempMort2
+      INTEGER isPhoto(nplank)
+      INTEGER bactType(nplank)
+      INTEGER isAerobic(nplank)
+      INTEGER isDenit(nplank)
       INTEGER hasSi(nplank)
       INTEGER hasPIC(nplank)
       INTEGER diazo(nplank)
@@ -124,7 +132,18 @@ CCOG]]]
      &    kgrazesat,
      &    palat,
      &    asseff,
-     &    ExportFracPreyPred
+     &    ExportFracPreyPred,
+     &    yield,
+     &    yieldO2,
+     &    yieldNO3,
+     &    ksatPON,
+     &    ksatPOC,
+     &    ksatPOP,
+     &    ksatPOFe,
+     &    ksatDON,
+     &    ksatDOC,
+     &    ksatDOP,
+     &    ksatDOFe
       _RL Xmin(nplank)
       _RL amminhib(nplank)
       _RL acclimtimescl(nplank)
@@ -187,6 +206,17 @@ CCOG]]]
       _RL palat(nplank,nplank)
       _RL asseff(nplank,nplank)
       _RL ExportFracPreyPred(nplank,nplank)
+      _RL yield(nplank)
+      _RL yieldO2(nplank)
+      _RL yieldNO3(nplank)
+      _RL ksatPON(nplank)
+      _RL ksatPOC(nplank)
+      _RL ksatPOP(nplank)
+      _RL ksatPOFe(nplank)
+      _RL ksatDON(nplank)
+      _RL ksatDOC(nplank)
+      _RL ksatDOP(nplank)
+      _RL ksatDOFe(nplank)
 
 #ifdef GUD_ALLOW_RADTRANS
       COMMON /GUD_RADTRANS_TRAITS_r/
@@ -239,7 +269,7 @@ CCOG]]]
       _RL mortTempFuncMin(nplank)
       _RL mort2TempFuncMin(nplank)
 
-CCOG[[[end]]] (checksum: 13e6ffc647b4a3818fded6886dc2244d)
+CCOG[[[end]]] (checksum: 7142ac3519f99ac66c26fdeeb478e3c7)
 
 #endif /* ALLOW_GUD */
 

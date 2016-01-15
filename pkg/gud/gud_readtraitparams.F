@@ -149,6 +149,9 @@ CCOG]]]
      &    grp_biovol,
      &    grp_nplank,
      &    grp_photo,
+     &    grp_bacttype,
+     &    grp_aerobic,
+     &    grp_denit,
      &    grp_pred,
      &    grp_prey,
      &    grp_hasSi,
@@ -288,7 +291,7 @@ CCOG]]]
      &    grp_ExportFracPreyPred,
      &    grp_ass_eff
 
-CCOG[[[end]]] (checksum: a47628f78c7ef4c59afe9a68ed95701d)
+CCOG[[[end]]] (checksum: 56049f989644fa2160673d258f08a530)
 
 CCOG[[[cog
 CCOGfor tp,dims,param,pre,post in locals[0]: cog.out('''
@@ -500,6 +503,9 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
       grp_nplank    = 0
       grp_photo     = 1
+      grp_bacttype  = 0         ! 1: particle-associated, 2: free-living
+      grp_aerobic   = 0
+      grp_denit     = 0
       grp_pred      = 0
       grp_prey      = 1
       grp_hasSi     = 0
@@ -719,7 +725,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
       READ(UNIT=iUnit, NML=GUD_TRAIT_PARAMS)
 
-CCOG[[[end]]] (checksum: d514780679fcaa810278e38fdc0f8fa6)
+CCOG[[[end]]] (checksum: 2aa269c80af993bbae9fffb5db35d619)
 
 CCOG[[[cog
 CCOGfor param in denomparams:
