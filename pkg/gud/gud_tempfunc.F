@@ -25,6 +25,7 @@ C                if undefined, then full Eppley/Arrenhius curve used
 C !USES: ===============================================================
       IMPLICIT NONE
 #include "GUD_SIZE.h"
+#include "GUD_INDICES.h"
 #include "GUD_GENPARAMS.h"
 #include "GUD_TRAITS.h"
 

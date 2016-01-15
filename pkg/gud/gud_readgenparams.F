@@ -158,6 +158,24 @@ CCOG]]]
      &    hillnum,
      &    hollexp,
      &    phygrazmin,
+     &    pmaxPON,
+     &    pmaxDON,
+     &    pcoefO2,
+     &    pmaxDIN,
+     &    ksatPOM,
+     &    ksatDOM,
+     &    ksatDIN,
+     &    alpha_hydrol,
+     &    yod,
+     &    yoe,
+     &    ynd,
+     &    yne,
+     &    fnh4,
+     &    ynh4,
+     &    yonh4,
+     &    fno2,
+     &    yno2,
+     &    yono2,
      &    depthdenit
 
 #ifdef GUD_ALLOW_RADTRANS
@@ -196,7 +214,7 @@ CCOG]]]
      &    kMinFeSed,
      &    kMaxFeSed
 
-CCOG[[[end]]] (checksum: 0fd3b81aadfb01a149f5aa4ceff2c449)
+CCOG[[[end]]] (checksum: 67e1b928530fd2bc03a2e5333649b822)
 
 CCOG[[[cog
 CCOGfor tp,dims,param,pre,post in locals[0]: cog.out('''
@@ -418,6 +436,28 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       phygrazmin = 120 _d -10               ! minimum total prey conc
 
 
+      ! for bacteria
+
+      pmaxPON = 5/pday
+      pmaxDON = 5/pday
+      pcoefO2 = 290.820D0/pday
+      pmaxDIN = 20/pday
+      ksatPOM = 1 _d 0          ! mmol N m^-3
+      ksatDOM = 1 _d 0          ! mmol N m^-3
+      ksatDIN = 0.01 _d 0
+      alpha_hydrol = 2.0 _d 0
+      yod     = 0.2 _d 0
+      yoe     = yod/467*4/(1-yod)*106 _d 0
+      ynd     = 0.16 _d 0
+      yne     = ynd/467*5/(1-ynd)*106 _d 0
+      fnh4    = 0.1 _d 0
+      ynh4    = 1/(16+467/6/fnh4)*106 _d 0
+      yonh4   = fnh4/467*4/(1-fnh4)*106 _d 0
+      fno2    = 0.1 _d 0
+      yno2    = 1/(16+563/2/fno2)*106 _d 0
+      yono2   = fno2/563*4/(1-fno2)*106 _d 0
+
+
       ! TO BE IMPLEMENTED
 
       depthdenit = 185.0 _d 0               ! depth for denitrification relaxation to start
@@ -480,7 +520,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       kMinFeSed = 1
       kMaxFeSed = 0
 
-CCOG[[[end]]] (checksum: 26ea3d95cb8d84dbd61bc493b7e81241)
+CCOG[[[end]]] (checksum: 11f8a1e5b8f5de758dcf4d8395e96e0f)
 
 
 

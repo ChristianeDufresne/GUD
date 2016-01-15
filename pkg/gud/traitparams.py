@@ -175,6 +175,9 @@ _RL(nPlank,nGroup) grp_biovol    = 0 _d 0    ! or set volumes of types in each g
 
 INTEGER(nGroup)    grp_nplank    = 0
 INTEGER(nGroup)    grp_photo     = 1
+INTEGER(nGroup)    grp_bacttype  = 0         ! 1: particle-associated, 2: free-living
+INTEGER(nGroup)    grp_aerobic   = 0
+INTEGER(nGroup)    grp_denit     = 0
 INTEGER(nGroup)    grp_pred      = 0
 INTEGER(nGroup)    grp_prey      = 1
 INTEGER(nGroup)    grp_hasSi     = 0

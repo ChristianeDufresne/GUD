@@ -28,6 +28,7 @@ C !USES: ===============================================================
 #include "EEPARAMS.h"
 #ifdef ALLOW_GUD
 #include "GUD_SIZE.h"
+#include "GUD_INDICES.h"
 #include "GUD_PARAMS.h"
 #include "GUD_GENPARAMS.h"
 #include "GUD_TRAITPARAMS.h"
@@ -128,6 +129,8 @@ C      initialize discrete traits to "unset"
        diacoc(np)     = -1
        diazo(np) = -1
        nsource(np)    = -1
+
+       isPhoto(np) = 0
       ENDDO
 
 C ======================================================================
@@ -135,6 +138,8 @@ c     phytoplankton
 C ======================================================================
 
       DO np = iMinPhoto, iMaxPhoto
+
+      isPhoto(np) = 1
 
       Xmin(np) = phymin
 
@@ -845,6 +850,27 @@ c       chl2cmin(np) = 0.003  _d 0 * 12. _d 0  ! mg Chl a/mmol C
         hasSi(np) = 0
         hasPIC(np) = 0
       ENDIF
+
+      ENDDO  ! np
+
+      DO np = 1, nplank
+
+        bactType(np) = 0
+        isAerobic(np) = 0
+        isDenit(np) = 0
+
+        yield(np) = 1.0 _d 0
+        yieldO2(np) = 1.0 _d 0
+        yieldNO3(np) = 1.0 _d 0
+
+        ksatPON(np) = 1.0 _d 0
+        ksatPOC(np) = 1.0 _d 0
+        ksatPOP(np) = 1.0 _d 0
+        ksatPOFe(np) = 1.0 _d 0
+        ksatDON(np) = 1.0 _d 0
+        ksatDOC(np) = 1.0 _d 0
+        ksatDOP(np) = 1.0 _d 0
+        ksatDOFe(np) = 1.0 _d 0
 
       ENDDO  ! np
 
