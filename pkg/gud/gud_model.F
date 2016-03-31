@@ -801,6 +801,14 @@ c degradation of  CDOM - high when bleached by light
 
 #ifdef GUD_ALLOW_DENIT
       IF (O2 .LT. O2crit .AND. NO3 .LT. NO3crit) THEN
+        consumDOC = 0. _d 0
+        consumDOP  = 0. _d 0
+        consumDON  = 0. _d 0
+        consumDOFe = 0. _d 0
+        consumPOC = 0. _d 0
+        consumPOP  = 0. _d 0
+        consumPON  = 0. _d 0
+        consumPOFe = 0. _d 0
         reminDOC = 0. _d 0
         reminDOP  = 0. _d 0
         reminDON  = 0. _d 0
