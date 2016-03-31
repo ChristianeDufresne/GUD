@@ -2,8 +2,13 @@
 
 # $Header$
 
-#  Test script for MITgcm that should work on most of the csail.mit.edu
-#  Linux machines.
+#  Test script for MITgcm that should work on most of the csail.mit.edu Linux machines.
+
+tst_grp=0 ; if test $# = 1 ; then tst_grp=$1 ; fi
+if test $tst_grp != 'a' -a $tst_grp != 'b' ; then
+  echo "missing or invalid argument (expect: 'a' or 'b') ==> exit"
+  exit 1
+fi
 
 # defaults
 #export PATH="$PATH:/usr/local/bin"
@@ -32,17 +37,21 @@ cmdCVS='cvs -d /u/gcmpack'
 dInWeek=`date +%a`
 outDir=`hostname -s`
 TESTDIR="/scratch/jmc/test_${outDir}"
+outDir="${outDir}-${tst_grp}"
 MC=13
-checkOut=2
 sepDir=1
 option=
 #tst_list='g7a adm mpa g77 gfo+rs mth mp2+rs mpi ifc'
 #if test "x$dInWeek" = xSun ; then tst_list="$tst_list tlm oad" ; fi
-outDir="${outDir}-a"
-tst_list='g7a mpa mth mp2+rs mpi oad'
-#outDir="${outDir}-b"
-#tst_list='adm g77 gfo+rs ifc'
-#if test "x$dInWeek" = xSun ; then tst_list="$tst_list tlm" ; fi
+if test $tst_grp = 'a' ; then
+ checkOut=2
+ tst_list='g7a mpa mth mp2+rs mpi oad'
+else
+ checkOut=3
+ tst_list='adm g77 gfo+rs ifc'
+ if test "x$dInWeek" = xSun ; then tst_list="$tst_list tlm" ; fi
+fi
+echo " test: $outDir ; list='$tst_list'"
 
 #option="-nc" ; checkOut=1
 #option="-q"  ; checkOut=1
@@ -89,6 +98,11 @@ do
 
   echo "================================================================"
   typ=`echo $tt | sed 's/+rs//'`
+  #- define list of additional experiences to test:
+  addExp=''
+  if test $typ = 'mp2' -o $typ = 'ifc' ; then
+    addExp='offline_cheapaml atm_gray'
+  fi
   #- check day and time:
   curDay=`date +%d` ; curHour=`date +%H`
   if [ $curDay -ne $TODAY ] ; then
@@ -133,6 +147,12 @@ do
       mkdir $new_dir
       pushd $new_dir
       cp -ra ../MITgcm/* .
+      #-- download additional experience from Contrib:
+      for exp2add in $addExp ; do
+        echo " add dir: $exp2add (from Contrib:verification_other)"
+        ( cd verification ;  $cmdCVS co -P -d $exp2add \
+             MITgcm_contrib/verification_other/$exp2add > /dev/null )
+      done
     fi
   else
     pushd MITgcm

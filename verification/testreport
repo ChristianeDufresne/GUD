@@ -22,7 +22,7 @@ usage()
     echo "  (-command|-c) STRING     command to run (e.g., if non-standard MPI setting)"
     echo "                            DEF='mitgcmuv' or ='mpirun -np TR_NPROC mitgcmuv'"
     echo " ---- testing options : ----"
-    echo "  (-optfile|-of) STRING    list of optfiles to use"
+    echo "  (-optfile|-of) STRING    optfile to use"
     echo "  (-fast)                  use optfile default for compiler flags (no '-ieee')"
     echo "                            DEF=off => use IEEE numerics option (if available)"
     echo "  (-devel)                 use optfile developement flags (if available)"
@@ -1317,10 +1317,6 @@ do
 done
 if test $count = 1 ; then echo "" ; echo -n " ... " ; fi
 #echo 'TESTDIRS='${TESTDIRS}'<'
-
-if test "x$OPTFILE" = xNONE -a "x$MITGCM_OF" != x ; then
-    OPTFILE=$MITGCM_OF
-fi
 
 LOC_MFILE='tr_mpi_mfile'
 RUNLOG="run.tr_log"

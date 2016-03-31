@@ -69,6 +69,12 @@ C     loop indices
       INTEGER newtonIter
       INTEGER krylovIter, krylovFails
       INTEGER totalKrylovItersLoc, totalNewtonItersLoc
+C     FGMRES parameters
+C     im      :: size of Krylov space
+C     ifgmres :: interation counter
+      INTEGER im
+      PARAMETER ( im = 50 )
+      INTEGER ifgmres
 C     FGMRES flag that determines amount of output messages of fgmres
       INTEGER iOutFGMRES
 C     FGMRES flag that indicates what fgmres wants us to do next
@@ -103,6 +109,10 @@ C     zeta, eta, and DWATN, press
       _RL etaPre  (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL etaZPre (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
       _RL dwatPre (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+C     work arrays
+      _RL rhs(nVec,nSx,nSy), sol(nVec,nSx,nSy)
+      _RL vv(nVec,im+1,nSx,nSy), w(nVec,im,nSx,nSy)
+      _RL wk1(nVec,nSx,nSy), wk2(nVec,nSx,nSy)
 CEOP
 
 C     Initialise
@@ -171,7 +181,7 @@ CML        ENDIF
        ENDDO
       ENDDO
 C     Start nonlinear Newton iteration: outer loop iteration
-      DO WHILE ( newtonIter.LT.SEAICEnewtonIterMax .AND.
+      DO WHILE ( newtonIter.LT.SEAICEnonLinIterMax .AND.
      &     .NOT.JFNKconverged )
        newtonIter = newtonIter + 1
 C     Compute initial residual F(u), (includes computation of global
@@ -227,22 +237,49 @@ C     start Krylov iteration (FGMRES)
 
         krylovConverged = .FALSE.
         FGMRESeps = JFNKgamma_lin * JFNKresidual
+C     map first guess sol; it is zero because the solution is a correction
+       CALL SEAICE_MAP2VEC(nVec,duIce,dvIce,sol,.TRUE.,myThid)
+C     map rhs and change its sign because we are solving J*u = -F
+        CALL SEAICE_MAP2VEC(nVec,uIceRes,vIceRes,rhs,.TRUE.,myThid)
+        DO bj=myByLo(myThid),myByHi(myThid)
+         DO bi=myBxLo(myThid),myBxHi(myThid)
+          DO j=1,nVec
+           rhs(j,bi,bj) = - rhs(j,bi,bj)
+          ENDDO
+         ENDDO
+        ENDDO
         DO WHILE ( .NOT.krylovConverged )
 C     solution vector sol = du/vIce
 C     residual vector (rhs) Fu = u/vIceRes
 C     output work vectors wk1, -> input work vector wk2
 
-         CALL SEAICE_FGMRES_DRIVER(
-     I        uIceRes, vIceRes,
-     U        duIce, dvIce, iCode,
-     I        FGMRESeps, iOutFGMRES,
-     I        newtonIter, krylovIter, myTime, myIter, myThid )
+C     map preconditioner results or Jacobian times vector,
+C     stored in du/vIce to wk2, for iCode=0, wk2 is set to zero,
+C     because du/vIce = 0
+         CALL SEAICE_MAP2VEC(nVec,duIce,dvIce,wk2,.TRUE.,myThid)
+C
+         CALL SEAICE_FGMRES (nVec,im,rhs,sol,ifgmres,krylovIter,
+     U        vv,w,wk1,wk2,
+     I        FGMRESeps,SEAICElinearIterMax,iOutFGMRES,
+     U        iCode,
+     I        myThid)
+C     
+         IF ( iCode .EQ. 0 ) THEN
+C     map sol(ution) vector to du/vIce
+          CALL SEAICE_MAP2VEC(nVec,duIce,dvIce,sol,.FALSE.,myThid)
+         ELSE
+C     map work vector to du/vIce to either compute a preconditioner
+C     solution (wk1=rhs) or a Jacobian times wk1
+          CALL SEAICE_MAP2VEC(nVec,duIce,dvIce,wk1,.FALSE.,myThid)
+         ENDIF
+C     Fill overlaps in updated fields
+         CALL EXCH_UV_XY_RL( duIce, dvIce,.TRUE.,myThid)
 C     FGMRES returns iCode either asking for an new preconditioned vector
 C     or product of matrix (Jacobian) times vector. For iCode = 0, terminate
 C     iteration
          IF (iCode.EQ.1) THEN
 C     Call preconditioner
-          IF ( SOLV_MAX_ITERS .GT. 0 )
+          IF ( SEAICEpreconLinIter .GT. 0 )
      &         CALL SEAICE_PRECONDITIONER(
      U         duIce, dvIce,
      I         zetaPre, etaPre, etaZpre, zetaZpre, dwatPre,
@@ -262,7 +299,7 @@ C     some output diagnostics
         IF ( debugLevel.GE.debLevA ) THEN
          _BEGIN_MASTER( myThid )
          totalNewtonItersLoc =
-     &        SEAICEnewtonIterMax*(myIter-nIter0)+newtonIter
+     &        SEAICEnonLinIterMax*(myIter-nIter0)+newtonIter
          WRITE(msgBuf,'(2A,2(1XI6),2E12.5)')
      &        ' S/R SEAICE_JFNK: Newton iterate / total, ',
      &        'JFNKgamma_lin, initial norm = ',
@@ -278,13 +315,13 @@ C     some output diagnostics
      &        SQUEEZE_RIGHT, myThid )
          _END_MASTER( myThid )
         ENDIF
-        IF ( krylovIter.EQ.SEAICEkrylovIterMax ) THEN
+        IF ( krylovIter.EQ.SEAICElinearIterMax ) THEN
          krylovFails = krylovFails + 1
         ENDIF
 C     Set the stopping criterion for the Newton iteration and the
 C     criterion for the transition from accurate to approximate FGMRES
         IF ( newtonIter .EQ. 1 ) THEN
-         JFNKtol=JFNKgamma_nonlin*JFNKresidual
+         JFNKtol=SEAICEnonLinTol*JFNKresidual
          IF ( JFNKres_tFac .NE. UNSET_RL )
      &        JFNKres_t = JFNKresidual * JFNKres_tFac
         ENDIF
@@ -323,7 +360,7 @@ C     Count iterations
        totalKrylovIters   = totalKrylovIters + totalKrylovItersLoc
 C     Record failure
        totalKrylovFails   = totalKrylovFails + krylovFails
-       IF ( newtonIter .EQ. SEAICEnewtonIterMax ) THEN
+       IF ( newtonIter .EQ. SEAICEnonLinIterMax ) THEN
         totalNewtonFails = totalNewtonFails + 1
        ENDIF
       ENDIF
@@ -397,7 +434,7 @@ C     reset and start again
 
 C     Print more debugging information
       IF ( debugLevel.GE.debLevA ) THEN
-       IF ( newtonIter .EQ. SEAICEnewtonIterMax ) THEN
+       IF ( newtonIter .EQ. SEAICEnonLinIterMax ) THEN
         _BEGIN_MASTER( myThid )
         WRITE(msgBuf,'(A,I10)')
      &       ' S/R SEAICE_JFNK: JFNK did not converge in timestep ',

@@ -294,28 +294,32 @@ C     Elastic-Viscous-Plastic solver, following Hunke (2001)
        ENDIF
 #endif /* SEAICE_ALLOW_EVP */
 
-#ifdef SEAICE_ALLOW_JFNK
-       IF ( SEAICEuseJFNK ) THEN
+       IF ( SEAICEuseLSR ) THEN
+C     Picard solver with LSR scheme (Zhang-J/Hibler 1997), ported to a C-grid
+        CALL SEAICE_LSR( myTime, myIter, myThid )
+       ENDIF
+
+#ifdef SEAICE_ALLOW_KRYLOV
 # ifdef ALLOW_AUTODIFF_TAMC
-        STOP 'Adjoint does not work with JFNK solver.'
+       STOP 'Adjoint does not work with Picard-Krylov solver.'
 # else
+       IF ( SEAICEuseKrylov ) THEN
+C     Picard solver with Matrix-free Krylov solver (Lemieux et al. 2008)
+        CALL SEAICE_KRYLOV( myTime, myIter, myThid )
+       ENDIF
+# endif /*  ALLOW_AUTODIFF_TAMC */
+#endif /* SEAICE_ALLOW_KRYLOV */
+
+#ifdef SEAICE_ALLOW_JFNK
+# ifdef ALLOW_AUTODIFF_TAMC
+       STOP 'Adjoint does not work with JFNK solver.'
+# else
+       IF ( SEAICEuseJFNK ) THEN
 C     Jacobian-free Newton Krylov solver (Lemieux et al. 2010, 2012)
         CALL SEAICE_JFNK( myTime, myIter, myThid )
+       ENDIF
 # endif /*  ALLOW_AUTODIFF_TAMC */
-       ENDIF
 #endif /* SEAICE_ALLOW_JFNK */
-
-#if defined(SEAICE_ALLOW_EVP) || defined(SEAICE_ALLOW_JFNK) \
-                              || defined(SEAICE_ALLOW_FREEDRIFT)
-       IF ( .NOT.SEAICEuseFREEDRIFT .AND. .NOT.SEAICEuseEVP
-     &      .AND. .NOT.SEAICEuseJFNK ) THEN
-#endif /* SEAICE_ALLOW_EVP or SEAICE_ALLOW_FREEDRIFT */
-C     LSR scheme (Zhang-J/Hibler 1997), ported to a C-grid
-          CALL SEAICE_LSR( myTime, myIter, myThid )
-#if defined(SEAICE_ALLOW_EVP) || defined(SEAICE_ALLOW_JFNK) \
-                              || defined(SEAICE_ALLOW_FREEDRIFT)
-       ENDIF
-#endif /* SEAICE_ALLOW_EVP or SEAICE_ALLOW_FREEDRIFT */
 
 C End of IF (SEAICEuseDYNAMICS ...
       ENDIF

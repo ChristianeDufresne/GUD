@@ -4,6 +4,73 @@ $Name$
     Notes on tags used in MITgcmUV
     ==============================
 
+checkpoint65t (2016/02/10)
+o pkg/atm_phys:
+  - from Ruth Geen: add optical depth dependence on CO2 concentration.
+o model/src:
+  - fix vertical inter/extra-polation of density factor rhoFacF (for anelastic)
+    for the case setCenterDr=T (delRc set from "data"); add output of rhoFacC&F.
+    Update output of exp. deep_anelastic (changes at truncation level).
+o tools:
+  - add a hack in "remove_comments_sed" (used only with TAF) for recent
+    version of OpenMPI (shipped with FC.23): comment out the new header
+    file "mpif-sizeof.h" which causes problems to TAF.
+o pkg/seaice:
+  - change the termination criterion so that maxits (SEAICElinearIterMax)
+    has an effect
+  - unify iteration parameters for implicit solvers (JFNK and Picard)
+    SEAICEnonLinIterMax replaces SEAICEnewtonIterMax/NPSEUDOTIMESTEPS
+    SEAICElinearIterMax replaces SEAICEkrylovIterMax/SOLV_MAX_ITER
+    SEAICEpreLinIterMax replaces SOLV_MAX_ITER in preconditioner
+    SEAICEpreNL_IterMax replaces NPSEUDOTIMESTEPS in preconditioner
+    SEAICEnonLinTol     replaces JFNKgamma_nonlin
+  - remove S/R SEAICE_FGMRES_DRIVER and put content into S/R SEAICE_JFKN
+  - add new Picard-Krylov solver, compile with SEAICE_ALLOW_KRYLOV and
+    use with SEAICEuseKrylov
+o pkg/seaice/seaice_lsr.F
+    fix small bug: replace zetaZ by zetaZloc in S/R seaice_lsr_rhsu/v; only
+    relevant if SEAICEuseStrImpCpl=T, and even then it does not seem to have
+    an effect.
+o pkg/seaice: add two new parameters
+  - SEAICEuseLSR to simplify the logic in seaice_dynsolver (this
+    parameter is not in any namelist)
+  - SEAICEusrPicardAsPrecon to allow s/r seaice_lsr to be used as
+    a preconditioner for the non-linear Newton iteration of the JFNK
+    solver
+o pkg/seaice/seaice_lsr.F: replace 1./SEAICE_deltaTdyn with recip_deltaT,
+  affects some experiments at truncation level:
+  - global_ocean.cs32x15.icedyn (11 digits),
+  - global_ocean.cs32x15.seaice (11 digits),
+  - seaice_itd (12 digits), seaice_itd.lipscomb07 (12 digits) -> update
+  - also update global_ocean.cs32x15 adjoint and tangent-linear results
+o pkg/salt_plume & pkg/thsice:
+  - for coupled  set-up with pkg/thsice in ATM and pkg/salt_plume in OCN,
+    connect salt_plume flux to ATM-OCN coupling pkgs interface:
+   a) in ATM: also cumulate salt-plume flux in S/R THSICE_SALT_PLUME (for
+     export to coupler interface) even without compiling pkg/salt_plume ;
+   b) in OCN: apply coupler salt-plume flux to pkg/salt_plume field
+     (saltPlumeFlux) just before exch call, in S/R SALT_PLUME_DO_EXCH.
+o pkg/dic:
+  - use the updated seaice fraction (from seaice pkgs) for DIC forcing
+    instead of the previous time-step value ; done in new S/R DIC_FIELDS_UPDATE
+    called from the top of dic_biotic_forcing.F (instead of in DIC_FIELDS_LOAD);
+  - move also update with values from ATM-OCN Coupler in the same new S/R
+    (previously done in ocn_apply_import.F).
+o tools/adjoint_options:
+  - specify explicitly "-f77" or "-f90" in default ad-optfile since TAF (default)
+    has been changed on Jan 14, 2016.
+o pkg/ggl90:
+  - add alternative discretisation of vertical shear (off by default), to
+    compute the mean (@ grid-cell center) of vertical shear compon instead of
+    vertical shear of mean flow (@ grid-cell center).
+  - add correct parenthesis in ALLOW_GGL90_SMOOTH code to get the same truncated
+    results on adjacent faces of cubed-sphere grids; this fix the restart.
+o pkg/atm_compon_interf:
+  - skip time-ave over cpl_atmSendFrq of Sea-Level Pressure (atmSLPr) and just
+    pass last value, stored directly before export to CPL ;
+    Note: this affects results of Coupled set-up where OCN uses useImportSLP=T
+  - remove atmSLPr from pickup files (no longer needed for restart)
+
 checkpoint65s (2016/01/13)
 o eesupp & genmake2:
    - first check for Function ETIME and, if it fails, then check for subroutine
