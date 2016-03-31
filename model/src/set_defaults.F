@@ -46,6 +46,7 @@ C-    Vertical gridding
       delRcFile           = ' '
       hybSigmFile         = ' '
       Ro_SeaLevel         = 0.
+      phi0Ref             = UNSET_RL
       rSigmaBnd           = UNSET_RL
       selectSigmaCoord    = 0
       DO k=1,Nr
@@ -58,6 +59,7 @@ C-    vertical profile
       tRefFile            = ' '
       sRefFile            = ' '
       rhoRefFile          = ' '
+      gravityFile         = ' '
       thetaConst          = UNSET_RL
       DO k=1,Nr
        tRef(k)            = UNSET_RL
@@ -171,6 +173,7 @@ C-    viscosity and diffusivity default value:
       HeatCapacity_Cp     = 3994. _d 0
       eosType             = 'LINEAR'
       buoyancyRelation    = 'OCEANIC'
+      selectP_inEOS_Zc    = UNSET_I
       smoothAbsFuncRange  = 0. _d 0
       hFacMin             = 1. _d 0
       hFacMinDrDefault    = 0. _d 0
